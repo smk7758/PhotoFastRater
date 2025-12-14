@@ -1,0 +1,235 @@
+<Window x:Class="PhotoFastRater.UI.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        mc:Ignorable="d"
+        Title="Photo Fast Rater" Height="800" Width="1400"
+        Background="{DynamicResource MaterialDesignPaper}">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- ツールバー -->
+        <ToolBar Grid.Row="0" Padding="8">
+            <Button Content="インポート"
+                    Command="{Binding ImportFolderCommand}"
+                    Style="{StaticResource MaterialDesignRaisedButton}"/>
+            <Button Content="読み込み"
+                    Command="{Binding LoadPhotosCommand}"
+                    Margin="8,0,0,0"/>
+            <Separator Margin="8,0"/>
+            <TextBlock Text="検索:" VerticalAlignment="Center" Margin="8,0"/>
+            <TextBox Width="200" Margin="4,0"/>
+        </ToolBar>
+
+        <!-- メインコンテンツ -->
+        <TabControl Grid.Row="1" Margin="8">
+            <TabItem Header="写真一覧">
+                <Grid>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding PhotoGrid.Photos}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Width="200" Height="200" Margin="4"
+                                            BorderBrush="Gray" BorderThickness="1"
+                                            Background="White"
+                                            Cursor="Hand">
+                                        <Border.InputBindings>
+                                            <MouseBinding MouseAction="LeftClick"
+                                                         Command="{Binding DataContext.PhotoGrid.OpenPhotoCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                         CommandParameter="{Binding}"/>
+                                        </Border.InputBindings>
+                                        <Grid>
+                                            <Image Source="{Binding Thumbnail}"
+                                                   Stretch="Uniform"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"/>
+                                            <StackPanel VerticalAlignment="Bottom"
+                                                       Background="#80000000"
+                                                       Margin="4">
+                                                <TextBlock Text="{Binding FileName}"
+                                                          Foreground="White"
+                                                          FontSize="10"
+                                                          TextTrimming="CharacterEllipsis"
+                                                          Margin="4"/>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="★"
+                                                              Foreground="Yellow"
+                                                              FontSize="12"/>
+                                                    <TextBlock Text="{Binding Rating}"
+                                                              Foreground="White"
+                                                              FontSize="10"
+                                                              Margin="2,0"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="イベント">
+                <Grid Margin="16">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                        <TextBox Width="200"
+                                Text="{Binding Events.NewEventName, UpdateSourceTrigger=PropertyChanged}"
+                                materialDesign:HintAssist.Hint="イベント名"/>
+                        <Button Content="イベント作成"
+                               Margin="8,0,0,0"/>
+                        <Button Content="自動グルーピング"
+                               Command="{Binding Events.AutoGroupPhotosCommand}"
+                               Margin="8,0,0,0"/>
+                    </StackPanel>
+
+                    <ListBox Grid.Row="1"
+                            ItemsSource="{Binding Events.Events}"
+                            DisplayMemberPath="Name"/>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="エクスポート">
+                <Grid Margin="16">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Text="エクスポート設定"
+                              FontSize="18"
+                              FontWeight="Bold"
+                              Margin="0,0,0,16"/>
+
+                    <StackPanel Grid.Row="1">
+                        <CheckBox Content="枠を追加"
+                                 IsChecked="{Binding Export.EnableFrame}"/>
+                        <StackPanel Orientation="Horizontal" Margin="20,0,0,0">
+                            <TextBlock Text="枠の幅:" VerticalAlignment="Center"/>
+                            <Slider Width="200"
+                                   Minimum="10" Maximum="100"
+                                   Value="{Binding Export.FrameWidth}"
+                                   IsEnabled="{Binding Export.EnableFrame}"
+                                   Margin="8,0"/>
+                            <TextBlock Text="{Binding Export.FrameWidth}"
+                                      VerticalAlignment="Center"/>
+                        </StackPanel>
+
+                        <CheckBox Content="EXIF情報を表示"
+                                 IsChecked="{Binding Export.EnableExifOverlay}"
+                                 Margin="0,16,0,0"/>
+
+                        <ComboBox Width="200"
+                                 HorizontalAlignment="Left"
+                                 Margin="0,8,0,0"
+                                 materialDesign:HintAssist.Hint="SNSプラットフォーム"
+                                 SelectedValue="{Binding Export.TargetPlatform}">
+                            <ComboBoxItem Content="Instagram"/>
+                            <ComboBoxItem Content="Twitter"/>
+                            <ComboBoxItem Content="Facebook"/>
+                        </ComboBox>
+                    </StackPanel>
+
+                    <Button Grid.Row="3"
+                           Content="エクスポート"
+                           HorizontalAlignment="Left"
+                           VerticalAlignment="Bottom"
+                           Style="{StaticResource MaterialDesignRaisedButton}"/>
+                </Grid>
+            </TabItem>
+
+            <TabItem Header="設定">
+                <ScrollViewer>
+                    <StackPanel Margin="16" MaxWidth="600" HorizontalAlignment="Left">
+                        <TextBlock Text="キャッシュ設定"
+                                  FontSize="18"
+                                  FontWeight="Bold"
+                                  Margin="0,0,0,16"/>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                            <TextBox Width="400"
+                                    Text="{Binding Settings.CachePath}"
+                                    materialDesign:HintAssist.Hint="キャッシュフォルダ（SSD推奨）"
+                                    IsReadOnly="True"/>
+                            <Button Content="参照"
+                                   Command="{Binding Settings.SelectCachePathCommand}"
+                                   Margin="8,0,0,0"/>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,16,0,8">
+                            <TextBlock Text="メモリキャッシュサイズ (MB):"
+                                      VerticalAlignment="Center"
+                                      Width="200"/>
+                            <Slider Width="200"
+                                   Minimum="100" Maximum="2000"
+                                   Value="{Binding Settings.MaxMemoryCacheSizeMB}"
+                                   TickFrequency="100"
+                                   IsSnapToTickEnabled="True"/>
+                            <TextBlock Text="{Binding Settings.MaxMemoryCacheSizeMB}"
+                                      VerticalAlignment="Center"
+                                      Margin="8,0"/>
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,8,0,8">
+                            <TextBlock Text="サムネイルサイズ (px):"
+                                      VerticalAlignment="Center"
+                                      Width="200"/>
+                            <Slider Width="200"
+                                   Minimum="256" Maximum="1024"
+                                   Value="{Binding Settings.ThumbnailSize}"
+                                   TickFrequency="128"
+                                   IsSnapToTickEnabled="True"/>
+                            <TextBlock Text="{Binding Settings.ThumbnailSize}"
+                                      VerticalAlignment="Center"
+                                      Margin="8,0"/>
+                        </StackPanel>
+
+                        <CheckBox Content="RAWファイル対応を有効にする"
+                                 IsChecked="{Binding Settings.EnableRAWSupport}"
+                                 Margin="0,16,0,0"/>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,24,0,0">
+                            <Button Content="設定を保存"
+                                   Command="{Binding Settings.SaveSettingsCommand}"
+                                   Style="{StaticResource MaterialDesignRaisedButton}"/>
+                            <Button Content="キャッシュをクリア"
+                                   Command="{Binding Settings.ClearCacheCommand}"
+                                   Margin="8,0,0,0"/>
+                        </StackPanel>
+
+                        <TextBlock Text="{Binding Settings.CurrentCacheSize, StringFormat='現在のキャッシュサイズ: {0:N0} bytes'}"
+                                  Margin="0,16,0,0"
+                                  FontSize="12"
+                                  Foreground="Gray"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+
+        <!-- ステータスバー -->
+        <StatusBar Grid.Row="2">
+            <StatusBarItem>
+                <TextBlock Text="{Binding StatusText}"/>
+            </StatusBarItem>
+        </StatusBar>
+    </Grid>
+</Window>

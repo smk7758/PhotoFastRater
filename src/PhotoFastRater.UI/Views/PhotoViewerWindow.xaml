@@ -1,0 +1,87 @@
+<Window x:Class="PhotoFastRater.UI.Views.PhotoViewerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        Title="写真ビューア"
+        Height="900" Width="1200"
+        Background="Black"
+        WindowStartupLocation="CenterScreen"
+        KeyDown="Window_KeyDown">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 画像表示エリア -->
+        <ScrollViewer Grid.Row="0"
+                     HorizontalScrollBarVisibility="Auto"
+                     VerticalScrollBarVisibility="Auto">
+            <Image x:Name="PhotoImage"
+                   Source="{Binding FullImageSource}"
+                   Stretch="Uniform"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"/>
+        </ScrollViewer>
+
+        <!-- 情報パネル -->
+        <Border Grid.Row="1"
+                Background="#CC000000"
+                Padding="16">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- EXIF情報 -->
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="{Binding FileName}"
+                              Foreground="White"
+                              FontSize="16"
+                              FontWeight="Bold"
+                              Margin="0,0,0,8"/>
+                    <WrapPanel>
+                        <TextBlock Foreground="White" Margin="0,0,16,0">
+                            <Run Text="カメラ: "/>
+                            <Run Text="{Binding CameraModel, Mode=OneWay}"/>
+                        </TextBlock>
+                        <TextBlock Foreground="White" Margin="0,0,16,0">
+                            <Run Text="レンズ: "/>
+                            <Run Text="{Binding LensModel, Mode=OneWay}"/>
+                        </TextBlock>
+                        <TextBlock Foreground="White" Margin="0,0,16,0">
+                            <Run Text="ISO: "/>
+                            <Run Text="{Binding ISO, Mode=OneWay}"/>
+                        </TextBlock>
+                        <TextBlock Foreground="White" Margin="0,0,16,0">
+                            <Run Text="F/"/>
+                            <Run Text="{Binding Aperture, StringFormat=N1, Mode=OneWay}"/>
+                        </TextBlock>
+                        <TextBlock Foreground="White" Margin="0,0,16,0">
+                            <Run Text="{Binding ShutterSpeed, Mode=OneWay}"/>
+                            <Run Text="秒"/>
+                        </TextBlock>
+                        <TextBlock Foreground="White">
+                            <Run Text="{Binding FocalLength, StringFormat=N0, Mode=OneWay}"/>
+                            <Run Text="mm"/>
+                        </TextBlock>
+                    </WrapPanel>
+                </StackPanel>
+
+                <!-- 評価 -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <TextBlock Text="評価: "
+                              Foreground="White"
+                              VerticalAlignment="Center"
+                              Margin="0,0,8,0"/>
+                    <Button Content="1" Click="Rating_Click" Tag="1" Width="40" Margin="2"/>
+                    <Button Content="2" Click="Rating_Click" Tag="2" Width="40" Margin="2"/>
+                    <Button Content="3" Click="Rating_Click" Tag="3" Width="40" Margin="2"/>
+                    <Button Content="4" Click="Rating_Click" Tag="4" Width="40" Margin="2"/>
+                    <Button Content="5" Click="Rating_Click" Tag="5" Width="40" Margin="2"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
