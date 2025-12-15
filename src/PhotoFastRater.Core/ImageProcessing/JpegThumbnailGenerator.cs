@@ -17,21 +17,29 @@ public class JpegThumbnailGenerator : IThumbnailGenerator
     {
         return await Task.Run(() =>
         {
-            using var image = Image.Load(filePath);
-
-            // アスペクト比を維持してリサイズ
-            var size = CalculateSize(image.Size, targetSize);
-
-            image.Mutate(x => x.Resize(new ResizeOptions
+            try
             {
-                Size = size,
-                Mode = ResizeMode.Max,
-                Sampler = KnownResamplers.Lanczos3
-            }));
+                using var image = Image.Load(filePath);
 
-            using var ms = new MemoryStream();
-            image.SaveAsJpeg(ms, new JpegEncoder { Quality = _jpegQuality });
-            return ms.ToArray();
+                var size = CalculateSize(image.Size, targetSize);
+
+                image.Mutate(x => x.Resize(new ResizeOptions
+                {
+                    Size = size,
+                    Mode = ResizeMode.Max,
+                    Sampler = KnownResamplers.Lanczos3
+                }));
+
+                using var ms = new MemoryStream();
+                image.SaveAsJpeg(ms, new JpegEncoder { Quality = _jpegQuality });
+                return ms.ToArray();
+            }
+            catch (SixLabors.ImageSharp.UnknownImageFormatException e)
+            {
+                // Log the issue if you have a logger, then return an empty result
+                // _logger?.LogWarning("Unknown image format for {FilePath}", filePath);
+                return Array.Empty<byte>();
+            }
         });
     }
 
