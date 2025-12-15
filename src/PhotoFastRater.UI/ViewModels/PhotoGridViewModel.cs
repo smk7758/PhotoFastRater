@@ -1,7 +1,9 @@
 using System.Collections.ObjectModel;
+using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PhotoFastRater.Core.Database.Repositories;
+using PhotoFastRater.Core.Export;
 using PhotoFastRater.UI.Services;
 using PhotoFastRater.UI.Views;
 
@@ -11,6 +13,7 @@ public partial class PhotoGridViewModel : ViewModelBase
 {
     private readonly PhotoRepository _photoRepository;
     private readonly ImageLoader _imageLoader;
+    private readonly SocialMediaExporter _socialMediaExporter;
 
     [ObservableProperty]
     private ObservableCollection<PhotoViewModel> _photos = new();
@@ -27,10 +30,11 @@ public partial class PhotoGridViewModel : ViewModelBase
     [ObservableProperty]
     private string? _filterCamera;
 
-    public PhotoGridViewModel(PhotoRepository photoRepository, ImageLoader imageLoader)
+    public PhotoGridViewModel(PhotoRepository photoRepository, ImageLoader imageLoader, SocialMediaExporter socialMediaExporter)
     {
         _photoRepository = photoRepository;
         _imageLoader = imageLoader;
+        _socialMediaExporter = socialMediaExporter;
     }
 
     public async Task LoadAllPhotosAsync()
@@ -125,6 +129,109 @@ public partial class PhotoGridViewModel : ViewModelBase
     {
         var viewer = new PhotoViewerWindow(photo);
         viewer.ShowDialog();
+    }
+
+    // Context menu public methods
+    public async void SetRating(PhotoViewModel photo, int rating)
+    {
+        photo.Rating = rating;
+        var model = photo.GetModel();
+        model.Rating = rating;
+        await _photoRepository.UpdateAsync(model);
+    }
+
+    public async void ToggleFavorite(PhotoViewModel photo)
+    {
+        photo.IsFavorite = !photo.IsFavorite;
+        var model = photo.GetModel();
+        model.IsFavorite = photo.IsFavorite;
+        await _photoRepository.UpdateAsync(model);
+    }
+
+    public async void ToggleReject(PhotoViewModel photo)
+    {
+        photo.IsRejected = !photo.IsRejected;
+        var model = photo.GetModel();
+        model.IsRejected = photo.IsRejected;
+        await _photoRepository.UpdateAsync(model);
+    }
+
+    public async void ExportToSocialMedia(PhotoViewModel photo)
+    {
+        try
+        {
+            var model = photo.GetModel();
+            var template = new Core.Models.ExportTemplate
+            {
+                Name = "SNS Export",
+                TargetPlatform = Core.Models.SocialMediaPlatform.Instagram,
+                OutputWidth = 1080,
+                OutputHeight = 1080,
+                MaintainAspectRatio = true,
+                EnableExifOverlay = true,
+                EnableFrame = true,
+                FrameWidth = 20,
+                FrameColor = "#FFFFFF"
+            };
+
+            var outputDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
+                "PhotoFastRater_Export");
+
+            Directory.CreateDirectory(outputDir);
+
+            var outputPath = Path.Combine(outputDir, $"export_{Path.GetFileNameWithoutExtension(photo.FileName)}.jpg");
+
+            await _socialMediaExporter.ExportAsync(model, template, outputPath);
+
+            System.Windows.MessageBox.Show($"エクスポートしました:\n{outputPath}", "完了",
+                System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show($"エクスポートエラー: {ex.Message}", "エラー",
+                System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+        }
+    }
+
+    public async void DeleteFromDatabase(PhotoViewModel photo)
+    {
+        try
+        {
+            var model = photo.GetModel();
+            await _photoRepository.DeleteAsync(model.Id);
+            Photos.Remove(photo);
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show($"削除エラー: {ex.Message}", "エラー",
+                System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+        }
+    }
+
+    public async void DeleteFile(PhotoViewModel photo)
+    {
+        try
+        {
+            var model = photo.GetModel();
+
+            // DBから削除
+            await _photoRepository.DeleteAsync(model.Id);
+
+            // ファイルを削除
+            if (File.Exists(photo.FilePath))
+            {
+                File.Delete(photo.FilePath);
+            }
+
+            // UIから削除
+            Photos.Remove(photo);
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show($"ファイル削除エラー: {ex.Message}", "エラー",
+                System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+        }
     }
 
     private async Task ApplyFiltersAsync()

@@ -1,3 +1,4 @@
+using System.Windows.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using PhotoFastRater.Core.Models;
 
@@ -29,7 +30,7 @@ public partial class FolderSessionPhotoViewModel : ViewModelBase
     private string? _cameraModel;
 
     [ObservableProperty]
-    private object? _thumbnail;
+    private BitmapImage? _thumbnail;
 
     public FolderSessionPhotoViewModel(FolderSessionPhoto photo)
     {

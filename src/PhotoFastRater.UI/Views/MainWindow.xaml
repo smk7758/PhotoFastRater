@@ -48,12 +48,33 @@
                                     <Border Width="200" Height="200" Margin="4"
                                             BorderBrush="Gray" BorderThickness="1"
                                             Background="White"
-                                            Cursor="Hand">
+                                            Cursor="Hand"
+                                            Tag="{Binding}">
                                         <Border.InputBindings>
                                             <MouseBinding MouseAction="LeftClick"
                                                          Command="{Binding DataContext.PhotoGrid.OpenPhotoCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                          CommandParameter="{Binding}"/>
                                         </Border.InputBindings>
+                                        <Border.ContextMenu>
+                                            <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
+                                                <MenuItem Header="レーティング" DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                    <MenuItem Header="★ 0" Tag="0" Click="RatingMenuItem_Click"/>
+                                                    <MenuItem Header="★ 1" Tag="1" Click="RatingMenuItem_Click"/>
+                                                    <MenuItem Header="★★ 2" Tag="2" Click="RatingMenuItem_Click"/>
+                                                    <MenuItem Header="★★★ 3" Tag="3" Click="RatingMenuItem_Click"/>
+                                                    <MenuItem Header="★★★★ 4" Tag="4" Click="RatingMenuItem_Click"/>
+                                                    <MenuItem Header="★★★★★ 5" Tag="5" Click="RatingMenuItem_Click"/>
+                                                </MenuItem>
+                                                <Separator/>
+                                                <MenuItem Header="お気に入り切り替え" Click="ToggleFavorite_Click"/>
+                                                <MenuItem Header="リジェクト切り替え" Click="ToggleReject_Click"/>
+                                                <Separator/>
+                                                <MenuItem Header="SNSエクスポート" Click="ExportToSocialMedia_Click"/>
+                                                <Separator/>
+                                                <MenuItem Header="DBから削除" Click="DeleteFromDatabase_Click"/>
+                                                <MenuItem Header="ファイルを削除" Click="DeleteFile_Click" Foreground="Red"/>
+                                            </ContextMenu>
+                                        </Border.ContextMenu>
                                         <Grid>
                                             <Image Source="{Binding Thumbnail}"
                                                    Stretch="Uniform"

@@ -21,6 +21,9 @@ public partial class PhotoViewModel : ViewModelBase
     private bool _isFavorite;
 
     [ObservableProperty]
+    private bool _isRejected;
+
+    [ObservableProperty]
     private bool _isSelected;
 
     public PhotoViewModel(Photo photo)
@@ -28,6 +31,7 @@ public partial class PhotoViewModel : ViewModelBase
         _photo = photo;
         _rating = photo.Rating;
         _isFavorite = photo.IsFavorite;
+        _isRejected = photo.IsRejected;
     }
 
     public int Id => _photo.Id;

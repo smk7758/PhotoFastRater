@@ -90,8 +90,15 @@ public partial class App : System.Windows.Application
         services.AddScoped<FolderSessionService>();
 
         // Image Processing
-        services.AddSingleton<IThumbnailGenerator, JpegThumbnailGenerator>();
-        services.AddSingleton<ThumbnailCacheManager>();
+        services.AddSingleton<JpegThumbnailGenerator>();
+        services.AddSingleton<RawThumbnailGenerator>();
+        services.AddSingleton<ThumbnailCacheManager>(sp =>
+        {
+            var config = sp.GetRequiredService<CacheConfiguration>();
+            var jpegGenerator = sp.GetRequiredService<JpegThumbnailGenerator>();
+            var rawGenerator = sp.GetRequiredService<RawThumbnailGenerator>();
+            return new ThumbnailCacheManager(config, jpegGenerator, rawGenerator);
+        });
         services.AddSingleton<ImageLoader>();
 
         // Export

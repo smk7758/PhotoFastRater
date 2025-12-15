@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using PhotoFastRater.Core.Models;
 using PhotoFastRater.Core.Services;
 using PhotoFastRater.Core.Database.Repositories;
+using PhotoFastRater.UI.Services;
 using MessageBox = System.Windows.MessageBox;
 using MessageBoxButton = System.Windows.MessageBoxButton;
 using MessageBoxImage = System.Windows.MessageBoxImage;
@@ -19,6 +20,7 @@ public partial class FolderModeViewModel : ViewModelBase
 {
     private readonly FolderSessionService _sessionService;
     private readonly IServiceProvider _serviceProvider;
+    private readonly ImageLoader _imageLoader;
 
     [ObservableProperty]
     private FolderSession? _currentSession;
@@ -46,10 +48,12 @@ public partial class FolderModeViewModel : ViewModelBase
 
     public FolderModeViewModel(
         FolderSessionService sessionService,
-        IServiceProvider serviceProvider)
+        IServiceProvider serviceProvider,
+        ImageLoader imageLoader)
     {
         _sessionService = sessionService;
         _serviceProvider = serviceProvider;
+        _imageLoader = imageLoader;
     }
 
     /// <summary>
@@ -100,7 +104,10 @@ public partial class FolderModeViewModel : ViewModelBase
             Photos.Clear();
             foreach (var photo in CurrentSession.Photos)
             {
-                Photos.Add(new FolderSessionPhotoViewModel(photo));
+                var photoVm = new FolderSessionPhotoViewModel(photo);
+                Photos.Add(photoVm);
+                // サムネイルをバックグラウンドで読み込み
+                _ = LoadThumbnailAsync(photoVm);
             }
 
             UpdateStatistics();
@@ -299,6 +306,23 @@ public partial class FolderModeViewModel : ViewModelBase
         {
             TotalPhotos = CurrentSession.TotalPhotos;
             RatedPhotos = CurrentSession.RatedPhotos;
+        }
+    }
+
+    /// <summary>
+    /// サムネイルを非同期で読み込み
+    /// </summary>
+    private async Task LoadThumbnailAsync(FolderSessionPhotoViewModel photoVm)
+    {
+        try
+        {
+            var thumbnail = await _imageLoader.LoadAsync(photoVm.FilePath);
+            photoVm.Thumbnail = thumbnail;
+        }
+        catch (Exception ex)
+        {
+            // サムネイル読み込みエラーは無視（写真は表示される）
+            System.Diagnostics.Debug.WriteLine($"サムネイル読み込みエラー: {photoVm.FilePath} - {ex.Message}");
         }
     }
 }
