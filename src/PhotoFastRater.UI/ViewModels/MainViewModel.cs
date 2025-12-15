@@ -67,7 +67,7 @@ public partial class MainViewModel : ViewModelBase
                 StatusText = $"インポート中: {p.ProcessedCount}/{p.TotalCount} - {p.Status}";
             });
 
-            await _importService.ImportFromFolderAsync(dialog.SelectedPath, true, progress);
+            await _importService.ImportFromFolderAsync(dialog.SelectedPath, true, null, progress);
             await LoadPhotosAsync();
         }
     }

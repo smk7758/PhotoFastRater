@@ -9,6 +9,9 @@ public partial class SettingsViewModel : ViewModelBase
     private readonly CacheConfiguration _cacheConfig;
 
     [ObservableProperty]
+    private ManagedFoldersViewModel? _managedFolders;
+
+    [ObservableProperty]
     private string _cachePath = @"D:\PhotoCache";
 
     [ObservableProperty]
@@ -29,10 +32,22 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     private long _currentCacheSize = 0;
 
-    public SettingsViewModel(CacheConfiguration cacheConfig)
+    public SettingsViewModel(
+        CacheConfiguration cacheConfig,
+        ManagedFoldersViewModel managedFoldersViewModel)
     {
         _cacheConfig = cacheConfig;
+        ManagedFolders = managedFoldersViewModel;
         LoadSettings();
+        _ = InitializeAsync();
+    }
+
+    private async Task InitializeAsync()
+    {
+        if (ManagedFolders != null)
+        {
+            await ManagedFolders.LoadAsync();
+        }
     }
 
     private void LoadSettings()

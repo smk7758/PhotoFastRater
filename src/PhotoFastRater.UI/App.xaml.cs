@@ -25,8 +25,22 @@ public partial class App : System.Windows.Application
         ConfigureServices(services);
         _serviceProvider = services.BuildServiceProvider();
 
-        var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
-        mainWindow.Show();
+        var args = e.Args;
+
+        if (args.Length >= 2 && args[0] == "--folder")
+        {
+            // フォルダモードで起動
+            var folderPath = args[1];
+            var folderWindow = _serviceProvider.GetRequiredService<FolderModeWindow>();
+            folderWindow.LoadFolder(folderPath);
+            folderWindow.Show();
+        }
+        else
+        {
+            // DBモードで起動（通常）
+            var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
+            mainWindow.Show();
+        }
     }
 
     private void ConfigureServices(IServiceCollection services)
@@ -65,11 +79,15 @@ public partial class App : System.Windows.Application
         // Repositories
         services.AddScoped<PhotoRepository>();
         services.AddScoped<EventRepository>();
+        services.AddScoped<ManagedFolderRepository>();
+        services.AddScoped<FolderExclusionPatternRepository>();
 
         // Services
         services.AddSingleton<ExifService>();
         services.AddScoped<ImportService>();
         services.AddScoped<EventManagementService>();
+        services.AddScoped<ManagedFolderService>();
+        services.AddScoped<FolderSessionService>();
 
         // Image Processing
         services.AddSingleton<IThumbnailGenerator, JpegThumbnailGenerator>();
@@ -84,10 +102,13 @@ public partial class App : System.Windows.Application
         services.AddTransient<PhotoGridViewModel>();
         services.AddTransient<EventViewModel>();
         services.AddTransient<ExportViewModel>();
+        services.AddTransient<ManagedFoldersViewModel>();
+        services.AddTransient<FolderModeViewModel>();
         services.AddSingleton<SettingsViewModel>();
 
         // Views
         services.AddTransient<MainWindow>();
+        services.AddTransient<FolderModeWindow>();
     }
 
     protected override void OnExit(ExitEventArgs e)

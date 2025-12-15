@@ -11,6 +11,8 @@ public class PhotoDbContext : DbContext
     public DbSet<ExportTemplate> ExportTemplates { get; set; } = null!;
     public DbSet<Camera> Cameras { get; set; } = null!;
     public DbSet<Lens> Lenses { get; set; } = null!;
+    public DbSet<ManagedFolder> ManagedFolders { get; set; } = null!;
+    public DbSet<FolderExclusionPattern> FolderExclusionPatterns { get; set; } = null!;
 
     public PhotoDbContext(DbContextOptions<PhotoDbContext> options) : base(options)
     {
@@ -68,6 +70,22 @@ public class PhotoDbContext : DbContext
         {
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.Model).IsUnique();
+        });
+
+        // ManagedFolder エンティティ
+        modelBuilder.Entity<ManagedFolder>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.FolderPath).IsUnique();
+            entity.HasIndex(e => e.IsActive);
+            entity.HasIndex(e => e.LastScanDate);
+        });
+
+        // FolderExclusionPattern エンティティ
+        modelBuilder.Entity<FolderExclusionPattern>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.HasIndex(e => e.IsEnabled);
         });
     }
 }

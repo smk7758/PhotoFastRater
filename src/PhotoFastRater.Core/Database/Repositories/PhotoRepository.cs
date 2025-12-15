@@ -86,4 +86,10 @@ public class PhotoRepository
     {
         return await _context.Photos.AnyAsync(p => p.FilePath == filePath);
     }
+
+    public async Task<Photo?> GetByFilePathAsync(string filePath)
+    {
+        return await _context.Photos
+            .FirstOrDefaultAsync(p => p.FilePath == filePath);
+    }
 }

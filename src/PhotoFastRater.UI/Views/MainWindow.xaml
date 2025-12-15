@@ -24,6 +24,10 @@
                     Command="{Binding LoadPhotosCommand}"
                     Margin="8,0,0,0"/>
             <Separator Margin="8,0"/>
+            <Button Content="フォルダモードを開く"
+                    Click="OpenFolderMode_Click"
+                    Margin="0,0,0,0"/>
+            <Separator Margin="8,0"/>
             <TextBlock Text="検索:" VerticalAlignment="Center" Margin="8,0"/>
             <TextBox Width="200" Margin="4,0"/>
         </ToolBar>
@@ -158,70 +162,164 @@
             </TabItem>
 
             <TabItem Header="設定">
-                <ScrollViewer>
-                    <StackPanel Margin="16" MaxWidth="600" HorizontalAlignment="Left">
-                        <TextBlock Text="キャッシュ設定"
-                                  FontSize="18"
-                                  FontWeight="Bold"
-                                  Margin="0,0,0,16"/>
+                <TabControl Margin="8">
+                    <!-- キャッシュ設定タブ -->
+                    <TabItem Header="キャッシュ">
+                        <ScrollViewer>
+                            <StackPanel Margin="16" MaxWidth="600" HorizontalAlignment="Left">
+                                <TextBlock Text="キャッシュ設定"
+                                          FontSize="18"
+                                          FontWeight="Bold"
+                                          Margin="0,0,0,16"/>
 
-                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                            <TextBox Width="400"
-                                    Text="{Binding Settings.CachePath}"
-                                    materialDesign:HintAssist.Hint="キャッシュフォルダ（SSD推奨）"
-                                    IsReadOnly="True"/>
-                            <Button Content="参照"
-                                   Command="{Binding Settings.SelectCachePathCommand}"
-                                   Margin="8,0,0,0"/>
-                        </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                    <TextBox Width="400"
+                                            Text="{Binding Settings.CachePath}"
+                                            materialDesign:HintAssist.Hint="キャッシュフォルダ（SSD推奨）"
+                                            IsReadOnly="True"/>
+                                    <Button Content="参照"
+                                           Command="{Binding Settings.SelectCachePathCommand}"
+                                           Margin="8,0,0,0"/>
+                                </StackPanel>
 
-                        <StackPanel Orientation="Horizontal" Margin="0,16,0,8">
-                            <TextBlock Text="メモリキャッシュサイズ (MB):"
-                                      VerticalAlignment="Center"
-                                      Width="200"/>
-                            <Slider Width="200"
-                                   Minimum="100" Maximum="2000"
-                                   Value="{Binding Settings.MaxMemoryCacheSizeMB}"
-                                   TickFrequency="100"
-                                   IsSnapToTickEnabled="True"/>
-                            <TextBlock Text="{Binding Settings.MaxMemoryCacheSizeMB}"
-                                      VerticalAlignment="Center"
-                                      Margin="8,0"/>
-                        </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,16,0,8">
+                                    <TextBlock Text="メモリキャッシュサイズ (MB):"
+                                              VerticalAlignment="Center"
+                                              Width="200"/>
+                                    <Slider Width="200"
+                                           Minimum="100" Maximum="2000"
+                                           Value="{Binding Settings.MaxMemoryCacheSizeMB}"
+                                           TickFrequency="100"
+                                           IsSnapToTickEnabled="True"/>
+                                    <TextBlock Text="{Binding Settings.MaxMemoryCacheSizeMB}"
+                                              VerticalAlignment="Center"
+                                              Margin="8,0"/>
+                                </StackPanel>
 
-                        <StackPanel Orientation="Horizontal" Margin="0,8,0,8">
-                            <TextBlock Text="サムネイルサイズ (px):"
-                                      VerticalAlignment="Center"
-                                      Width="200"/>
-                            <Slider Width="200"
-                                   Minimum="256" Maximum="1024"
-                                   Value="{Binding Settings.ThumbnailSize}"
-                                   TickFrequency="128"
-                                   IsSnapToTickEnabled="True"/>
-                            <TextBlock Text="{Binding Settings.ThumbnailSize}"
-                                      VerticalAlignment="Center"
-                                      Margin="8,0"/>
-                        </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,8,0,8">
+                                    <TextBlock Text="サムネイルサイズ (px):"
+                                              VerticalAlignment="Center"
+                                              Width="200"/>
+                                    <Slider Width="200"
+                                           Minimum="256" Maximum="1024"
+                                           Value="{Binding Settings.ThumbnailSize}"
+                                           TickFrequency="128"
+                                           IsSnapToTickEnabled="True"/>
+                                    <TextBlock Text="{Binding Settings.ThumbnailSize}"
+                                              VerticalAlignment="Center"
+                                              Margin="8,0"/>
+                                </StackPanel>
 
-                        <CheckBox Content="RAWファイル対応を有効にする"
-                                 IsChecked="{Binding Settings.EnableRAWSupport}"
-                                 Margin="0,16,0,0"/>
+                                <CheckBox Content="RAWファイル対応を有効にする"
+                                         IsChecked="{Binding Settings.EnableRAWSupport}"
+                                         Margin="0,16,0,0"/>
 
-                        <StackPanel Orientation="Horizontal" Margin="0,24,0,0">
-                            <Button Content="設定を保存"
-                                   Command="{Binding Settings.SaveSettingsCommand}"
-                                   Style="{StaticResource MaterialDesignRaisedButton}"/>
-                            <Button Content="キャッシュをクリア"
-                                   Command="{Binding Settings.ClearCacheCommand}"
-                                   Margin="8,0,0,0"/>
-                        </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,24,0,0">
+                                    <Button Content="設定を保存"
+                                           Command="{Binding Settings.SaveSettingsCommand}"
+                                           Style="{StaticResource MaterialDesignRaisedButton}"/>
+                                    <Button Content="キャッシュをクリア"
+                                           Command="{Binding Settings.ClearCacheCommand}"
+                                           Margin="8,0,0,0"/>
+                                </StackPanel>
 
-                        <TextBlock Text="{Binding Settings.CurrentCacheSize, StringFormat='現在のキャッシュサイズ: {0:N0} bytes'}"
-                                  Margin="0,16,0,0"
-                                  FontSize="12"
-                                  Foreground="Gray"/>
-                    </StackPanel>
-                </ScrollViewer>
+                                <TextBlock Text="{Binding Settings.CurrentCacheSize, StringFormat='現在のキャッシュサイズ: {0:N0} bytes'}"
+                                          Margin="0,16,0,0"
+                                          FontSize="12"
+                                          Foreground="Gray"/>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <!-- 管理フォルダタブ -->
+                    <TabItem Header="管理フォルダ">
+                        <Grid Margin="16">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="200"/>
+                            </Grid.RowDefinitions>
+
+                            <!-- フォルダリスト -->
+                            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+                                <TextBlock Text="登録フォルダ一覧"
+                                          FontSize="16"
+                                          FontWeight="Bold"
+                                          VerticalAlignment="Center"/>
+                                <Button Content="フォルダ追加"
+                                       Command="{Binding Settings.ManagedFolders.AddFolderCommand}"
+                                       Margin="16,0,0,0"
+                                       Style="{StaticResource MaterialDesignRaisedButton}"/>
+                                <Button Content="削除"
+                                       Command="{Binding Settings.ManagedFolders.RemoveFolderCommand}"
+                                       Margin="8,0,0,0"/>
+                                <Button Content="スキャン"
+                                       Command="{Binding Settings.ManagedFolders.ScanFolderCommand}"
+                                       Margin="8,0,0,0"/>
+                                <Button Content="一括スキャン"
+                                       Command="{Binding Settings.ManagedFolders.ScanAllFoldersCommand}"
+                                       Margin="8,0,0,0"
+                                       Style="{StaticResource MaterialDesignRaisedButton}"/>
+                            </StackPanel>
+
+                            <DataGrid Grid.Row="1"
+                                     ItemsSource="{Binding Settings.ManagedFolders.Folders}"
+                                     SelectedItem="{Binding Settings.ManagedFolders.SelectedFolder}"
+                                     AutoGenerateColumns="False"
+                                     CanUserAddRows="False"
+                                     Margin="0,8,0,8">
+                                <DataGrid.Columns>
+                                    <DataGridCheckBoxColumn Header="有効" Binding="{Binding IsActive}" Width="50"/>
+                                    <DataGridTextColumn Header="フォルダパス" Binding="{Binding FolderPath}" Width="*" IsReadOnly="True"/>
+                                    <DataGridCheckBoxColumn Header="再帰" Binding="{Binding IsRecursive}" Width="50"/>
+                                    <DataGridTextColumn Header="写真数" Binding="{Binding PhotoCount}" Width="80" IsReadOnly="True"/>
+                                    <DataGridTextColumn Header="最終スキャン" Binding="{Binding LastScanDateDisplay}" Width="150" IsReadOnly="True"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+
+                            <TextBlock Grid.Row="2"
+                                      Text="{Binding Settings.ManagedFolders.ScanStatus}"
+                                      FontSize="12"
+                                      Foreground="Gray"
+                                      Margin="0,8"/>
+
+                            <!-- 除外パターン -->
+                            <Grid Grid.Row="3">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+
+                                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,8,0,8">
+                                    <TextBlock Text="除外パターン"
+                                              FontSize="14"
+                                              FontWeight="Bold"
+                                              VerticalAlignment="Center"/>
+                                    <Button Content="パターン追加"
+                                           Command="{Binding Settings.ManagedFolders.AddPatternCommand}"
+                                           Margin="16,0,0,0"/>
+                                    <Button Content="削除"
+                                           Command="{Binding Settings.ManagedFolders.RemovePatternCommand}"
+                                           Margin="8,0,0,0"/>
+                                </StackPanel>
+
+                                <DataGrid Grid.Row="1"
+                                         ItemsSource="{Binding Settings.ManagedFolders.ExclusionPatterns}"
+                                         SelectedItem="{Binding Settings.ManagedFolders.SelectedPattern}"
+                                         AutoGenerateColumns="False"
+                                         CanUserAddRows="False">
+                                    <DataGrid.Columns>
+                                        <DataGridCheckBoxColumn Header="有効" Binding="{Binding IsEnabled}" Width="50"/>
+                                        <DataGridTextColumn Header="パターン" Binding="{Binding PatternString}" Width="*"/>
+                                        <DataGridTextColumn Header="タイプ" Binding="{Binding TypeDisplay}" Width="120" IsReadOnly="True"/>
+                                        <DataGridTextColumn Header="説明" Binding="{Binding Description}" Width="200"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </Grid>
+                        </Grid>
+                    </TabItem>
+                </TabControl>
             </TabItem>
         </TabControl>
 

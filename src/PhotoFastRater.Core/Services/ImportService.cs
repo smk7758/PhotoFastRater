@@ -22,6 +22,7 @@ public class ImportService
     public async Task<List<Photo>> ImportFromFolderAsync(
         string folderPath,
         bool includeSubfolders = true,
+        List<FolderExclusionPattern>? exclusionPatterns = null,
         IProgress<ImportProgress>? progress = null)
     {
         var searchOption = includeSubfolders ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
@@ -29,6 +30,7 @@ public class ImportService
 
         var imageFiles = allFiles
             .Where(f => _supportedExtensions.Contains(Path.GetExtension(f).ToLowerInvariant()))
+            .Where(f => exclusionPatterns == null || !PatternMatcher.IsMatchAny(f, exclusionPatterns))
             .ToList();
 
         var importedPhotos = new List<Photo>();
