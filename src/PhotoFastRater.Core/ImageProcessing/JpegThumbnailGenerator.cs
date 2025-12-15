@@ -34,7 +34,7 @@ public class JpegThumbnailGenerator : IThumbnailGenerator
                 image.SaveAsJpeg(ms, new JpegEncoder { Quality = _jpegQuality });
                 return ms.ToArray();
             }
-            catch (SixLabors.ImageSharp.UnknownImageFormatException e)
+            catch (SixLabors.ImageSharp.UnknownImageFormatException)
             {
                 // Log the issue if you have a logger, then return an empty result
                 // _logger?.LogWarning("Unknown image format for {FilePath}", filePath);

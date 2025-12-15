@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        xmlns:sys="clr-namespace:System;assembly=mscorlib"
         mc:Ignorable="d"
         Title="Photo Fast Rater - フォルダモード" Height="800" Width="1400"
         Background="{DynamicResource MaterialDesignPaper}">
@@ -116,12 +117,36 @@
                               FontWeight="Bold"
                               Margin="0,16,0,4"/>
                     <StackPanel Orientation="Horizontal">
-                        <Button Content="0" Command="{Binding SetRatingCommand}" CommandParameter="0" Margin="2"/>
-                        <Button Content="1" Command="{Binding SetRatingCommand}" CommandParameter="1" Margin="2"/>
-                        <Button Content="2" Command="{Binding SetRatingCommand}" CommandParameter="2" Margin="2"/>
-                        <Button Content="3" Command="{Binding SetRatingCommand}" CommandParameter="3" Margin="2"/>
-                        <Button Content="4" Command="{Binding SetRatingCommand}" CommandParameter="4" Margin="2"/>
-                        <Button Content="5" Command="{Binding SetRatingCommand}" CommandParameter="5" Margin="2"/>
+                        <Button Content="0" Command="{Binding SetRatingCommand}" Margin="2">
+                            <Button.CommandParameter>
+                                <sys:Int32>0</sys:Int32>
+                            </Button.CommandParameter>
+                        </Button>
+                        <Button Content="1" Command="{Binding SetRatingCommand}" Margin="2">
+                            <Button.CommandParameter>
+                                <sys:Int32>1</sys:Int32>
+                            </Button.CommandParameter>
+                        </Button>
+                        <Button Content="2" Command="{Binding SetRatingCommand}" Margin="2">
+                            <Button.CommandParameter>
+                                <sys:Int32>2</sys:Int32>
+                            </Button.CommandParameter>
+                        </Button>
+                        <Button Content="3" Command="{Binding SetRatingCommand}" Margin="2">
+                            <Button.CommandParameter>
+                                <sys:Int32>3</sys:Int32>
+                            </Button.CommandParameter>
+                        </Button>
+                        <Button Content="4" Command="{Binding SetRatingCommand}" Margin="2">
+                            <Button.CommandParameter>
+                                <sys:Int32>4</sys:Int32>
+                            </Button.CommandParameter>
+                        </Button>
+                        <Button Content="5" Command="{Binding SetRatingCommand}" Margin="2">
+                            <Button.CommandParameter>
+                                <sys:Int32>5</sys:Int32>
+                            </Button.CommandParameter>
+                        </Button>
                     </StackPanel>
 
                     <!-- クイックアクション -->

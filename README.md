@@ -93,7 +93,7 @@
 
 ### プロジェクト構成
 
-```
+```text
 PhotoFastRater/
 ├── PhotoFastRater.Core/      # コアロジック
 │   ├── Models/               # データモデル
@@ -120,7 +120,7 @@ PhotoFastRater/
 
 ### キャッシュ戦略
 
-```
+```text
 L1: メモリキャッシュ (LRU, 500MB)
     ↓ キャッシュミス
 L2: SSDディスクキャッシュ (JPEG)

@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Extensions.DependencyInjection;
 using PhotoFastRater.Core.Models;
 using PhotoFastRater.Core.Services;
 using PhotoFastRater.Core.Database.Repositories;
@@ -17,7 +18,7 @@ namespace PhotoFastRater.UI.ViewModels;
 public partial class FolderModeViewModel : ViewModelBase
 {
     private readonly FolderSessionService _sessionService;
-    private readonly PhotoRepository _photoRepository;
+    private readonly IServiceProvider _serviceProvider;
 
     [ObservableProperty]
     private FolderSession? _currentSession;
@@ -45,10 +46,10 @@ public partial class FolderModeViewModel : ViewModelBase
 
     public FolderModeViewModel(
         FolderSessionService sessionService,
-        PhotoRepository photoRepository)
+        IServiceProvider serviceProvider)
     {
         _sessionService = sessionService;
-        _photoRepository = photoRepository;
+        _serviceProvider = serviceProvider;
     }
 
     /// <summary>
@@ -115,6 +116,15 @@ public partial class FolderModeViewModel : ViewModelBase
         {
             IsLoading = false;
         }
+    }
+
+    /// <summary>
+    /// 写真を選択
+    /// </summary>
+    [RelayCommand]
+    private void SelectPhoto(FolderSessionPhotoViewModel photo)
+    {
+        SelectedPhoto = photo;
     }
 
     /// <summary>
@@ -207,13 +217,16 @@ public partial class FolderModeViewModel : ViewModelBase
 
         try
         {
+            // PhotoRepositoryをサービスプロバイダーから取得
+            var photoRepository = _serviceProvider.GetRequiredService<PhotoRepository>();
+
             int importedCount = 0;
             int updatedCount = 0;
             int skippedCount = 0;
 
             foreach (var sessionPhoto in CurrentSession.Photos)
             {
-                var existing = await _photoRepository.GetByFilePathAsync(sessionPhoto.FilePath);
+                var existing = await photoRepository.GetByFilePathAsync(sessionPhoto.FilePath);
 
                 if (existing != null)
                 {
@@ -223,7 +236,7 @@ public partial class FolderModeViewModel : ViewModelBase
                         existing.Rating = sessionPhoto.Rating;
                         existing.IsFavorite = sessionPhoto.IsFavorite;
                         existing.IsRejected = sessionPhoto.IsRejected;
-                        await _photoRepository.UpdateAsync(existing);
+                        await photoRepository.UpdateAsync(existing);
                         updatedCount++;
                     }
                     else
@@ -253,7 +266,7 @@ public partial class FolderModeViewModel : ViewModelBase
                         FocalLength = sessionPhoto.FocalLength
                     };
 
-                    await _photoRepository.AddAsync(photo);
+                    await photoRepository.AddAsync(photo);
                     importedCount++;
                 }
             }
