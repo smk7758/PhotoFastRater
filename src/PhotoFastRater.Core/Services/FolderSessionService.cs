@@ -105,7 +105,48 @@ public class FolderSessionService
             }
         }
 
+        // RAW+JPEGペアを検出
+        DetectRawJpegPairs(photos);
+
         return photos;
+    }
+
+    /// <summary>
+    /// RAW+JPEGペアを検出して設定
+    /// </summary>
+    private void DetectRawJpegPairs(List<FolderSessionPhoto> photos)
+    {
+        var rawExtensions = new[] { ".raw", ".cr2", ".cr3", ".nef", ".arw", ".dng", ".orf", ".raf", ".rw2" };
+        var jpegExtensions = new[] { ".jpg", ".jpeg" };
+
+        // ファイルパスでグループ化（拡張子を除く）
+        var photosByBaseName = photos
+            .GroupBy(p => new
+            {
+                Directory = Path.GetDirectoryName(p.FilePath),
+                BaseName = Path.GetFileNameWithoutExtension(p.FilePath)
+            })
+            .Where(g => g.Count() >= 2) // 2つ以上のファイルがある場合のみ
+            .ToList();
+
+        foreach (var group in photosByBaseName)
+        {
+            var rawFile = group.FirstOrDefault(p =>
+                rawExtensions.Contains(Path.GetExtension(p.FilePath).ToLowerInvariant()));
+
+            var jpegFile = group.FirstOrDefault(p =>
+                jpegExtensions.Contains(Path.GetExtension(p.FilePath).ToLowerInvariant()));
+
+            if (rawFile != null && jpegFile != null)
+            {
+                // ペアを設定
+                rawFile.PairedFilePath = jpegFile.FilePath;
+                rawFile.IsRawFile = true;
+
+                jpegFile.PairedFilePath = rawFile.FilePath;
+                jpegFile.IsRawFile = false;
+            }
+        }
     }
 
     /// <summary>

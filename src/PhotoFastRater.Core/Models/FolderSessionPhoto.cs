@@ -79,4 +79,19 @@ public class FolderSessionPhoto
     /// サムネイルキャッシュパス
     /// </summary>
     public string? ThumbnailCachePath { get; set; }
+
+    /// <summary>
+    /// ペアとなるファイルのパス（RAW+JPEG）
+    /// </summary>
+    public string? PairedFilePath { get; set; }
+
+    /// <summary>
+    /// このファイルがRAWファイルかどうか
+    /// </summary>
+    public bool IsRawFile { get; set; }
+
+    /// <summary>
+    /// ペアの一部かどうか
+    /// </summary>
+    public bool HasPair => !string.IsNullOrEmpty(PairedFilePath);
 }

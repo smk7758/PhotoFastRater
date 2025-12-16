@@ -57,4 +57,24 @@ public partial class FolderSessionPhotoViewModel : ViewModelBase
     /// 元のモデルを取得
     /// </summary>
     public FolderSessionPhoto GetModel() => _photo;
+
+    /// <summary>
+    /// ペアとなるファイルのパス
+    /// </summary>
+    public string? PairedFilePath => _photo.PairedFilePath;
+
+    /// <summary>
+    /// RAWファイルかどうか
+    /// </summary>
+    public bool IsRawFile => _photo.IsRawFile;
+
+    /// <summary>
+    /// ペアの一部かどうか
+    /// </summary>
+    public bool HasPair => _photo.HasPair;
+
+    /// <summary>
+    /// ペア表示用のテキスト
+    /// </summary>
+    public string PairBadgeText => HasPair ? (IsRawFile ? "RAW+JPG" : "JPG+RAW") : string.Empty;
 }

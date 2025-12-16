@@ -310,6 +310,22 @@ public partial class FolderModeViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// ペアファイルを表示
+    /// </summary>
+    [RelayCommand]
+    private void ShowPairedFile()
+    {
+        if (SelectedPhoto == null || !SelectedPhoto.HasPair) return;
+
+        // ペアファイルを探して選択
+        var pairedPhoto = Photos.FirstOrDefault(p => p.FilePath == SelectedPhoto.PairedFilePath);
+        if (pairedPhoto != null)
+        {
+            SelectedPhoto = pairedPhoto;
+        }
+    }
+
+    /// <summary>
     /// サムネイルを非同期で読み込み
     /// </summary>
     private async Task LoadThumbnailAsync(FolderSessionPhotoViewModel photoVm)

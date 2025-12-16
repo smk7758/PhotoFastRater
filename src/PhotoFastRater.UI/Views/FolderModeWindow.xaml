@@ -70,6 +70,19 @@
                                            Stretch="Uniform"
                                            HorizontalAlignment="Center"
                                            VerticalAlignment="Center"/>
+                                    <!-- ペアバッジ -->
+                                    <Border Background="#CC4CAF50"
+                                            CornerRadius="4"
+                                            Padding="4,2"
+                                            HorizontalAlignment="Left"
+                                            VerticalAlignment="Top"
+                                            Margin="4"
+                                            Visibility="{Binding HasPair, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                        <TextBlock Text="{Binding PairBadgeText}"
+                                                  Foreground="White"
+                                                  FontSize="9"
+                                                  FontWeight="Bold"/>
+                                    </Border>
                                     <StackPanel VerticalAlignment="Bottom"
                                                Background="#80000000"
                                                Margin="4">
@@ -159,6 +172,19 @@
                     <Button Content="リジェクト"
                            Command="{Binding ToggleRejectCommand}"
                            Margin="0,4"/>
+
+                    <!-- ペア情報 -->
+                    <TextBlock Text="ペアファイル"
+                              FontWeight="Bold"
+                              Margin="0,16,0,4"
+                              Visibility="{Binding SelectedPhoto.HasPair, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                    <TextBlock Text="{Binding SelectedPhoto.PairBadgeText}"
+                              Margin="0,2"
+                              Visibility="{Binding SelectedPhoto.HasPair, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                    <Button Content="ペアファイルを表示"
+                           Command="{Binding ShowPairedFileCommand}"
+                           Margin="0,4"
+                           Visibility="{Binding SelectedPhoto.HasPair, Converter={StaticResource BooleanToVisibilityConverter}}"/>
 
                     <!-- EXIF情報 -->
                     <TextBlock Text="EXIF情報"
