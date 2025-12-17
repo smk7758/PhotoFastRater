@@ -67,7 +67,8 @@
                         </Binding.ConverterParameter>
                     </Binding>
                 </ScrollViewer.Visibility>
-                <ItemsControl ItemsSource="{Binding Photos}">
+                <ItemsControl ItemsSource="{Binding Photos}"
+                             VirtualizingPanel.IsVirtualizing="False">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <WrapPanel/>
@@ -120,6 +121,12 @@
                                                   FontSize="10"
                                                   TextTrimming="CharacterEllipsis"
                                                   Margin="4"/>
+                                        <TextBlock Text="{Binding ThumbnailStatus}"
+                                                  Foreground="Lime"
+                                                  FontSize="14"
+                                                  FontWeight="Bold"
+                                                  Margin="4"
+                                                  Background="#AA000000"/>
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock Text="★"
                                                       Foreground="Yellow"

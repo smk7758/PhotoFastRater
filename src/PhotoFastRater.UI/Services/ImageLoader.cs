@@ -56,7 +56,7 @@ public class ImageLoader
             try
             {
                 var thumbnail = await _cacheManager.GetThumbnailAsync(request.FilePath);
-                if (thumbnail != null)
+                if (thumbnail != null && thumbnail.Length > 0)
                 {
                     var imageSource = ConvertToImageSource(thumbnail);
                     request.CompletionSource.SetResult(imageSource);
@@ -66,26 +66,57 @@ public class ImageLoader
                     request.CompletionSource.SetResult(null);
                 }
             }
+            catch (ArgumentException ex)
+            {
+                // Image data is null or empty
+                System.Diagnostics.Debug.WriteLine($"サムネイル読み込みエラー (空データ): {request.FilePath}");
+                request.CompletionSource.SetException(new InvalidOperationException($"サムネイル読み込みエラー: {request.FilePath}", ex));
+            }
+            catch (NotSupportedException ex)
+            {
+                // WPF BitmapImage cannot decode the image format
+                System.Diagnostics.Debug.WriteLine($"サムネイル読み込みエラー (未対応形式): {request.FilePath}");
+                request.CompletionSource.SetException(new InvalidOperationException($"サムネイル読み込みエラー (未対応形式): {request.FilePath}", ex));
+            }
             catch (Exception ex)
             {
-                request.CompletionSource.SetException(ex);
+                System.Diagnostics.Debug.WriteLine($"サムネイル読み込みエラー: {request.FilePath} - {ex.Message}");
+                request.CompletionSource.SetException(new InvalidOperationException($"サムネイル読み込みエラー: {request.FilePath}", ex));
             }
         }
     }
 
     private static BitmapImage ConvertToImageSource(byte[] imageData)
     {
-        var bitmap = new BitmapImage();
-        var ms = new MemoryStream(imageData);
-        ms.Position = 0; // ストリームの位置を先頭にリセット
+        if (imageData == null || imageData.Length == 0)
+        {
+            throw new ArgumentException("Image data is null or empty", nameof(imageData));
+        }
 
-        bitmap.BeginInit();
-        bitmap.CacheOption = BitmapCacheOption.OnLoad;
-        bitmap.StreamSource = ms;
-        bitmap.EndInit();
-        bitmap.Freeze(); // UI スレッド以外で使用可能にする
-
-        return bitmap;
+        try
+        {
+            var bitmap = new BitmapImage();
+            using (var ms = new MemoryStream(imageData))
+            {
+                ms.Position = 0;
+                bitmap.BeginInit();
+                bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                bitmap.StreamSource = ms;
+                bitmap.EndInit();
+            }
+            bitmap.Freeze(); // UI スレッド以外で使用可能にする
+            return bitmap;
+        }
+        catch (NotSupportedException ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"BitmapImage作成エラー (NotSupportedException): データサイズ={imageData.Length}bytes, エラー={ex.Message}");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"BitmapImage作成エラー: データサイズ={imageData.Length}bytes, エラー={ex.GetType().Name}: {ex.Message}");
+            throw;
+        }
     }
 
     private class LoadRequest

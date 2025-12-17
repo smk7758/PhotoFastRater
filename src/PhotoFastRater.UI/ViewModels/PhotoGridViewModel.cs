@@ -91,12 +91,25 @@ public partial class PhotoGridViewModel : ViewModelBase
     {
         try
         {
+            System.Diagnostics.Debug.WriteLine($"[PhotoGrid] LoadThumbnailAsync 開始: {Path.GetFileName(photo.FilePath)}, Priority={priority}");
+
             var thumbnail = await _imageLoader.LoadAsync(photo.FilePath, priority);
-            photo.Thumbnail = thumbnail;
+
+            System.Diagnostics.Debug.WriteLine($"[PhotoGrid] サムネイル取得完了: {Path.GetFileName(photo.FilePath)}, IsNull={thumbnail == null}");
+
+            // UI スレッドでプロパティを更新
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                System.Diagnostics.Debug.WriteLine($"[PhotoGrid] UIスレッドでThumbnail設定: {Path.GetFileName(photo.FilePath)}");
+                photo.Thumbnail = thumbnail;
+                System.Diagnostics.Debug.WriteLine($"[PhotoGrid] Thumbnail設定完了: {Path.GetFileName(photo.FilePath)}, photo.Thumbnail IsNull={photo.Thumbnail == null}");
+            });
         }
-        catch
+        catch (Exception ex)
         {
             // エラーは無視（サムネイル表示失敗）
+            System.Diagnostics.Debug.WriteLine($"[PhotoGrid] サムネイル読み込みエラー: {photo.FilePath} - {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[PhotoGrid] スタックトレース: {ex.StackTrace}");
         }
     }
 
@@ -453,17 +466,23 @@ public partial class PhotoGridViewModel : ViewModelBase
         }
 
         Photos.Clear();
+        System.Diagnostics.Debug.WriteLine($"[PhotoGrid] 写真の読み込み開始: {photos.Count()}枚");
         foreach (var photo in photos)
         {
             var vm = new PhotoViewModel(photo);
             Photos.Add(vm);
+            System.Diagnostics.Debug.WriteLine($"[PhotoGrid] PhotosコレクションにViewModel追加: {Path.GetFileName(photo.FilePath)}");
+            // サムネイルをバックグラウンドで非同期読み込み（待機しない）
             _ = LoadThumbnailAsync(vm);
         }
+        System.Diagnostics.Debug.WriteLine($"[PhotoGrid] Photosコレクション準備完了: {Photos.Count}枚");
 
-        // TreeViewモードの場合はツリーも更新
+        // TreeViewモードの場合はツリーも更新（サムネイルは非同期で読み込まれる）
         if (IsTreeViewMode)
         {
+            System.Diagnostics.Debug.WriteLine($"[PhotoGrid] BuildPhotoTree開始");
             BuildPhotoTree();
+            System.Diagnostics.Debug.WriteLine($"[PhotoGrid] BuildPhotoTree完了");
         }
     }
 }

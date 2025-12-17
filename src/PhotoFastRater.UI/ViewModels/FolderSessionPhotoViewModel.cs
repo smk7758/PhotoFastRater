@@ -29,8 +29,29 @@ public partial class FolderSessionPhotoViewModel : ViewModelBase
     [ObservableProperty]
     private string? _cameraModel;
 
-    [ObservableProperty]
     private BitmapImage? _thumbnail;
+
+    public BitmapImage? Thumbnail
+    {
+        get => _thumbnail;
+        set
+        {
+            System.Diagnostics.Debug.WriteLine($"[FolderSessionPhotoVM] Thumbnail setter called for {FileName}, IsNull={value == null}");
+            if (_thumbnail != value)
+            {
+                _thumbnail = value;
+                OnPropertyChanged(nameof(Thumbnail));
+                OnPropertyChanged(nameof(ThumbnailStatus)); // テスト用
+                System.Diagnostics.Debug.WriteLine($"[FolderSessionPhotoVM] OnPropertyChanged(nameof(Thumbnail)) called for {FileName}");
+            }
+            System.Diagnostics.Debug.WriteLine($"[FolderSessionPhotoVM] Thumbnail setter completed for {FileName}");
+        }
+    }
+
+    /// <summary>
+    /// テスト用: サムネイルの状態を示す文字列
+    /// </summary>
+    public string ThumbnailStatus => _thumbnail == null ? "読込中..." : "✓";
 
     [ObservableProperty]
     private bool _isSelected;

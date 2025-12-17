@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
@@ -115,16 +116,21 @@ public partial class FolderModeViewModel : ViewModelBase
 
             // ViewModelに変換
             Photos.Clear();
+            System.Diagnostics.Debug.WriteLine($"[FolderMode] 写真の読み込み開始: {CurrentSession.Photos.Count}枚");
             foreach (var photo in CurrentSession.Photos)
             {
                 var photoVm = new FolderSessionPhotoViewModel(photo);
                 Photos.Add(photoVm);
-                // サムネイルをバックグラウンドで読み込み
+                System.Diagnostics.Debug.WriteLine($"[FolderMode] PhotosコレクションにViewModel追加: {Path.GetFileName(photo.FilePath)}");
+                // サムネイルをバックグラウンドで非同期読み込み（待機しない）
                 _ = LoadThumbnailAsync(photoVm);
             }
+            System.Diagnostics.Debug.WriteLine($"[FolderMode] Photosコレクション準備完了: {Photos.Count}枚");
 
-            // ツリービューを構築
+            // ツリービューを構築（サムネイルは非同期で読み込まれる）
+            System.Diagnostics.Debug.WriteLine($"[FolderMode] BuildPhotoTree開始");
             BuildPhotoTree();
+            System.Diagnostics.Debug.WriteLine($"[FolderMode] BuildPhotoTree完了");
 
             UpdateStatistics();
             StatusText = $"{TotalPhotos}枚の写真を読み込みました";
@@ -444,13 +450,25 @@ public partial class FolderModeViewModel : ViewModelBase
     {
         try
         {
+            System.Diagnostics.Debug.WriteLine($"[FolderMode] LoadThumbnailAsync 開始: {Path.GetFileName(photoVm.FilePath)}");
+
             var thumbnail = await _imageLoader.LoadAsync(photoVm.FilePath);
-            photoVm.Thumbnail = thumbnail;
+
+            System.Diagnostics.Debug.WriteLine($"[FolderMode] サムネイル取得完了: {Path.GetFileName(photoVm.FilePath)}, IsNull={thumbnail == null}");
+
+            // UI スレッドでプロパティを更新
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                System.Diagnostics.Debug.WriteLine($"[FolderMode] UIスレッドでThumbnail設定: {Path.GetFileName(photoVm.FilePath)}");
+                photoVm.Thumbnail = thumbnail;
+                System.Diagnostics.Debug.WriteLine($"[FolderMode] Thumbnail設定完了: {Path.GetFileName(photoVm.FilePath)}, photoVm.Thumbnail IsNull={photoVm.Thumbnail == null}");
+            });
         }
         catch (Exception ex)
         {
             // サムネイル読み込みエラーは無視（写真は表示される）
-            System.Diagnostics.Debug.WriteLine($"サムネイル読み込みエラー: {photoVm.FilePath} - {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[FolderMode] サムネイル読み込みエラー: {photoVm.FilePath} - {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[FolderMode] スタックトレース: {ex.StackTrace}");
         }
     }
 

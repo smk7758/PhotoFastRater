@@ -34,11 +34,13 @@ public class JpegThumbnailGenerator : IThumbnailGenerator
                 image.SaveAsJpeg(ms, new JpegEncoder { Quality = _jpegQuality });
                 return ms.ToArray();
             }
-            catch (SixLabors.ImageSharp.UnknownImageFormatException)
+            catch (SixLabors.ImageSharp.UnknownImageFormatException ex)
             {
-                // Log the issue if you have a logger, then return an empty result
-                // _logger?.LogWarning("Unknown image format for {FilePath}", filePath);
-                return Array.Empty<byte>();
+                throw new InvalidOperationException($"Unknown image format for file: {filePath}", ex);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException($"Failed to generate thumbnail for file: {filePath}", ex);
             }
         });
     }

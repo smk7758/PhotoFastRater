@@ -8,8 +8,23 @@ public partial class PhotoViewModel : ViewModelBase
 {
     private readonly Photo _photo;
 
-    [ObservableProperty]
     private BitmapImage? _thumbnail;
+
+    public BitmapImage? Thumbnail
+    {
+        get => _thumbnail;
+        set
+        {
+            System.Diagnostics.Debug.WriteLine($"[PhotoVM] Thumbnail setter called for {FileName}, IsNull={value == null}");
+            if (_thumbnail != value)
+            {
+                _thumbnail = value;
+                OnPropertyChanged(nameof(Thumbnail));
+                System.Diagnostics.Debug.WriteLine($"[PhotoVM] OnPropertyChanged(nameof(Thumbnail)) called for {FileName}");
+            }
+            System.Diagnostics.Debug.WriteLine($"[PhotoVM] Thumbnail setter completed for {FileName}");
+        }
+    }
 
     [ObservableProperty]
     private BitmapImage? _fullImageSource;

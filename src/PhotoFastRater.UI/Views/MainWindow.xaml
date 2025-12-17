@@ -59,7 +59,8 @@
                                 </Binding.ConverterParameter>
                             </Binding>
                         </ScrollViewer.Visibility>
-                        <ItemsControl ItemsSource="{Binding PhotoGrid.Photos}">
+                        <ItemsControl ItemsSource="{Binding PhotoGrid.Photos}"
+                                     VirtualizingPanel.IsVirtualizing="False">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <WrapPanel/>
