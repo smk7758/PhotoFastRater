@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PhotoFastRater.Core.Database.Repositories;
 using PhotoFastRater.Core.Export;
+using PhotoFastRater.Core.UI;
 using PhotoFastRater.UI.Services;
 using PhotoFastRater.UI.Views;
 
@@ -14,9 +15,13 @@ public partial class PhotoGridViewModel : ViewModelBase
     private readonly PhotoRepository _photoRepository;
     private readonly ImageLoader _imageLoader;
     private readonly SocialMediaExporter _socialMediaExporter;
+    private readonly UIConfiguration _uiConfig;
 
     [ObservableProperty]
     private ObservableCollection<PhotoViewModel> _photos = new();
+
+    [ObservableProperty]
+    private ObservableCollection<PhotoTreeNode> _photoTree = new();
 
     [ObservableProperty]
     private PhotoViewModel? _selectedPhoto;
@@ -30,11 +35,18 @@ public partial class PhotoGridViewModel : ViewModelBase
     [ObservableProperty]
     private string? _filterCamera;
 
-    public PhotoGridViewModel(PhotoRepository photoRepository, ImageLoader imageLoader, SocialMediaExporter socialMediaExporter)
+    [ObservableProperty]
+    private bool _isTreeViewMode;
+
+    // グリッドの列数（WrapPanelの列数）
+    private const int GridColumns = 6;
+
+    public PhotoGridViewModel(PhotoRepository photoRepository, ImageLoader imageLoader, SocialMediaExporter socialMediaExporter, UIConfiguration uiConfig)
     {
         _photoRepository = photoRepository;
         _imageLoader = imageLoader;
         _socialMediaExporter = socialMediaExporter;
+        _uiConfig = uiConfig;
     }
 
     public async Task LoadAllPhotosAsync()
@@ -125,10 +137,97 @@ public partial class PhotoGridViewModel : ViewModelBase
     }
 
     [RelayCommand]
+    private void SelectPhoto(PhotoViewModel photo)
+    {
+        // 既存の選択を解除
+        if (SelectedPhoto != null)
+        {
+            SelectedPhoto.IsSelected = false;
+        }
+
+        // 新しい写真を選択
+        SelectedPhoto = photo;
+        if (photo != null)
+        {
+            photo.IsSelected = true;
+        }
+    }
+
+    [RelayCommand]
     private void OpenPhoto(PhotoViewModel photo)
     {
         var viewer = new PhotoViewerWindow(photo);
         viewer.ShowDialog();
+    }
+
+    [RelayCommand]
+    private void NavigateUp()
+    {
+        if (!CanNavigate()) return;
+
+        var currentIndex = Photos.IndexOf(SelectedPhoto!);
+        var targetIndex = currentIndex - GridColumns;
+
+        if (targetIndex >= 0)
+        {
+            SelectPhoto(Photos[targetIndex]);
+        }
+    }
+
+    [RelayCommand]
+    private void NavigateDown()
+    {
+        if (!CanNavigate()) return;
+
+        var currentIndex = Photos.IndexOf(SelectedPhoto!);
+        var targetIndex = currentIndex + GridColumns;
+
+        if (targetIndex < Photos.Count)
+        {
+            SelectPhoto(Photos[targetIndex]);
+        }
+    }
+
+    [RelayCommand]
+    private void NavigateLeft()
+    {
+        if (!CanNavigate()) return;
+
+        var currentIndex = Photos.IndexOf(SelectedPhoto!);
+        if (currentIndex > 0)
+        {
+            SelectPhoto(Photos[currentIndex - 1]);
+        }
+    }
+
+    [RelayCommand]
+    private void NavigateRight()
+    {
+        if (!CanNavigate()) return;
+
+        var currentIndex = Photos.IndexOf(SelectedPhoto!);
+        if (currentIndex < Photos.Count - 1)
+        {
+            SelectPhoto(Photos[currentIndex + 1]);
+        }
+    }
+
+    private bool CanNavigate()
+    {
+        // SelectionOnlyモードの場合は、写真が選択されている必要がある
+        if (_uiConfig.ArrowKeyNavigationMode == "SelectionOnly")
+        {
+            return SelectedPhoto != null;
+        }
+
+        // GridFocusモードの場合
+        // 写真が選択されていない場合は、最初の写真を選択
+        if (SelectedPhoto == null && Photos.Count > 0)
+        {
+            SelectPhoto(Photos[0]);
+        }
+
+        return SelectedPhoto != null;
     }
 
     // Context menu public methods
@@ -234,6 +333,108 @@ public partial class PhotoGridViewModel : ViewModelBase
         }
     }
 
+    [RelayCommand]
+    private void ToggleViewMode()
+    {
+        IsTreeViewMode = !IsTreeViewMode;
+        if (IsTreeViewMode)
+        {
+            BuildPhotoTree();
+        }
+    }
+
+    /// <summary>
+    /// 写真から階層ツリーを構築（年→月→日→フォルダ）
+    /// </summary>
+    public void BuildPhotoTree()
+    {
+        PhotoTree.Clear();
+
+        // 日付でグループ化
+        var photosByDate = Photos
+            .GroupBy(p => p.DateTaken.Date)
+            .OrderByDescending(g => g.Key)
+            .ToList();
+
+        foreach (var dateGroup in photosByDate)
+        {
+            var date = dateGroup.Key;
+            var year = date.Year;
+            var month = date.Month;
+            var day = date.Day;
+
+            // 年ノードを取得または作成
+            var yearNode = PhotoTree.FirstOrDefault(n => n.Year == year);
+            if (yearNode == null)
+            {
+                yearNode = new PhotoTreeNode
+                {
+                    DisplayName = $"{year}年",
+                    NodeType = TreeNodeType.Year,
+                    Year = year,
+                    IsExpanded = true
+                };
+                PhotoTree.Add(yearNode);
+            }
+
+            // 月ノードを取得または作成
+            var monthNode = yearNode.Children.FirstOrDefault(n => n.Month == month);
+            if (monthNode == null)
+            {
+                monthNode = new PhotoTreeNode
+                {
+                    DisplayName = $"{month}月",
+                    NodeType = TreeNodeType.Month,
+                    Year = year,
+                    Month = month
+                };
+                yearNode.Children.Add(monthNode);
+            }
+
+            // 日ノードを取得または作成
+            var dayNode = monthNode.Children.FirstOrDefault(n => n.Day == day);
+            if (dayNode == null)
+            {
+                dayNode = new PhotoTreeNode
+                {
+                    DisplayName = $"{day}日",
+                    NodeType = TreeNodeType.Day,
+                    Year = year,
+                    Month = month,
+                    Day = day
+                };
+                monthNode.Children.Add(dayNode);
+            }
+
+            // フォルダでさらにグループ化
+            var photosByFolder = dateGroup
+                .GroupBy(p => p.GetModel().FolderPath ?? "未分類")
+                .ToList();
+
+            foreach (var folderGroup in photosByFolder)
+            {
+                var folderPath = folderGroup.Key;
+                var folderName = string.IsNullOrEmpty(folderPath) || folderPath == "未分類"
+                    ? "未分類"
+                    : Path.GetFileName(folderPath);
+
+                var folderNode = new PhotoTreeNode
+                {
+                    DisplayName = folderName,
+                    NodeType = TreeNodeType.Folder,
+                    FolderPath = folderPath
+                };
+
+                foreach (var photo in folderGroup)
+                {
+                    folderNode.Photos.Add(photo);
+                }
+
+                dayNode.Children.Add(folderNode);
+            }
+        }
+    }
+
     private async Task ApplyFiltersAsync()
     {
         IEnumerable<Core.Models.Photo> photos;
@@ -257,6 +458,12 @@ public partial class PhotoGridViewModel : ViewModelBase
             var vm = new PhotoViewModel(photo);
             Photos.Add(vm);
             _ = LoadThumbnailAsync(vm);
+        }
+
+        // TreeViewモードの場合はツリーも更新
+        if (IsTreeViewMode)
+        {
+            BuildPhotoTree();
         }
     }
 }

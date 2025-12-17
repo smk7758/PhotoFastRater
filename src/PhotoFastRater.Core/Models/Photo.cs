@@ -5,6 +5,8 @@ public class Photo
     public int Id { get; set; }
     public string FilePath { get; set; } = string.Empty;
     public string FileName { get; set; } = string.Empty;
+    public string FolderPath { get; set; } = string.Empty;
+    public string FolderName { get; set; } = string.Empty;
     public long FileSize { get; set; }
 
     // 日時情報

@@ -32,6 +32,9 @@ public partial class FolderSessionPhotoViewModel : ViewModelBase
     [ObservableProperty]
     private BitmapImage? _thumbnail;
 
+    [ObservableProperty]
+    private bool _isSelected;
+
     public FolderSessionPhotoViewModel(FolderSessionPhoto photo)
     {
         _photo = photo;

@@ -4,9 +4,18 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        xmlns:sys="clr-namespace:System;assembly=mscorlib"
         mc:Ignorable="d"
         Title="Photo Fast Rater" Height="800" Width="1400"
         Background="{DynamicResource MaterialDesignPaper}">
+
+    <Window.InputBindings>
+        <KeyBinding Key="Up" Command="{Binding PhotoGrid.NavigateUpCommand}"/>
+        <KeyBinding Key="Down" Command="{Binding PhotoGrid.NavigateDownCommand}"/>
+        <KeyBinding Key="Left" Command="{Binding PhotoGrid.NavigateLeftCommand}"/>
+        <KeyBinding Key="Right" Command="{Binding PhotoGrid.NavigateRightCommand}"/>
+        <KeyBinding Key="Enter" Command="{Binding PhotoGrid.OpenPhotoCommand}" CommandParameter="{Binding PhotoGrid.SelectedPhoto}"/>
+    </Window.InputBindings>
 
     <Grid>
         <Grid.RowDefinitions>
@@ -28,6 +37,11 @@
                     Click="OpenFolderMode_Click"
                     Margin="0,0,0,0"/>
             <Separator Margin="8,0"/>
+            <ToggleButton Content="ツリー表示"
+                          IsChecked="{Binding PhotoGrid.IsTreeViewMode}"
+                          Margin="0,0,0,0"
+                          ToolTip="グリッド/ツリー表示を切り替え"/>
+            <Separator Margin="8,0"/>
             <TextBlock Text="検索:" VerticalAlignment="Center" Margin="8,0"/>
             <TextBox Width="200" Margin="4,0"/>
         </ToolBar>
@@ -36,7 +50,15 @@
         <TabControl Grid.Row="1" Margin="8">
             <TabItem Header="写真一覧">
                 <Grid>
+                    <!-- グリッド表示 -->
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <ScrollViewer.Visibility>
+                            <Binding Path="PhotoGrid.IsTreeViewMode" Converter="{StaticResource BooleanToVisibilityConverter}">
+                                <Binding.ConverterParameter>
+                                    <sys:Boolean>False</sys:Boolean>
+                                </Binding.ConverterParameter>
+                            </Binding>
+                        </ScrollViewer.Visibility>
                         <ItemsControl ItemsSource="{Binding PhotoGrid.Photos}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
@@ -46,12 +68,25 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border Width="200" Height="200" Margin="4"
-                                            BorderBrush="Gray" BorderThickness="1"
+                                            BorderBrush="Gray" BorderThickness="2"
                                             Background="White"
                                             Cursor="Hand"
                                             Tag="{Binding}">
+                                        <Border.Style>
+                                            <Style TargetType="Border">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                        <Setter Property="BorderBrush" Value="#2196F3"/>
+                                                        <Setter Property="Background" Value="#E3F2FD"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
                                         <Border.InputBindings>
                                             <MouseBinding MouseAction="LeftClick"
+                                                         Command="{Binding DataContext.PhotoGrid.SelectPhotoCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                         CommandParameter="{Binding}"/>
+                                            <MouseBinding MouseAction="LeftDoubleClick"
                                                          Command="{Binding DataContext.PhotoGrid.OpenPhotoCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                          CommandParameter="{Binding}"/>
                                         </Border.InputBindings>
@@ -104,6 +139,58 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </ScrollViewer>
+
+                    <!-- ツリー表示 -->
+                    <TreeView ItemsSource="{Binding PhotoGrid.PhotoTree}"
+                              Visibility="{Binding PhotoGrid.IsTreeViewMode, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <TreeView.ItemTemplate>
+                            <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding DisplayNameWithCount}" Margin="0,0,8,0"/>
+                                </StackPanel>
+                                <HierarchicalDataTemplate.ItemTemplate>
+                                    <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="{Binding DisplayNameWithCount}" Margin="0,0,8,0"/>
+                                        </StackPanel>
+                                        <HierarchicalDataTemplate.ItemTemplate>
+                                            <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="{Binding DisplayNameWithCount}" Margin="0,0,8,0"/>
+                                                </StackPanel>
+                                                <HierarchicalDataTemplate.ItemTemplate>
+                                                    <HierarchicalDataTemplate ItemsSource="{Binding Photos}">
+                                                        <StackPanel Orientation="Horizontal">
+                                                            <TextBlock Text="{Binding DisplayNameWithCount}" Margin="0,0,8,0"/>
+                                                        </StackPanel>
+                                                        <HierarchicalDataTemplate.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <Border Width="150" Height="150" Margin="2"
+                                                                        BorderBrush="Gray" BorderThickness="1"
+                                                                        Background="White">
+                                                                    <Grid>
+                                                                        <Image Source="{Binding Thumbnail}"
+                                                                               Stretch="Uniform"/>
+                                                                        <TextBlock Text="{Binding FileName}"
+                                                                                   Background="#80000000"
+                                                                                   Foreground="White"
+                                                                                   FontSize="9"
+                                                                                   TextTrimming="CharacterEllipsis"
+                                                                                   VerticalAlignment="Bottom"
+                                                                                   Padding="2"/>
+                                                                    </Grid>
+                                                                </Border>
+                                                            </DataTemplate>
+                                                        </HierarchicalDataTemplate.ItemTemplate>
+                                                    </HierarchicalDataTemplate>
+                                                </HierarchicalDataTemplate.ItemTemplate>
+                                            </HierarchicalDataTemplate>
+                                        </HierarchicalDataTemplate.ItemTemplate>
+                                    </HierarchicalDataTemplate>
+                                </HierarchicalDataTemplate.ItemTemplate>
+                            </HierarchicalDataTemplate>
+                        </TreeView.ItemTemplate>
+                    </TreeView>
                 </Grid>
             </TabItem>
 

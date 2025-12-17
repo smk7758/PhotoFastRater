@@ -9,6 +9,13 @@
         Title="Photo Fast Rater - フォルダモード" Height="800" Width="1400"
         Background="{DynamicResource MaterialDesignPaper}">
 
+    <Window.InputBindings>
+        <KeyBinding Key="Up" Command="{Binding NavigateUpCommand}"/>
+        <KeyBinding Key="Down" Command="{Binding NavigateDownCommand}"/>
+        <KeyBinding Key="Left" Command="{Binding NavigateLeftCommand}"/>
+        <KeyBinding Key="Right" Command="{Binding NavigateRightCommand}"/>
+    </Window.InputBindings>
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -21,6 +28,11 @@
             <Button Content="フォルダを開く"
                     Command="{Binding OpenFolderCommand}"
                     Style="{StaticResource MaterialDesignRaisedButton}"/>
+            <Separator Margin="8,0"/>
+            <ToggleButton Content="ツリー表示"
+                         IsChecked="{Binding IsTreeViewMode}"
+                         ToolTip="グリッド/ツリー表示を切り替え"
+                         Margin="8,0"/>
             <Separator Margin="8,0"/>
             <TextBlock Text="統計:" VerticalAlignment="Center" Margin="8,0"/>
             <TextBlock Text="{Binding RatedPhotos, StringFormat='評価済み: {0}枚'}"
@@ -46,8 +58,15 @@
                 <ColumnDefinition Width="300"/>
             </Grid.ColumnDefinitions>
 
-            <!-- 写真グリッド -->
+            <!-- 写真グリッド表示 -->
             <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
+                <ScrollViewer.Visibility>
+                    <Binding Path="IsTreeViewMode" Converter="{StaticResource BooleanToVisibilityConverter}">
+                        <Binding.ConverterParameter>
+                            <sys:Boolean>False</sys:Boolean>
+                        </Binding.ConverterParameter>
+                    </Binding>
+                </ScrollViewer.Visibility>
                 <ItemsControl ItemsSource="{Binding Photos}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
@@ -57,9 +76,19 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <Border Width="200" Height="200" Margin="4"
-                                    BorderBrush="Gray" BorderThickness="1"
+                                    BorderBrush="Gray" BorderThickness="2"
                                     Background="White"
                                     Cursor="Hand">
+                                <Border.Style>
+                                    <Style TargetType="Border">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                                                <Setter Property="BorderBrush" Value="#2196F3"/>
+                                                <Setter Property="Background" Value="#E3F2FD"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Border.Style>
                                 <Border.InputBindings>
                                     <MouseBinding MouseAction="LeftClick"
                                                  Command="{Binding DataContext.SelectPhotoCommand, RelativeSource={RelativeSource AncestorType=Window}}"
@@ -112,6 +141,58 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </ScrollViewer>
+
+            <!-- ツリー表示 -->
+            <TreeView Grid.Column="0" ItemsSource="{Binding PhotoTree}"
+                     Visibility="{Binding IsTreeViewMode, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <TreeView.ItemTemplate>
+                    <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="{Binding DisplayNameWithCount}" Margin="0,0,8,0"/>
+                        </StackPanel>
+                        <HierarchicalDataTemplate.ItemTemplate>
+                            <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="{Binding DisplayNameWithCount}" Margin="0,0,8,0"/>
+                                </StackPanel>
+                                <HierarchicalDataTemplate.ItemTemplate>
+                                    <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="{Binding DisplayNameWithCount}" Margin="0,0,8,0"/>
+                                        </StackPanel>
+                                        <HierarchicalDataTemplate.ItemTemplate>
+                                            <HierarchicalDataTemplate ItemsSource="{Binding Photos}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="{Binding DisplayNameWithCount}" Margin="0,0,8,0"/>
+                                                </StackPanel>
+                                                <HierarchicalDataTemplate.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border Width="120" Height="120" Margin="4"
+                                                               BorderBrush="Gray" BorderThickness="1">
+                                                            <Grid>
+                                                                <Image Source="{Binding Thumbnail}"
+                                                                      Stretch="Uniform"/>
+                                                                <StackPanel VerticalAlignment="Bottom"
+                                                                           Background="#80000000">
+                                                                    <TextBlock Text="{Binding FileName}"
+                                                                              Foreground="White"
+                                                                              FontSize="8"
+                                                                              TextTrimming="CharacterEllipsis"
+                                                                              Margin="2"/>
+                                                                </StackPanel>
+                                                            </Grid>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </HierarchicalDataTemplate.ItemTemplate>
+                                            </HierarchicalDataTemplate>
+                                        </HierarchicalDataTemplate.ItemTemplate>
+                                    </HierarchicalDataTemplate>
+                                </HierarchicalDataTemplate.ItemTemplate>
+                            </HierarchicalDataTemplate>
+                        </HierarchicalDataTemplate.ItemTemplate>
+                    </HierarchicalDataTemplate>
+                </TreeView.ItemTemplate>
+            </TreeView>
 
             <!-- サイドパネル -->
             <Border Grid.Column="1" BorderBrush="Gray" BorderThickness="1,0,0,0" Padding="8">

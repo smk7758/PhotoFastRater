@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
 using PhotoFastRater.Core.Models;
 using PhotoFastRater.Core.Services;
+using PhotoFastRater.Core.UI;
 using PhotoFastRater.Core.Database.Repositories;
 using PhotoFastRater.UI.Services;
 using MessageBox = System.Windows.MessageBox;
@@ -21,6 +22,7 @@ public partial class FolderModeViewModel : ViewModelBase
     private readonly FolderSessionService _sessionService;
     private readonly IServiceProvider _serviceProvider;
     private readonly ImageLoader _imageLoader;
+    private readonly UIConfiguration _uiConfig;
 
     [ObservableProperty]
     private FolderSession? _currentSession;
@@ -46,14 +48,25 @@ public partial class FolderModeViewModel : ViewModelBase
     [ObservableProperty]
     private int _ratedPhotos;
 
+    [ObservableProperty]
+    private ObservableCollection<PhotoTreeNode> _photoTree = new();
+
+    [ObservableProperty]
+    private bool _isTreeViewMode;
+
+    // グリッドの列数（WrapPanelの列数）
+    private const int GridColumns = 6;
+
     public FolderModeViewModel(
         FolderSessionService sessionService,
         IServiceProvider serviceProvider,
-        ImageLoader imageLoader)
+        ImageLoader imageLoader,
+        UIConfiguration uiConfig)
     {
         _sessionService = sessionService;
         _serviceProvider = serviceProvider;
         _imageLoader = imageLoader;
+        _uiConfig = uiConfig;
     }
 
     /// <summary>
@@ -110,6 +123,9 @@ public partial class FolderModeViewModel : ViewModelBase
                 _ = LoadThumbnailAsync(photoVm);
             }
 
+            // ツリービューを構築
+            BuildPhotoTree();
+
             UpdateStatistics();
             StatusText = $"{TotalPhotos}枚の写真を読み込みました";
         }
@@ -131,7 +147,18 @@ public partial class FolderModeViewModel : ViewModelBase
     [RelayCommand]
     private void SelectPhoto(FolderSessionPhotoViewModel photo)
     {
+        // 既存の選択を解除
+        if (SelectedPhoto != null)
+        {
+            SelectedPhoto.IsSelected = false;
+        }
+
+        // 新しい写真を選択
         SelectedPhoto = photo;
+        if (photo != null)
+        {
+            photo.IsSelected = true;
+        }
     }
 
     /// <summary>
@@ -326,6 +353,91 @@ public partial class FolderModeViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// 上に移動
+    /// </summary>
+    [RelayCommand]
+    private void NavigateUp()
+    {
+        if (!CanNavigate()) return;
+
+        var currentIndex = Photos.IndexOf(SelectedPhoto!);
+        var targetIndex = currentIndex - GridColumns;
+
+        if (targetIndex >= 0)
+        {
+            SelectPhoto(Photos[targetIndex]);
+        }
+    }
+
+    /// <summary>
+    /// 下に移動
+    /// </summary>
+    [RelayCommand]
+    private void NavigateDown()
+    {
+        if (!CanNavigate()) return;
+
+        var currentIndex = Photos.IndexOf(SelectedPhoto!);
+        var targetIndex = currentIndex + GridColumns;
+
+        if (targetIndex < Photos.Count)
+        {
+            SelectPhoto(Photos[targetIndex]);
+        }
+    }
+
+    /// <summary>
+    /// 左に移動
+    /// </summary>
+    [RelayCommand]
+    private void NavigateLeft()
+    {
+        if (!CanNavigate()) return;
+
+        var currentIndex = Photos.IndexOf(SelectedPhoto!);
+        if (currentIndex > 0)
+        {
+            SelectPhoto(Photos[currentIndex - 1]);
+        }
+    }
+
+    /// <summary>
+    /// 右に移動
+    /// </summary>
+    [RelayCommand]
+    private void NavigateRight()
+    {
+        if (!CanNavigate()) return;
+
+        var currentIndex = Photos.IndexOf(SelectedPhoto!);
+        if (currentIndex < Photos.Count - 1)
+        {
+            SelectPhoto(Photos[currentIndex + 1]);
+        }
+    }
+
+    /// <summary>
+    /// ナビゲーションが可能かチェック
+    /// </summary>
+    private bool CanNavigate()
+    {
+        // SelectionOnlyモードの場合は、写真が選択されている必要がある
+        if (_uiConfig.ArrowKeyNavigationMode == "SelectionOnly")
+        {
+            return SelectedPhoto != null;
+        }
+
+        // GridFocusモードの場合
+        // 写真が選択されていない場合は、最初の写真を選択
+        if (SelectedPhoto == null && Photos.Count > 0)
+        {
+            SelectPhoto(Photos[0]);
+        }
+
+        return SelectedPhoto != null;
+    }
+
+    /// <summary>
     /// サムネイルを非同期で読み込み
     /// </summary>
     private async Task LoadThumbnailAsync(FolderSessionPhotoViewModel photoVm)
@@ -339,6 +451,114 @@ public partial class FolderModeViewModel : ViewModelBase
         {
             // サムネイル読み込みエラーは無視（写真は表示される）
             System.Diagnostics.Debug.WriteLine($"サムネイル読み込みエラー: {photoVm.FilePath} - {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// 写真ツリーを構築
+    /// </summary>
+    public void BuildPhotoTree()
+    {
+        PhotoTree.Clear();
+
+        // 日付でグループ化（降順）
+        var photosByDate = Photos
+            .GroupBy(p => p.GetModel().DateTaken.Date)
+            .OrderByDescending(g => g.Key)
+            .ToList();
+
+        foreach (var dateGroup in photosByDate)
+        {
+            var date = dateGroup.Key;
+
+            // 年ノードを探すまたは作成
+            var yearNode = PhotoTree.FirstOrDefault(n => n.Year == date.Year);
+            if (yearNode == null)
+            {
+                yearNode = new PhotoTreeNode
+                {
+                    NodeType = TreeNodeType.Year,
+                    Year = date.Year,
+                    DisplayName = $"{date.Year}年"
+                };
+                PhotoTree.Add(yearNode);
+            }
+
+            // 月ノードを探すまたは作成
+            var monthNode = yearNode.Children.FirstOrDefault(n => n.Month == date.Month);
+            if (monthNode == null)
+            {
+                monthNode = new PhotoTreeNode
+                {
+                    NodeType = TreeNodeType.Month,
+                    Year = date.Year,
+                    Month = date.Month,
+                    DisplayName = $"{date.Month}月"
+                };
+                yearNode.Children.Add(monthNode);
+            }
+
+            // 日ノードを作成
+            var dayNode = new PhotoTreeNode
+            {
+                NodeType = TreeNodeType.Day,
+                Year = date.Year,
+                Month = date.Month,
+                Day = date.Day,
+                DisplayName = $"{date.Day}日"
+            };
+            monthNode.Children.Add(dayNode);
+
+            // 日内でフォルダパスごとにグループ化
+            var photosByFolder = dateGroup
+                .GroupBy(p => Path.GetDirectoryName(p.FilePath) ?? "")
+                .ToList();
+
+            foreach (var folderGroup in photosByFolder)
+            {
+                var folderPath = folderGroup.Key;
+                var folderName = !string.IsNullOrEmpty(folderPath)
+                    ? Path.GetFileName(folderPath)
+                    : "(フォルダなし)";
+
+                // フォルダノードを作成
+                var folderNode = new PhotoTreeNode
+                {
+                    NodeType = TreeNodeType.Folder,
+                    Year = date.Year,
+                    Month = date.Month,
+                    Day = date.Day,
+                    FolderPath = folderPath,
+                    DisplayName = folderName
+                };
+
+                // 写真を追加（Photo modelから PhotoViewModelを作成）
+                foreach (var photoVm in folderGroup)
+                {
+                    // Photo modelを作成してPhotoViewModelを生成
+                    var photoModel = new Photo
+                    {
+                        FilePath = photoVm.FilePath,
+                        FileName = photoVm.FileName,
+                        DateTaken = photoVm.GetModel().DateTaken,
+                        Rating = photoVm.Rating,
+                        IsFavorite = photoVm.IsFavorite,
+                        IsRejected = photoVm.IsRejected,
+                        CameraModel = photoVm.CameraModel
+                    };
+
+                    var treePhotoVm = new PhotoViewModel(photoModel)
+                    {
+                        Rating = photoVm.Rating,
+                        IsFavorite = photoVm.IsFavorite,
+                        IsRejected = photoVm.IsRejected,
+                        Thumbnail = photoVm.Thumbnail
+                    };
+                    folderNode.Photos.Add(treePhotoVm);
+                }
+
+                dayNode.Children.Add(folderNode);
+            }
         }
     }
 }

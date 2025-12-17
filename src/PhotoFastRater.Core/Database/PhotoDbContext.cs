@@ -28,6 +28,7 @@ public class PhotoDbContext : DbContext
             entity.HasIndex(e => e.CameraModel);
             entity.HasIndex(e => e.Rating);
             entity.HasIndex(e => e.FileHash);
+            entity.HasIndex(e => e.FolderPath);
         });
 
         // Event エンティティ

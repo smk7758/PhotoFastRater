@@ -1,12 +1,14 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PhotoFastRater.Core.Cache;
+using PhotoFastRater.Core.UI;
 
 namespace PhotoFastRater.UI.ViewModels;
 
 public partial class SettingsViewModel : ViewModelBase
 {
     private readonly CacheConfiguration _cacheConfig;
+    private readonly UIConfiguration _uiConfig;
 
     [ObservableProperty]
     private ManagedFoldersViewModel? _managedFolders;
@@ -32,11 +34,16 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     private long _currentCacheSize = 0;
 
+    [ObservableProperty]
+    private string _arrowKeyNavigationMode = "GridFocus";
+
     public SettingsViewModel(
         CacheConfiguration cacheConfig,
+        UIConfiguration uiConfig,
         ManagedFoldersViewModel managedFoldersViewModel)
     {
         _cacheConfig = cacheConfig;
+        _uiConfig = uiConfig;
         ManagedFolders = managedFoldersViewModel;
         LoadSettings();
         _ = InitializeAsync();
@@ -58,6 +65,7 @@ public partial class SettingsViewModel : ViewModelBase
         JpegQuality = _cacheConfig.JpegQuality;
         MaxParallelGenerations = _cacheConfig.MaxParallelGenerations;
         EnableRAWSupport = _cacheConfig.EnableRAWSupport;
+        ArrowKeyNavigationMode = _uiConfig.ArrowKeyNavigationMode;
     }
 
     [RelayCommand]
@@ -84,6 +92,7 @@ public partial class SettingsViewModel : ViewModelBase
         _cacheConfig.JpegQuality = JpegQuality;
         _cacheConfig.MaxParallelGenerations = MaxParallelGenerations;
         _cacheConfig.EnableRAWSupport = EnableRAWSupport;
+        _uiConfig.ArrowKeyNavigationMode = ArrowKeyNavigationMode;
 
         // 設定を保存（後で実装）
         SaveToFile();

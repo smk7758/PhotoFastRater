@@ -76,7 +76,8 @@ public class ImageLoader
     private static BitmapImage ConvertToImageSource(byte[] imageData)
     {
         var bitmap = new BitmapImage();
-        using var ms = new MemoryStream(imageData);
+        var ms = new MemoryStream(imageData);
+        ms.Position = 0; // ストリームの位置を先頭にリセット
 
         bitmap.BeginInit();
         bitmap.CacheOption = BitmapCacheOption.OnLoad;

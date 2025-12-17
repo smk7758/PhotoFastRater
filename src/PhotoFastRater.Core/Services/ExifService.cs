@@ -9,10 +9,13 @@ public class ExifService
 {
     public Photo ExtractExifData(string filePath)
     {
+        var directoryPath = Path.GetDirectoryName(filePath);
         var photo = new Photo
         {
             FilePath = filePath,
             FileName = Path.GetFileName(filePath),
+            FolderPath = directoryPath ?? string.Empty,
+            FolderName = !string.IsNullOrEmpty(directoryPath) ? Path.GetFileName(directoryPath) : string.Empty,
             FileSize = new FileInfo(filePath).Length,
             ImportDate = DateTime.Now
         };
