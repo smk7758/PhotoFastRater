@@ -8,80 +8,183 @@
         WindowStartupLocation="CenterScreen"
         KeyDown="Window_KeyDown">
     <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="300"/>
+        </Grid.ColumnDefinitions>
 
-        <!-- 画像表示エリア -->
-        <ScrollViewer Grid.Row="0"
-                     HorizontalScrollBarVisibility="Auto"
-                     VerticalScrollBarVisibility="Auto">
-            <Image x:Name="PhotoImage"
-                   Source="{Binding FullImageSource}"
-                   Stretch="Uniform"
-                   HorizontalAlignment="Center"
-                   VerticalAlignment="Center"/>
-        </ScrollViewer>
+        <!-- メイン表示エリア -->
+        <Grid Grid.Column="0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
 
-        <!-- 情報パネル -->
-        <Border Grid.Row="1"
-                Background="#CC000000"
-                Padding="16">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
+            <!-- 画像表示エリア -->
+            <ScrollViewer Grid.Row="0"
+                         HorizontalScrollBarVisibility="Auto"
+                         VerticalScrollBarVisibility="Auto">
+                <Image x:Name="PhotoImage"
+                       Source="{Binding FullImageSource}"
+                       Stretch="Uniform"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Center"/>
+            </ScrollViewer>
 
-                <!-- EXIF情報 -->
-                <StackPanel Grid.Column="0">
-                    <TextBlock Text="{Binding FileName}"
+            <!-- 情報パネル -->
+            <Border Grid.Row="1"
+                    Background="#CC000000"
+                    Padding="16">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- EXIF情報 -->
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="{Binding FileName}"
+                                  Foreground="White"
+                                  FontSize="16"
+                                  FontWeight="Bold"
+                                  Margin="0,0,0,8"/>
+                        <WrapPanel>
+                            <TextBlock Foreground="White" Margin="0,0,16,0">
+                                <Run Text="カメラ: "/>
+                                <Run Text="{Binding CameraModel, Mode=OneWay}"/>
+                            </TextBlock>
+                            <TextBlock Foreground="White" Margin="0,0,16,0">
+                                <Run Text="レンズ: "/>
+                                <Run Text="{Binding LensModel, Mode=OneWay}"/>
+                            </TextBlock>
+                            <TextBlock Foreground="White" Margin="0,0,16,0">
+                                <Run Text="ISO: "/>
+                                <Run Text="{Binding ISO, Mode=OneWay}"/>
+                            </TextBlock>
+                            <TextBlock Foreground="White" Margin="0,0,16,0">
+                                <Run Text="F/"/>
+                                <Run Text="{Binding Aperture, StringFormat=N1, Mode=OneWay}"/>
+                            </TextBlock>
+                            <TextBlock Foreground="White" Margin="0,0,16,0">
+                                <Run Text="{Binding ShutterSpeed, Mode=OneWay}"/>
+                                <Run Text="秒"/>
+                            </TextBlock>
+                            <TextBlock Foreground="White">
+                                <Run Text="{Binding FocalLength, StringFormat=N0, Mode=OneWay}"/>
+                                <Run Text="mm"/>
+                            </TextBlock>
+                        </WrapPanel>
+                    </StackPanel>
+
+                    <!-- 評価 -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <TextBlock Text="評価: "
+                                  Foreground="White"
+                                  VerticalAlignment="Center"
+                                  Margin="0,0,8,0"/>
+                        <Button Content="1" Click="Rating_Click" Tag="1" Width="40" Margin="2"/>
+                        <Button Content="2" Click="Rating_Click" Tag="2" Width="40" Margin="2"/>
+                        <Button Content="3" Click="Rating_Click" Tag="3" Width="40" Margin="2"/>
+                        <Button Content="4" Click="Rating_Click" Tag="4" Width="40" Margin="2"/>
+                        <Button Content="5" Click="Rating_Click" Tag="5" Width="40" Margin="2"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- エクスポート設定パネル -->
+        <Border Grid.Column="1" Background="#DD1A1A1A" BorderBrush="#333" BorderThickness="1,0,0,0">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="16">
+                    <TextBlock Text="エクスポート設定"
                               Foreground="White"
-                              FontSize="16"
+                              FontSize="18"
                               FontWeight="Bold"
-                              Margin="0,0,0,8"/>
-                    <WrapPanel>
-                        <TextBlock Foreground="White" Margin="0,0,16,0">
-                            <Run Text="カメラ: "/>
-                            <Run Text="{Binding CameraModel, Mode=OneWay}"/>
-                        </TextBlock>
-                        <TextBlock Foreground="White" Margin="0,0,16,0">
-                            <Run Text="レンズ: "/>
-                            <Run Text="{Binding LensModel, Mode=OneWay}"/>
-                        </TextBlock>
-                        <TextBlock Foreground="White" Margin="0,0,16,0">
-                            <Run Text="ISO: "/>
-                            <Run Text="{Binding ISO, Mode=OneWay}"/>
-                        </TextBlock>
-                        <TextBlock Foreground="White" Margin="0,0,16,0">
-                            <Run Text="F/"/>
-                            <Run Text="{Binding Aperture, StringFormat=N1, Mode=OneWay}"/>
-                        </TextBlock>
-                        <TextBlock Foreground="White" Margin="0,0,16,0">
-                            <Run Text="{Binding ShutterSpeed, Mode=OneWay}"/>
-                            <Run Text="秒"/>
-                        </TextBlock>
-                        <TextBlock Foreground="White">
-                            <Run Text="{Binding FocalLength, StringFormat=N0, Mode=OneWay}"/>
-                            <Run Text="mm"/>
-                        </TextBlock>
-                    </WrapPanel>
-                </StackPanel>
+                              Margin="0,0,0,16"/>
 
-                <!-- 評価 -->
-                <StackPanel Grid.Column="1" Orientation="Horizontal">
-                    <TextBlock Text="評価: "
+                    <!-- プラットフォーム選択 -->
+                    <TextBlock Text="プラットフォーム"
                               Foreground="White"
-                              VerticalAlignment="Center"
-                              Margin="0,0,8,0"/>
-                    <Button Content="1" Click="Rating_Click" Tag="1" Width="40" Margin="2"/>
-                    <Button Content="2" Click="Rating_Click" Tag="2" Width="40" Margin="2"/>
-                    <Button Content="3" Click="Rating_Click" Tag="3" Width="40" Margin="2"/>
-                    <Button Content="4" Click="Rating_Click" Tag="4" Width="40" Margin="2"/>
-                    <Button Content="5" Click="Rating_Click" Tag="5" Width="40" Margin="2"/>
+                              FontWeight="Bold"
+                              Margin="0,0,0,4"/>
+                    <ComboBox x:Name="PlatformComboBox"
+                             SelectedIndex="0"
+                             Margin="0,0,0,16">
+                        <ComboBoxItem Content="Instagram" Tag="Instagram"/>
+                        <ComboBoxItem Content="Twitter" Tag="Twitter"/>
+                        <ComboBoxItem Content="Facebook" Tag="Facebook"/>
+                    </ComboBox>
+
+                    <!-- 出力サイズ表示 -->
+                    <TextBlock Text="出力サイズ"
+                              Foreground="White"
+                              FontWeight="Bold"
+                              Margin="0,0,0,4"/>
+                    <TextBlock x:Name="OutputSizeText"
+                              Text="1080 × 1080 px"
+                              Foreground="#AAA"
+                              Margin="0,0,0,16"/>
+
+                    <!-- 枠設定 -->
+                    <CheckBox x:Name="EnableFrameCheckBox"
+                             Content="枠を追加"
+                             Foreground="White"
+                             IsChecked="True"
+                             Margin="0,0,0,8"/>
+
+                    <TextBlock Text="枠の幅"
+                              Foreground="White"
+                              Margin="0,0,0,4"/>
+                    <Slider x:Name="FrameWidthSlider"
+                           Minimum="10"
+                           Maximum="100"
+                           Value="30"
+                           TickFrequency="10"
+                           IsSnapToTickEnabled="True"
+                           Margin="0,0,0,4"/>
+                    <TextBlock Text="{Binding ElementName=FrameWidthSlider, Path=Value, StringFormat='{}{0:F0} px'}"
+                              Foreground="#AAA"
+                              Margin="0,0,0,16"/>
+
+                    <!-- EXIF オーバーレイ設定 -->
+                    <CheckBox x:Name="EnableExifOverlayCheckBox"
+                             Content="EXIF情報を表示"
+                             Foreground="White"
+                             IsChecked="True"
+                             Margin="0,0,0,8"/>
+
+                    <TextBlock Text="EXIF表示位置"
+                              Foreground="White"
+                              Margin="0,0,0,4"/>
+                    <ComboBox x:Name="OverlayPositionComboBox"
+                             SelectedIndex="2"
+                             Margin="0,0,0,16">
+                        <ComboBoxItem Content="左上" Tag="TopLeft"/>
+                        <ComboBoxItem Content="右上" Tag="TopRight"/>
+                        <ComboBoxItem Content="左下" Tag="BottomLeft"/>
+                        <ComboBoxItem Content="右下" Tag="BottomRight"/>
+                    </ComboBox>
+
+                    <!-- エクスポートボタン -->
+                    <Button x:Name="ExportButton"
+                           Content="エクスポート"
+                           Click="Export_Click"
+                           Background="#2196F3"
+                           Foreground="White"
+                           Padding="16,12"
+                           Margin="0,16,0,0"
+                           FontSize="16"
+                           FontWeight="Bold"
+                           HorizontalAlignment="Stretch"/>
+
+                    <TextBlock x:Name="StatusText"
+                              Text=""
+                              Foreground="#4CAF50"
+                              Margin="0,8,0,0"
+                              TextWrapping="Wrap"
+                              HorizontalAlignment="Center"/>
                 </StackPanel>
-            </Grid>
+            </ScrollViewer>
         </Border>
     </Grid>
 </Window>
