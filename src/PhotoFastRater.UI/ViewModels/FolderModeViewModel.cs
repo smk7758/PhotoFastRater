@@ -8,6 +8,7 @@ using PhotoFastRater.Core.Services;
 using PhotoFastRater.Core.UI;
 using PhotoFastRater.Core.Database.Repositories;
 using PhotoFastRater.UI.Services;
+using PhotoFastRater.UI.Views;
 using MessageBox = System.Windows.MessageBox;
 using MessageBoxButton = System.Windows.MessageBoxButton;
 using MessageBoxImage = System.Windows.MessageBoxImage;
@@ -165,6 +166,44 @@ public partial class FolderModeViewModel : ViewModelBase
         {
             photo.IsSelected = true;
         }
+    }
+
+    /// <summary>
+    /// 写真をビューアーで開く（グリッド表示用）
+    /// </summary>
+    [RelayCommand]
+    private void OpenPhoto(FolderSessionPhotoViewModel photo)
+    {
+        // PhotoViewModelに変換してビューアーを開く
+        var photoModel = new Photo
+        {
+            FilePath = photo.FilePath,
+            FileName = photo.FileName,
+            DateTaken = photo.GetModel().DateTaken,
+            Rating = photo.Rating,
+            IsFavorite = photo.IsFavorite,
+            IsRejected = photo.IsRejected,
+            CameraModel = photo.CameraModel
+        };
+        var photoVm = new PhotoViewModel(photoModel)
+        {
+            Rating = photo.Rating,
+            IsFavorite = photo.IsFavorite,
+            IsRejected = photo.IsRejected,
+            Thumbnail = photo.Thumbnail
+        };
+        var viewer = new PhotoViewerWindow(photoVm);
+        viewer.ShowDialog();
+    }
+
+    /// <summary>
+    /// 写真をビューアーで開く（ツリー表示用）
+    /// </summary>
+    [RelayCommand]
+    private void OpenTreePhoto(PhotoViewModel photo)
+    {
+        var viewer = new PhotoViewerWindow(photo);
+        viewer.ShowDialog();
     }
 
     /// <summary>
@@ -473,6 +512,28 @@ public partial class FolderModeViewModel : ViewModelBase
     }
 
     /// <summary>
+    /// ツリー用PhotoViewModelのサムネイルを非同期で読み込み
+    /// </summary>
+    private async Task LoadTreeThumbnailAsync(PhotoViewModel photoVm)
+    {
+        try
+        {
+            var thumbnail = await _imageLoader.LoadAsync(photoVm.FilePath);
+
+            // UI スレッドでプロパティを更新
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                photoVm.Thumbnail = thumbnail;
+            });
+        }
+        catch (Exception ex)
+        {
+            // サムネイル読み込みエラーは無視
+            System.Diagnostics.Debug.WriteLine($"[FolderMode.Tree] サムネイル読み込みエラー: {photoVm.FilePath} - {ex.Message}");
+        }
+    }
+
+    /// <summary>
     /// 写真ツリーを構築
     /// </summary>
     public void BuildPhotoTree()
@@ -573,6 +634,9 @@ public partial class FolderModeViewModel : ViewModelBase
                         Thumbnail = photoVm.Thumbnail
                     };
                     folderNode.Photos.Add(treePhotoVm);
+
+                    // ツリー用PhotoViewModelにもサムネイルを非同期で読み込む
+                    _ = LoadTreeThumbnailAsync(treePhotoVm);
                 }
 
                 dayNode.Children.Add(folderNode);

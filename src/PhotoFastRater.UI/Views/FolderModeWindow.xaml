@@ -59,14 +59,8 @@
             </Grid.ColumnDefinitions>
 
             <!-- 写真グリッド表示 -->
-            <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
-                <ScrollViewer.Visibility>
-                    <Binding Path="IsTreeViewMode" Converter="{StaticResource BooleanToVisibilityConverter}">
-                        <Binding.ConverterParameter>
-                            <sys:Boolean>False</sys:Boolean>
-                        </Binding.ConverterParameter>
-                    </Binding>
-                </ScrollViewer.Visibility>
+            <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto"
+                         Visibility="{Binding IsTreeViewMode, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
                 <ItemsControl ItemsSource="{Binding Photos}"
                              VirtualizingPanel.IsVirtualizing="False">
                     <ItemsControl.ItemsPanel>
@@ -93,6 +87,9 @@
                                 <Border.InputBindings>
                                     <MouseBinding MouseAction="LeftClick"
                                                  Command="{Binding DataContext.SelectPhotoCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                 CommandParameter="{Binding}"/>
+                                    <MouseBinding MouseAction="LeftDoubleClick"
+                                                 Command="{Binding DataContext.OpenPhotoCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                  CommandParameter="{Binding}"/>
                                 </Border.InputBindings>
                                 <Grid>
@@ -175,7 +172,13 @@
                                                 <HierarchicalDataTemplate.ItemTemplate>
                                                     <DataTemplate>
                                                         <Border Width="120" Height="120" Margin="4"
-                                                               BorderBrush="Gray" BorderThickness="1">
+                                                               BorderBrush="Gray" BorderThickness="1"
+                                                               Cursor="Hand">
+                                                            <Border.InputBindings>
+                                                                <MouseBinding MouseAction="LeftDoubleClick"
+                                                                             Command="{Binding DataContext.OpenTreePhotoCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                             CommandParameter="{Binding}"/>
+                                                            </Border.InputBindings>
                                                             <Grid>
                                                                 <Image Source="{Binding Thumbnail}"
                                                                       Stretch="Uniform"/>

@@ -51,14 +51,8 @@
             <TabItem Header="写真一覧">
                 <Grid>
                     <!-- グリッド表示 -->
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <ScrollViewer.Visibility>
-                            <Binding Path="PhotoGrid.IsTreeViewMode" Converter="{StaticResource BooleanToVisibilityConverter}">
-                                <Binding.ConverterParameter>
-                                    <sys:Boolean>False</sys:Boolean>
-                                </Binding.ConverterParameter>
-                            </Binding>
-                        </ScrollViewer.Visibility>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                 Visibility="{Binding PhotoGrid.IsTreeViewMode, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
                         <ItemsControl ItemsSource="{Binding PhotoGrid.Photos}"
                                      VirtualizingPanel.IsVirtualizing="False">
                             <ItemsControl.ItemsPanel>

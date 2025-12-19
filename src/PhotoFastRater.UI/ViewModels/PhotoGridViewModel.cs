@@ -362,12 +362,15 @@ public partial class PhotoGridViewModel : ViewModelBase
     public void BuildPhotoTree()
     {
         PhotoTree.Clear();
+        System.Diagnostics.Debug.WriteLine($"[PhotoGrid.BuildPhotoTree] 開始: Photos.Count={Photos.Count}");
 
         // 日付でグループ化
         var photosByDate = Photos
             .GroupBy(p => p.DateTaken.Date)
             .OrderByDescending(g => g.Key)
             .ToList();
+
+        System.Diagnostics.Debug.WriteLine($"[PhotoGrid.BuildPhotoTree] 日付グループ数: {photosByDate.Count}");
 
         foreach (var dateGroup in photosByDate)
         {
@@ -445,6 +448,12 @@ public partial class PhotoGridViewModel : ViewModelBase
 
                 dayNode.Children.Add(folderNode);
             }
+        }
+
+        System.Diagnostics.Debug.WriteLine($"[PhotoGrid.BuildPhotoTree] 完了: PhotoTree.Count={PhotoTree.Count}");
+        foreach (var yearNode in PhotoTree)
+        {
+            System.Diagnostics.Debug.WriteLine($"  年: {yearNode.DisplayName}, 子数={yearNode.Children.Count}");
         }
     }
 
