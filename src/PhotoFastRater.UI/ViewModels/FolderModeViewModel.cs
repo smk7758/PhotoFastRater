@@ -187,15 +187,21 @@ public partial class FolderModeViewModel : ViewModelBase
     private void OpenPhoto(FolderSessionPhotoViewModel photo)
     {
         // PhotoViewModelに変換してビューアーを開く
+        var model = photo.GetModel();
         var photoModel = new Photo
         {
             FilePath = photo.FilePath,
             FileName = photo.FileName,
-            DateTaken = photo.GetModel().DateTaken,
+            DateTaken = model.DateTaken,
             Rating = photo.Rating,
             IsFavorite = photo.IsFavorite,
             IsRejected = photo.IsRejected,
-            CameraModel = photo.CameraModel
+            CameraModel = model.CameraModel,
+            LensModel = model.LensModel,
+            ISO = model.ISO,
+            Aperture = model.Aperture,
+            ShutterSpeed = model.ShutterSpeed,
+            FocalLength = model.FocalLength
         };
         var photoVm = new PhotoViewModel(photoModel)
         {

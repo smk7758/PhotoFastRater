@@ -130,6 +130,8 @@
                              Content="枠を追加"
                              Foreground="White"
                              IsChecked="True"
+                             Checked="PreviewSetting_Changed"
+                             Unchecked="PreviewSetting_Changed"
                              Margin="0,0,0,8"/>
 
                     <TextBlock Text="枠の幅"
@@ -141,6 +143,7 @@
                            Value="30"
                            TickFrequency="10"
                            IsSnapToTickEnabled="True"
+                           ValueChanged="PreviewSetting_Changed"
                            Margin="0,0,0,4"/>
                     <TextBlock Text="{Binding ElementName=FrameWidthSlider, Path=Value, StringFormat='{}{0:F0} px'}"
                               Foreground="#AAA"
@@ -150,6 +153,8 @@
                     <CheckBox x:Name="EnableExifOverlayCheckBox"
                              Content="EXIF情報を表示"
                              Foreground="White"
+                             Checked="PreviewSetting_Changed"
+                             Unchecked="PreviewSetting_Changed"
                              IsChecked="True"
                              Margin="0,0,0,8"/>
 
@@ -158,12 +163,82 @@
                               Margin="0,0,0,4"/>
                     <ComboBox x:Name="OverlayPositionComboBox"
                              SelectedIndex="2"
-                             Margin="0,0,0,16">
+                             SelectionChanged="OverlayPositionComboBox_SelectionChanged"
+                             Margin="0,0,0,8">
                         <ComboBoxItem Content="左上" Tag="TopLeft"/>
                         <ComboBoxItem Content="右上" Tag="TopRight"/>
                         <ComboBoxItem Content="左下" Tag="BottomLeft"/>
                         <ComboBoxItem Content="右下" Tag="BottomRight"/>
+                        <ComboBoxItem Content="カスタム位置" Tag="Custom"/>
                     </ComboBox>
+
+                    <!-- カスタム位置設定 -->
+                    <StackPanel x:Name="CustomPositionPanel" Visibility="Collapsed" Margin="0,0,0,16">
+                        <TextBlock Text="横位置 (左 ← → 右)"
+                                  Foreground="White"
+                                  Margin="0,0,0,4"/>
+                        <Slider x:Name="CustomXSlider"
+                               Minimum="0"
+                               Maximum="100"
+                               Value="10"
+                               TickFrequency="5"
+                               IsSnapToTickEnabled="True"
+                               ValueChanged="CustomSlider_ValueChanged"
+                               Margin="0,0,0,4"/>
+                        <TextBlock Text="{Binding ElementName=CustomXSlider, Path=Value, StringFormat='{}{0:F0}%'}"
+                                  Foreground="#AAA"
+                                  Margin="0,0,0,8"/>
+
+                        <TextBlock Text="縦位置 (上 ← → 下)"
+                                  Foreground="White"
+                                  Margin="0,0,0,4"/>
+                        <Slider x:Name="CustomYSlider"
+                               Minimum="0"
+                               Maximum="100"
+                               Value="90"
+                               TickFrequency="5"
+                               IsSnapToTickEnabled="True"
+                               ValueChanged="CustomSlider_ValueChanged"
+                               Margin="0,0,0,4"/>
+                        <TextBlock Text="{Binding ElementName=CustomYSlider, Path=Value, StringFormat='{}{0:F0}%'}"
+                                  Foreground="#AAA"
+                                  Margin="0,0,0,8"/>
+
+                        <!-- プレビュー -->
+                        <TextBlock Text="プレビュー（ドラッグで位置調整）"
+                                  Foreground="White"
+                                  FontWeight="Bold"
+                                  Margin="0,0,0,4"/>
+                        <Border BorderBrush="#555" BorderThickness="1" Background="#222" Height="180">
+                            <Grid x:Name="PreviewGrid">
+                                <!-- 画像 -->
+                                <Border x:Name="PreviewFrameBorder"
+                                       Background="White"
+                                       BorderBrush="White"
+                                       BorderThickness="0"
+                                       Margin="0">
+                                    <Image x:Name="PreviewImage"
+                                          Source="{Binding Thumbnail}"
+                                          Stretch="Uniform"/>
+                                </Border>
+                                <!-- EXIFオーバーレイ -->
+                                <Border x:Name="ExifPreviewBorder"
+                                       Background="#AA000000"
+                                       Padding="6,4"
+                                       HorizontalAlignment="Left"
+                                       VerticalAlignment="Top"
+                                       Cursor="Hand"
+                                       MouseLeftButtonDown="ExifPreview_MouseLeftButtonDown"
+                                       MouseMove="ExifPreview_MouseMove"
+                                       MouseLeftButtonUp="ExifPreview_MouseLeftButtonUp">
+                                    <TextBlock x:Name="ExifPreviewText"
+                                              Foreground="White"
+                                              FontSize="8"
+                                              Text="カメラ名&#x0a;レンズ名&#x0a;50mm f/2.8 1/200s ISO100"/>
+                                </Border>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
 
                     <!-- エクスポートボタン -->
                     <Button x:Name="ExportButton"

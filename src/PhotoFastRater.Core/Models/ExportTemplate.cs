@@ -18,6 +18,8 @@ public class ExportTemplate
     // EXIF オーバーレイ設定
     public bool EnableExifOverlay { get; set; }
     public ExifOverlayPosition Position { get; set; }
+    public int CustomX { get; set; } = 50;  // カスタム位置のX座標（パーセント: 0-100）
+    public int CustomY { get; set; } = 50;  // カスタム位置のY座標（パーセント: 0-100）
     public string DisplayFields { get; set; } = string.Empty; // JSON serialized
     public string FontFamily { get; set; } = "Arial";
     public int FontSize { get; set; } = 14;

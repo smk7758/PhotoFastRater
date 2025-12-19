@@ -86,6 +86,7 @@ public class FolderSessionService
                     photo.Width = exifPhoto.Width;
                     photo.Height = exifPhoto.Height;
                     photo.CameraModel = exifPhoto.CameraModel;
+                    photo.LensModel = exifPhoto.LensModel;
                     photo.Aperture = exifPhoto.Aperture;
                     photo.ShutterSpeed = exifPhoto.ShutterSpeed;
                     photo.ISO = exifPhoto.ISO;

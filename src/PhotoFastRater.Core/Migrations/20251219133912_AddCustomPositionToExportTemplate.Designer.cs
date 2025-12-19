@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using PhotoFastRater.Core.Database;
 
@@ -10,9 +11,11 @@ using PhotoFastRater.Core.Database;
 namespace PhotoFastRater.Core.Migrations
 {
     [DbContext(typeof(PhotoDbContext))]
-    partial class PhotoDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251219133912_AddCustomPositionToExportTemplate")]
+    partial class AddCustomPositionToExportTemplate
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.1");

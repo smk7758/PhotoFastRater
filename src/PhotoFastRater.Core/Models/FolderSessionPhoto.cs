@@ -56,6 +56,11 @@ public class FolderSessionPhoto
     public string? CameraModel { get; set; }
 
     /// <summary>
+    /// レンズモデル
+    /// </summary>
+    public string? LensModel { get; set; }
+
+    /// <summary>
     /// 絞り値
     /// </summary>
     public double? Aperture { get; set; }

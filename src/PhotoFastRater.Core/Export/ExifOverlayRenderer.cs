@@ -29,7 +29,7 @@ public class ExifOverlayRenderer
 
             image.Mutate(ctx =>
             {
-                var position = CalculatePosition(image.Size, template.Position, font, exifText);
+                var position = CalculatePosition(image.Size, template, font, exifText);
 
                 // テキストサイズを測定
                 var textOptions = new TextOptions(font);
@@ -138,13 +138,13 @@ public class ExifOverlayRenderer
         return string.Join("\n", lines);
     }
 
-    private static PointF CalculatePosition(Size imageSize, ExifOverlayPosition position, Font font, string text)
+    private static PointF CalculatePosition(Size imageSize, ExportTemplate template, Font font, string text)
     {
         var textOptions = new TextOptions(font);
         var textSize = TextMeasurer.MeasureSize(text, textOptions);
         var padding = 20f;
 
-        return position switch
+        return template.Position switch
         {
             ExifOverlayPosition.TopLeft => new PointF(padding, padding),
             ExifOverlayPosition.TopRight => new PointF(imageSize.Width - textSize.Width - padding, padding),
@@ -152,6 +152,9 @@ public class ExifOverlayRenderer
             ExifOverlayPosition.BottomRight => new PointF(
                 imageSize.Width - textSize.Width - padding,
                 imageSize.Height - textSize.Height - padding),
+            ExifOverlayPosition.Custom => new PointF(
+                imageSize.Width * template.CustomX / 100f,
+                imageSize.Height * template.CustomY / 100f),
             _ => new PointF(padding, imageSize.Height - textSize.Height - padding)
         };
     }

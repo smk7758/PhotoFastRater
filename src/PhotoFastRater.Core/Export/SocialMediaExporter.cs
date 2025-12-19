@@ -22,6 +22,12 @@ public class SocialMediaExporter : IImageExporter
         // 元画像読み込み（フルサイズ）
         using var sourceImage = await Image.LoadAsync<Rgba32>(photo.FilePath);
 
+        // 元画像のメタデータを保持
+        var exifProfile = sourceImage.Metadata.ExifProfile?.DeepClone();
+        var iptcProfile = sourceImage.Metadata.IptcProfile?.DeepClone();
+        var xmpProfile = sourceImage.Metadata.XmpProfile?.DeepClone();
+        var iccProfile = sourceImage.Metadata.IccProfile?.DeepClone();
+
         // リサイズ
         var resized = ResizeForPlatform(sourceImage, template);
 
@@ -30,6 +36,16 @@ public class SocialMediaExporter : IImageExporter
 
         // EXIF オーバーレイ
         _exifRenderer.RenderExifOverlay(withFrame, photo, template);
+
+        // メタデータを復元
+        if (exifProfile != null)
+            withFrame.Metadata.ExifProfile = exifProfile;
+        if (iptcProfile != null)
+            withFrame.Metadata.IptcProfile = iptcProfile;
+        if (xmpProfile != null)
+            withFrame.Metadata.XmpProfile = xmpProfile;
+        if (iccProfile != null)
+            withFrame.Metadata.IccProfile = iccProfile;
 
         // 保存
         await withFrame.SaveAsJpegAsync(outputPath, new JpegEncoder { Quality = 95 });
