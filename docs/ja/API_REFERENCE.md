@@ -165,6 +165,7 @@ public class FolderSessionPhoto
     public int Width { get; set; }
     public int Height { get; set; }
     public string? CameraModel { get; set; }
+    public string? LensModel { get; set; }        // 追加 (2025-12-19)
     public double? Aperture { get; set; }
     public string? ShutterSpeed { get; set; }
     public int? ISO { get; set; }
@@ -173,6 +174,76 @@ public class FolderSessionPhoto
     public string? PairedFilePath { get; set; }
     public bool IsRawFile { get; set; }
     public bool HasPair => !string.IsNullOrEmpty(PairedFilePath);
+}
+```
+
+---
+
+#### ExportTemplate
+
+SNS エクスポート用のテンプレート設定モデル。
+
+```csharp
+namespace PhotoFastRater.Core.Models;
+
+public class ExportTemplate
+{
+    public int Id { get; set; }
+    public string Name { get; set; }
+
+    // 出力サイズ
+    public int OutputWidth { get; set; }
+    public int OutputHeight { get; set; }
+    public bool MaintainAspectRatio { get; set; } = true;
+
+    // 枠設定
+    public bool EnableFrame { get; set; }
+    public int FrameWidth { get; set; }
+    public string FrameColor { get; set; } = "#FFFFFF";
+
+    // EXIF オーバーレイ設定
+    public bool EnableExifOverlay { get; set; }
+    public ExifOverlayPosition Position { get; set; }
+    public int CustomX { get; set; } = 50;  // カスタム位置のX座標（パーセント: 0-100）
+    public int CustomY { get; set; } = 50;  // カスタム位置のY座標（パーセント: 0-100）
+    public string DisplayFields { get; set; } = string.Empty; // JSON serialized
+    public string FontFamily { get; set; } = "Arial";
+    public int FontSize { get; set; } = 14;
+    public string TextColor { get; set; } = "#FFFFFF";
+    public string BackgroundColor { get; set; } = "#000000";
+    public int BackgroundOpacity { get; set; } = 70;
+
+    // SNS 設定
+    public SocialMediaPlatform TargetPlatform { get; set; }
+}
+
+public enum ExifOverlayPosition
+{
+    TopLeft,
+    TopRight,
+    BottomLeft,
+    BottomRight,
+    Custom
+}
+
+public enum ExifField
+{
+    CameraModel,
+    LensModel,
+    FocalLength,
+    Aperture,
+    ShutterSpeed,
+    ISO,
+    DateTaken,
+    Location
+}
+
+public enum SocialMediaPlatform
+{
+    Instagram,  // 1080 × 1080 px
+    Twitter,    // 1200 × 675 px
+    Facebook,   // 1200 × 630 px
+    Custom
 }
 ```
 
@@ -371,6 +442,95 @@ public class FolderSessionService
     public Task SaveSessionAsync(FolderSession session);
 }
 ```
+
+---
+
+#### SocialMediaExporter
+
+SNS 向けに最適化された画像エクスポートサービス。
+
+```csharp
+namespace PhotoFastRater.Core.Export;
+
+public class SocialMediaExporter : IImageExporter
+{
+    /// <summary>
+    /// 写真をエクスポート（リサイズ、枠追加、EXIF オーバーレイ）
+    /// </summary>
+    /// <param name="photo">エクスポートする写真</param>
+    /// <param name="template">エクスポート設定テンプレート</param>
+    /// <param name="outputPath">出力先パス</param>
+    /// <returns>出力先パス</returns>
+    public Task<string> ExportAsync(Photo photo, ExportTemplate template, string outputPath);
+}
+```
+
+**使用例**:
+
+```csharp
+var exporter = new SocialMediaExporter();
+
+var template = new ExportTemplate
+{
+    Name = "Instagram Export",
+    TargetPlatform = SocialMediaPlatform.Instagram,
+    EnableFrame = true,
+    FrameWidth = 30,
+    EnableExifOverlay = true,
+    Position = ExifOverlayPosition.BottomLeft
+};
+
+await exporter.ExportAsync(photo, template, @"C:\Exports\output.jpg");
+```
+
+**機能**:
+
+- プラットフォーム別の最適サイズへのリサイズ
+- 枠（フレーム）の追加
+- EXIF 情報のオーバーレイ表示
+- 元画像のメタデータ保持（EXIF、IPTC、XMP、ICC プロファイル）
+- 高品質 JPEG 出力（Quality: 95）
+
+---
+
+#### ExifOverlayRenderer
+
+画像に EXIF 情報をオーバーレイ表示するレンダラー。
+
+```csharp
+namespace PhotoFastRater.Core.Export;
+
+public class ExifOverlayRenderer
+{
+    /// <summary>
+    /// 画像に EXIF オーバーレイを描画
+    /// </summary>
+    /// <param name="image">対象画像</param>
+    /// <param name="photo">写真情報</param>
+    /// <param name="template">エクスポート設定</param>
+    public void RenderExifOverlay(Image<Rgba32> image, Photo photo, ExportTemplate template);
+}
+```
+
+**表示内容**:
+
+- カメラモデル
+- レンズモデル
+- 焦点距離（mm）
+- 絞り値（f/）
+- シャッタースピード（秒）
+- ISO 感度
+- 撮影日時
+- 位置情報
+
+**カスタマイズ可能な項目**:
+
+- 表示位置（左上、右上、左下、右下、カスタム）
+- フォントファミリー
+- フォントサイズ
+- テキストカラー
+- 背景カラー
+- 背景の透明度
 
 ---
 

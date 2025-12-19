@@ -24,9 +24,15 @@ Photo Fast Rater は、写真家やフォトグラファー向けの高速写真
 - **高速レーティング**: キーボードショートカット（1-5 キー）による瞬時の評価
 - **写真ナビゲーション**: 矢印キーによる素早い写真間移動
 - **フォルダモード**: DB 登録前の一時的なフォルダ単位でのレーティングセッション
-- **EXIF 情報抽出**: カメラモデル、撮影日時、撮影設定などのメタデータ自動抽出
+- **EXIF 情報抽出**: カメラモデル、レンズモデル、撮影日時、撮影設定などのメタデータ自動抽出
 - **RAW+JPEG 対応**: RAW ファイルと JPEG ファイルのペアリング機能
 - **サムネイルキャッシュ**: 高速表示のためのサムネイル自動生成・キャッシュ
+- **SNS エクスポート**: Instagram、Twitter、Facebook 向けの最適化エクスポート機能
+  - プラットフォーム別の最適サイズ調整
+  - 枠（フレーム）の追加とカスタマイズ
+  - EXIF 情報のオーバーレイ表示（位置・内容のカスタマイズ可能）
+  - リアルタイムプレビュー
+  - 元画像のメタデータ保持
 
 ---
 
@@ -85,11 +91,17 @@ photo-fast-rater/
 │   │   ├── Models/                  # ドメインモデル
 │   │   │   ├── Photo.cs
 │   │   │   ├── Event.cs
-│   │   │   └── FolderSession.cs
+│   │   │   ├── FolderSession.cs
+│   │   │   └── ExportTemplate.cs
 │   │   ├── Services/                # ビジネスロジック
 │   │   │   ├── ExifService.cs
 │   │   │   ├── ImportService.cs
+│   │   │   ├── FolderSessionService.cs
 │   │   │   └── DataMigrationService.cs
+│   │   ├── Export/                  # エクスポート機能
+│   │   │   ├── SocialMediaExporter.cs
+│   │   │   ├── ExifOverlayRenderer.cs
+│   │   │   └── FrameRenderer.cs
 │   │   └── UI/                      # UI設定
 │   │       ├── UIConfiguration.cs
 │   │       └── CacheConfiguration.cs
@@ -397,6 +409,7 @@ CREATE TABLE PhotoEventMappings (
 ### マイグレーション履歴
 
 - **20251216163207_AddFolderPathAndName**: FolderPath/FolderName カラム追加
+- **20251219133912_AddCustomPositionToExportTemplate**: ExportTemplates テーブルに CustomX/CustomY カラム追加（EXIF オーバーレイのカスタム位置用）
 
 ---
 
@@ -455,8 +468,17 @@ CREATE TABLE PhotoEventMappings (
 #### PhotoViewerWindow (写真ビューアー)
 
 - 大画面表示
-- EXIF 情報パネル
+- EXIF 情報パネル（カメラ、レンズ、撮影設定）
 - 前後の写真へのナビゲーション
+- エクスポート設定パネル
+  - プラットフォーム選択（Instagram、Twitter、Facebook）
+  - 枠の設定（表示/非表示、幅の調整）
+  - EXIF オーバーレイ設定
+    - 表示/非表示
+    - 位置選択（左上、右上、左下、右下、カスタム）
+    - カスタム位置の調整（スライダーまたはマウスドラッグ）
+  - リアルタイムプレビュー
+  - エクスポートボタン
 
 ---
 
