@@ -56,6 +56,18 @@ public partial class FolderModeViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isTreeViewMode;
 
+    /// <summary>
+    /// IsTreeViewMode が変更されたときの処理
+    /// </summary>
+    partial void OnIsTreeViewModeChanged(bool value)
+    {
+        if (value)
+        {
+            System.Diagnostics.Debug.WriteLine($"[FolderMode] IsTreeViewMode changed to true, calling BuildPhotoTree");
+            BuildPhotoTree();
+        }
+    }
+
     // グリッドの列数（WrapPanelの列数）
     private const int GridColumns = 6;
 
