@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows;
 using PhotoFastRater.UI.ViewModels;
 
@@ -17,5 +18,21 @@ public partial class FolderModeWindow : Window
         {
             await viewModel.LoadFolderAsync(folderPath);
         }
+    }
+
+    private void Window_DragOver(object sender, System.Windows.DragEventArgs e)
+    {
+        e.Effects = e.Data.GetDataPresent(System.Windows.DataFormats.FileDrop)
+            ? System.Windows.DragDropEffects.Copy
+            : System.Windows.DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private async void Window_Drop(object sender, System.Windows.DragEventArgs e)
+    {
+        if (e.Data.GetData(System.Windows.DataFormats.FileDrop) is not string[] paths) return;
+        var folder = paths.FirstOrDefault(Directory.Exists);
+        if (folder != null && DataContext is FolderModeViewModel viewModel)
+            await viewModel.LoadFolderAsync(folder);
     }
 }

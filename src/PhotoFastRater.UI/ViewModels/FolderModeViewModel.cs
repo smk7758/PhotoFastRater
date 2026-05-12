@@ -8,7 +8,6 @@ using PhotoFastRater.Core.Services;
 using PhotoFastRater.Core.UI;
 using PhotoFastRater.Core.Database.Repositories;
 using PhotoFastRater.UI.Services;
-using PhotoFastRater.UI.Views;
 using MessageBox = System.Windows.MessageBox;
 using MessageBoxButton = System.Windows.MessageBoxButton;
 using MessageBoxImage = System.Windows.MessageBoxImage;
@@ -186,32 +185,10 @@ public partial class FolderModeViewModel : ViewModelBase
     [RelayCommand]
     private void OpenPhoto(FolderSessionPhotoViewModel photo)
     {
-        // PhotoViewModelに変換してビューアーを開く
-        var model = photo.GetModel();
-        var photoModel = new Photo
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(photo.FilePath)
         {
-            FilePath = photo.FilePath,
-            FileName = photo.FileName,
-            DateTaken = model.DateTaken,
-            Rating = photo.Rating,
-            IsFavorite = photo.IsFavorite,
-            IsRejected = photo.IsRejected,
-            CameraModel = model.CameraModel,
-            LensModel = model.LensModel,
-            ISO = model.ISO,
-            Aperture = model.Aperture,
-            ShutterSpeed = model.ShutterSpeed,
-            FocalLength = model.FocalLength
-        };
-        var photoVm = new PhotoViewModel(photoModel)
-        {
-            Rating = photo.Rating,
-            IsFavorite = photo.IsFavorite,
-            IsRejected = photo.IsRejected,
-            Thumbnail = photo.Thumbnail
-        };
-        var viewer = new PhotoViewerWindow(photoVm);
-        viewer.ShowDialog();
+            UseShellExecute = true
+        });
     }
 
     /// <summary>
@@ -220,23 +197,36 @@ public partial class FolderModeViewModel : ViewModelBase
     [RelayCommand]
     private void OpenTreePhoto(PhotoViewModel photo)
     {
-        var viewer = new PhotoViewerWindow(photo);
-        viewer.ShowDialog();
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(photo.FilePath)
+        {
+            UseShellExecute = true
+        });
     }
 
     /// <summary>
     /// レーティングを設定
     /// </summary>
     [RelayCommand]
-    private async Task SetRatingAsync(int rating)
+    private async Task SetRatingAsync(string? ratingStr)
     {
         if (SelectedPhoto == null) return;
+        if (!int.TryParse(ratingStr, out var rating)) return;
 
         SelectedPhoto.Rating = rating;
         SelectedPhoto.UpdateModel();
 
         UpdateStatistics();
         await SaveSessionAsync();
+    }
+
+    /// <summary>
+    /// 選択中の写真のフォルダを Explorer で開く
+    /// </summary>
+    [RelayCommand]
+    private void OpenPhotoFolder()
+    {
+        if (SelectedPhoto == null) return;
+        System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{SelectedPhoto.FilePath}\"");
     }
 
     /// <summary>

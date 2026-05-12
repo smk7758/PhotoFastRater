@@ -29,6 +29,16 @@ public partial class FolderSessionPhotoViewModel : ViewModelBase
     [ObservableProperty]
     private string? _cameraModel;
 
+    public string? LensModel => _photo.LensModel;
+    public double? Aperture => _photo.Aperture;
+    public string? ShutterSpeed => _photo.ShutterSpeed;
+    public int? ISO => _photo.ISO;
+    public double? FocalLength => _photo.FocalLength;
+    public double? ExposureCompensation => _photo.ExposureCompensation;
+    public DateTime DateTaken => _photo.DateTaken;
+    public int Width => _photo.Width;
+    public int Height => _photo.Height;
+
     private BitmapImage? _thumbnail;
 
     public BitmapImage? Thumbnail

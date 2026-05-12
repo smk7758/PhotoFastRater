@@ -4,16 +4,19 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
-        xmlns:sys="clr-namespace:System;assembly=mscorlib"
         mc:Ignorable="d"
         Title="Photo Fast Rater - フォルダモード" Height="800" Width="1400"
-        Background="{DynamicResource MaterialDesignPaper}">
+        Background="{DynamicResource MaterialDesignPaper}"
+        AllowDrop="True"
+        DragOver="Window_DragOver"
+        Drop="Window_Drop">
 
     <Window.InputBindings>
         <KeyBinding Key="Up" Command="{Binding NavigateUpCommand}"/>
         <KeyBinding Key="Down" Command="{Binding NavigateDownCommand}"/>
         <KeyBinding Key="Left" Command="{Binding NavigateLeftCommand}"/>
         <KeyBinding Key="Right" Command="{Binding NavigateRightCommand}"/>
+        <KeyBinding Key="O" Modifiers="Control" Command="{Binding OpenFolderCommand}"/>
     </Window.InputBindings>
 
     <Grid>
@@ -71,15 +74,17 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <Border Width="200" Height="200" Margin="4"
-                                    BorderBrush="Gray" BorderThickness="2"
-                                    Background="White"
+                                    BorderThickness="2"
                                     Cursor="Hand">
                                 <Border.Style>
                                     <Style TargetType="Border">
+                                        <Setter Property="BorderBrush" Value="Gray"/>
+                                        <Setter Property="Background" Value="White"/>
                                         <Style.Triggers>
                                             <DataTrigger Binding="{Binding IsSelected}" Value="True">
                                                 <Setter Property="BorderBrush" Value="#2196F3"/>
                                                 <Setter Property="Background" Value="#E3F2FD"/>
+                                                <Setter Property="BorderThickness" Value="3"/>
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
@@ -118,12 +123,6 @@
                                                   FontSize="10"
                                                   TextTrimming="CharacterEllipsis"
                                                   Margin="4"/>
-                                        <TextBlock Text="{Binding ThumbnailStatus}"
-                                                  Foreground="Lime"
-                                                  FontSize="14"
-                                                  FontWeight="Bold"
-                                                  Margin="4"
-                                                  Background="#AA000000"/>
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock Text="★"
                                                       Foreground="Yellow"
@@ -206,84 +205,140 @@
 
             <!-- サイドパネル -->
             <Border Grid.Column="1" BorderBrush="Gray" BorderThickness="1,0,0,0" Padding="8">
-                <StackPanel>
-                    <TextBlock Text="選択中の写真"
-                              FontSize="16"
-                              FontWeight="Bold"
-                              Margin="0,0,0,16"/>
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <TextBlock Text="選択中の写真"
+                                  FontSize="16"
+                                  FontWeight="Bold"
+                                  Margin="0,0,0,8"/>
 
-                    <TextBlock Text="{Binding SelectedPhoto.FileName}"
-                              TextWrapping="Wrap"
-                              Margin="0,0,0,8"/>
+                        <TextBlock Text="{Binding SelectedPhoto.FileName}"
+                                  TextWrapping="Wrap"
+                                  Margin="0,0,0,4"/>
 
-                    <!-- レーティング -->
-                    <TextBlock Text="レーティング"
-                              FontWeight="Bold"
-                              Margin="0,16,0,4"/>
-                    <StackPanel Orientation="Horizontal">
-                        <Button Content="0" Command="{Binding SetRatingCommand}" Margin="2">
-                            <Button.CommandParameter>
-                                <sys:Int32>0</sys:Int32>
-                            </Button.CommandParameter>
-                        </Button>
-                        <Button Content="1" Command="{Binding SetRatingCommand}" Margin="2">
-                            <Button.CommandParameter>
-                                <sys:Int32>1</sys:Int32>
-                            </Button.CommandParameter>
-                        </Button>
-                        <Button Content="2" Command="{Binding SetRatingCommand}" Margin="2">
-                            <Button.CommandParameter>
-                                <sys:Int32>2</sys:Int32>
-                            </Button.CommandParameter>
-                        </Button>
-                        <Button Content="3" Command="{Binding SetRatingCommand}" Margin="2">
-                            <Button.CommandParameter>
-                                <sys:Int32>3</sys:Int32>
-                            </Button.CommandParameter>
-                        </Button>
-                        <Button Content="4" Command="{Binding SetRatingCommand}" Margin="2">
-                            <Button.CommandParameter>
-                                <sys:Int32>4</sys:Int32>
-                            </Button.CommandParameter>
-                        </Button>
-                        <Button Content="5" Command="{Binding SetRatingCommand}" Margin="2">
-                            <Button.CommandParameter>
-                                <sys:Int32>5</sys:Int32>
-                            </Button.CommandParameter>
-                        </Button>
+                        <!-- エクスプローラーで開く -->
+                        <Button Content="エクスプローラーで開く"
+                               Command="{Binding OpenPhotoFolderCommand}"
+                               Margin="0,0,0,12"
+                               HorizontalAlignment="Left"/>
+
+                        <!-- レーティング -->
+                        <TextBlock Text="レーティング"
+                                  FontWeight="Bold"
+                                  Margin="0,0,0,4"/>
+                        <TextBlock Text="{Binding SelectedPhoto.Rating, StringFormat='現在: ★{0}'}"
+                                  Margin="0,0,0,4"
+                                  FontWeight="Bold"
+                                  Foreground="#2196F3"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                            <Button Content="0" Command="{Binding SetRatingCommand}" CommandParameter="0" Margin="2"/>
+                            <Button Content="1" Command="{Binding SetRatingCommand}" CommandParameter="1" Margin="2"/>
+                            <Button Content="2" Command="{Binding SetRatingCommand}" CommandParameter="2" Margin="2"/>
+                            <Button Content="3" Command="{Binding SetRatingCommand}" CommandParameter="3" Margin="2"/>
+                            <Button Content="4" Command="{Binding SetRatingCommand}" CommandParameter="4" Margin="2"/>
+                            <Button Content="5" Command="{Binding SetRatingCommand}" CommandParameter="5" Margin="2"/>
+                        </StackPanel>
+
+                        <!-- クイックアクション -->
+                        <TextBlock Text="クイックアクション"
+                                  FontWeight="Bold"
+                                  Margin="0,0,0,4"/>
+                        <Button Content="お気に入り"
+                               Command="{Binding ToggleFavoriteCommand}"
+                               Margin="0,4"/>
+                        <Button Content="リジェクト"
+                               Command="{Binding ToggleRejectCommand}"
+                               Margin="0,4,0,16"/>
+
+                        <!-- ペア情報 -->
+                        <TextBlock Text="ペアファイル"
+                                  FontWeight="Bold"
+                                  Margin="0,0,0,4"
+                                  Visibility="{Binding SelectedPhoto.HasPair, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                        <TextBlock Text="{Binding SelectedPhoto.PairBadgeText}"
+                                  Margin="0,2"
+                                  Visibility="{Binding SelectedPhoto.HasPair, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                        <Button Content="ペアファイルを表示"
+                               Command="{Binding ShowPairedFileCommand}"
+                               Margin="0,4,0,16"
+                               Visibility="{Binding SelectedPhoto.HasPair, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+
+                        <!-- EXIF情報 -->
+                        <TextBlock Text="EXIF情報"
+                                  FontWeight="Bold"
+                                  Margin="0,0,0,8"/>
+
+                        <!-- 撮影日時 -->
+                        <StackPanel Margin="0,2">
+                            <TextBlock Text="撮影日時" FontSize="10" Foreground="Gray"/>
+                            <TextBlock Text="{Binding SelectedPhoto.DateTaken, StringFormat='yyyy/MM/dd HH:mm:ss'}"
+                                      TextWrapping="Wrap"/>
+                        </StackPanel>
+
+                        <!-- カメラ -->
+                        <StackPanel Margin="0,4"
+                                   Visibility="{Binding SelectedPhoto.CameraModel, Converter={StaticResource NullOrEmptyToCollapsedConverter}}">
+                            <TextBlock Text="カメラ" FontSize="10" Foreground="Gray"/>
+                            <TextBlock Text="{Binding SelectedPhoto.CameraModel}" TextWrapping="Wrap"/>
+                        </StackPanel>
+
+                        <!-- レンズ -->
+                        <StackPanel Margin="0,4"
+                                   Visibility="{Binding SelectedPhoto.LensModel, Converter={StaticResource NullOrEmptyToCollapsedConverter}}">
+                            <TextBlock Text="レンズ" FontSize="10" Foreground="Gray"/>
+                            <TextBlock Text="{Binding SelectedPhoto.LensModel}" TextWrapping="Wrap"/>
+                        </StackPanel>
+
+                        <!-- 絞り -->
+                        <StackPanel Margin="0,4"
+                                   Visibility="{Binding SelectedPhoto.Aperture, Converter={StaticResource NullOrEmptyToCollapsedConverter}}">
+                            <TextBlock Text="絞り" FontSize="10" Foreground="Gray"/>
+                            <TextBlock Text="{Binding SelectedPhoto.Aperture, StringFormat='F{0:0.0}'}"/>
+                        </StackPanel>
+
+                        <!-- シャッタースピード -->
+                        <StackPanel Margin="0,4"
+                                   Visibility="{Binding SelectedPhoto.ShutterSpeed, Converter={StaticResource NullOrEmptyToCollapsedConverter}}">
+                            <TextBlock Text="シャッタースピード" FontSize="10" Foreground="Gray"/>
+                            <TextBlock Text="{Binding SelectedPhoto.ShutterSpeed}"/>
+                        </StackPanel>
+
+                        <!-- ISO -->
+                        <StackPanel Margin="0,4"
+                                   Visibility="{Binding SelectedPhoto.ISO, Converter={StaticResource NullOrEmptyToCollapsedConverter}}">
+                            <TextBlock Text="ISO" FontSize="10" Foreground="Gray"/>
+                            <TextBlock Text="{Binding SelectedPhoto.ISO, StringFormat='ISO {0}'}"/>
+                        </StackPanel>
+
+                        <!-- 焦点距離 -->
+                        <StackPanel Margin="0,4"
+                                   Visibility="{Binding SelectedPhoto.FocalLength, Converter={StaticResource NullOrEmptyToCollapsedConverter}}">
+                            <TextBlock Text="焦点距離" FontSize="10" Foreground="Gray"/>
+                            <TextBlock Text="{Binding SelectedPhoto.FocalLength, StringFormat='{}{0:0}mm'}"/>
+                        </StackPanel>
+
+                        <!-- 露出補正 -->
+                        <StackPanel Margin="0,4"
+                                   Visibility="{Binding SelectedPhoto.ExposureCompensation, Converter={StaticResource NullOrEmptyToCollapsedConverter}}">
+                            <TextBlock Text="露出補正" FontSize="10" Foreground="Gray"/>
+                            <TextBlock Text="{Binding SelectedPhoto.ExposureCompensation, StringFormat='{}{0:+0.0;-0.0;0}EV'}"/>
+                        </StackPanel>
+
+                        <!-- 解像度 -->
+                        <StackPanel Margin="0,4,0,8">
+                            <TextBlock Text="解像度" FontSize="10" Foreground="Gray"/>
+                            <TextBlock>
+                                <TextBlock.Text>
+                                    <MultiBinding StringFormat="{}{0} × {1}">
+                                        <Binding Path="SelectedPhoto.Width"/>
+                                        <Binding Path="SelectedPhoto.Height"/>
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
+                        </StackPanel>
+
                     </StackPanel>
-
-                    <!-- クイックアクション -->
-                    <TextBlock Text="クイックアクション"
-                              FontWeight="Bold"
-                              Margin="0,16,0,4"/>
-                    <Button Content="お気に入り"
-                           Command="{Binding ToggleFavoriteCommand}"
-                           Margin="0,4"/>
-                    <Button Content="リジェクト"
-                           Command="{Binding ToggleRejectCommand}"
-                           Margin="0,4"/>
-
-                    <!-- ペア情報 -->
-                    <TextBlock Text="ペアファイル"
-                              FontWeight="Bold"
-                              Margin="0,16,0,4"
-                              Visibility="{Binding SelectedPhoto.HasPair, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                    <TextBlock Text="{Binding SelectedPhoto.PairBadgeText}"
-                              Margin="0,2"
-                              Visibility="{Binding SelectedPhoto.HasPair, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                    <Button Content="ペアファイルを表示"
-                           Command="{Binding ShowPairedFileCommand}"
-                           Margin="0,4"
-                           Visibility="{Binding SelectedPhoto.HasPair, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-
-                    <!-- EXIF情報 -->
-                    <TextBlock Text="EXIF情報"
-                              FontWeight="Bold"
-                              Margin="0,16,0,4"/>
-                    <TextBlock Text="{Binding SelectedPhoto.CameraModel, StringFormat='カメラ: {0}'}"
-                              Margin="0,2"/>
-                </StackPanel>
+                </ScrollViewer>
             </Border>
         </Grid>
 

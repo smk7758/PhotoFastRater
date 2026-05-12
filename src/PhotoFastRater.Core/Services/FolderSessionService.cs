@@ -54,62 +54,62 @@ public class FolderSessionService
         string folderPath,
         IProgress<int>? progress = null)
     {
-        var allFiles = Directory.GetFiles(folderPath, "*.*", SearchOption.AllDirectories);
-
-        var imageFiles = allFiles
-            .Where(f => _supportedExtensions.Contains(Path.GetExtension(f).ToLowerInvariant()))
-            .ToList();
-
-        var photos = new List<FolderSessionPhoto>();
-
-        for (int i = 0; i < imageFiles.Count; i++)
+        return await Task.Run(() =>
         {
-            try
+            var allFiles = Directory.GetFiles(folderPath, "*.*", SearchOption.AllDirectories);
+
+            var imageFiles = allFiles
+                .Where(f => _supportedExtensions.Contains(Path.GetExtension(f).ToLowerInvariant()))
+                .ToList();
+
+            var photos = new List<FolderSessionPhoto>();
+
+            for (int i = 0; i < imageFiles.Count; i++)
             {
-                var filePath = imageFiles[i];
-                var fileInfo = new FileInfo(filePath);
-
-                // EXIF情報を抽出
-                var photo = new FolderSessionPhoto
-                {
-                    FilePath = filePath,
-                    FileName = fileInfo.Name,
-                    FileSize = fileInfo.Length,
-                    DateTaken = fileInfo.LastWriteTime // デフォルトはファイル更新日時
-                };
-
-                // 簡易的なEXIF読み取り（詳細はExifServiceを使用）
                 try
                 {
-                    var exifPhoto = _exifService.ExtractExifData(filePath);
-                    photo.DateTaken = exifPhoto.DateTaken;
-                    photo.Width = exifPhoto.Width;
-                    photo.Height = exifPhoto.Height;
-                    photo.CameraModel = exifPhoto.CameraModel;
-                    photo.LensModel = exifPhoto.LensModel;
-                    photo.Aperture = exifPhoto.Aperture;
-                    photo.ShutterSpeed = exifPhoto.ShutterSpeed;
-                    photo.ISO = exifPhoto.ISO;
-                    photo.FocalLength = exifPhoto.FocalLength;
+                    var filePath = imageFiles[i];
+                    var fileInfo = new FileInfo(filePath);
+
+                    var photo = new FolderSessionPhoto
+                    {
+                        FilePath = filePath,
+                        FileName = fileInfo.Name,
+                        FileSize = fileInfo.Length,
+                        DateTaken = fileInfo.LastWriteTime
+                    };
+
+                    try
+                    {
+                        var exifPhoto = _exifService.ExtractExifData(filePath);
+                        photo.DateTaken = exifPhoto.DateTaken;
+                        photo.Width = exifPhoto.Width;
+                        photo.Height = exifPhoto.Height;
+                        photo.CameraModel = exifPhoto.CameraModel;
+                        photo.LensModel = exifPhoto.LensModel;
+                        photo.Aperture = exifPhoto.Aperture;
+                        photo.ShutterSpeed = exifPhoto.ShutterSpeed;
+                        photo.ISO = exifPhoto.ISO;
+                        photo.FocalLength = exifPhoto.FocalLength;
+                        photo.ExposureCompensation = exifPhoto.ExposureCompensation;
+                    }
+                    catch
+                    {
+                        // EXIF読み取りエラーは無視
+                    }
+
+                    photos.Add(photo);
+                    progress?.Report(i + 1);
                 }
                 catch
                 {
-                    // EXIF読み取りエラーは無視
+                    // エラーは無視して次へ
                 }
-
-                photos.Add(photo);
-                progress?.Report(i + 1);
             }
-            catch
-            {
-                // エラーは無視して次へ
-            }
-        }
 
-        // RAW+JPEGペアを検出
-        DetectRawJpegPairs(photos);
-
-        return photos;
+            DetectRawJpegPairs(photos);
+            return photos;
+        });
     }
 
     /// <summary>

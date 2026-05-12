@@ -81,6 +81,11 @@ public class FolderSessionPhoto
     public double? FocalLength { get; set; }
 
     /// <summary>
+    /// 露出補正
+    /// </summary>
+    public double? ExposureCompensation { get; set; }
+
+    /// <summary>
     /// サムネイルキャッシュパス
     /// </summary>
     public string? ThumbnailCachePath { get; set; }
