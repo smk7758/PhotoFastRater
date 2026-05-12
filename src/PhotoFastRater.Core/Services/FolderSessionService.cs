@@ -92,6 +92,8 @@ public class FolderSessionService
                         photo.ISO = exifPhoto.ISO;
                         photo.FocalLength = exifPhoto.FocalLength;
                         photo.ExposureCompensation = exifPhoto.ExposureCompensation;
+                        photo.Rating = exifPhoto.Rating;
+                        photo.IsRejected = exifPhoto.IsRejected;
                     }
                     catch
                     {

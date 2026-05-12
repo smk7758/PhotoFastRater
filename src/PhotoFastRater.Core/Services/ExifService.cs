@@ -1,5 +1,6 @@
 using MetadataExtractor;
 using MetadataExtractor.Formats.Exif;
+using MetadataExtractor.Formats.Xmp;
 using PhotoFastRater.Core.Models;
 using GeoLocation = MetadataExtractor.GeoLocation;
 
@@ -7,6 +8,13 @@ namespace PhotoFastRater.Core.Services;
 
 public class ExifService
 {
+    // XMP namespace URIs
+    private const string XmpNsAdobe = "http://ns.adobe.com/xap/1.0/";
+    private const string XmpNsMicrosoft = "http://ns.microsoft.com/photo/1.0/";
+
+    // Windows Photo Viewer の EXIF レーティングタグ (0x4746)
+    private const int TagWindowsRating = 0x4746;
+
     public Photo ExtractExifData(string filePath)
     {
         var directoryPath = Path.GetDirectoryName(filePath);
@@ -30,67 +38,42 @@ public class ExifService
 
             if (exifSubIfdDir != null)
             {
-                // 撮影日時
                 if (exifSubIfdDir.TryGetDateTime(ExifDirectoryBase.TagDateTimeOriginal, out var dateTaken))
-                {
                     photo.DateTaken = dateTaken;
-                }
 
-                // 露出情報
                 if (exifSubIfdDir.TryGetDouble(ExifDirectoryBase.TagFNumber, out var aperture))
-                {
                     photo.Aperture = aperture;
-                }
 
                 if (exifSubIfdDir.TryGetInt32(ExifDirectoryBase.TagIsoEquivalent, out var iso))
-                {
                     photo.ISO = iso;
-                }
 
                 if (exifSubIfdDir.TryGetDouble(ExifDirectoryBase.TagFocalLength, out var focalLength))
-                {
                     photo.FocalLength = focalLength;
-                }
 
                 if (exifSubIfdDir.TryGetDouble(ExifDirectoryBase.TagExposureBias, out var exposureComp))
-                {
                     photo.ExposureCompensation = exposureComp;
-                }
 
-                // シャッタースピード
                 var shutterSpeed = exifSubIfdDir.GetDescription(ExifDirectoryBase.TagExposureTime);
                 if (shutterSpeed != null)
-                {
                     photo.ShutterSpeed = shutterSpeed;
-                }
 
-                // 画像サイズ
                 if (exifSubIfdDir.TryGetInt32(ExifDirectoryBase.TagExifImageWidth, out var width))
-                {
                     photo.Width = width;
-                }
 
                 if (exifSubIfdDir.TryGetInt32(ExifDirectoryBase.TagExifImageHeight, out var height))
-                {
                     photo.Height = height;
-                }
             }
 
             if (exifIfd0Dir != null)
             {
-                // カメラ情報
                 photo.CameraMake = exifIfd0Dir.GetDescription(ExifDirectoryBase.TagMake);
                 photo.CameraModel = exifIfd0Dir.GetDescription(ExifDirectoryBase.TagModel);
             }
 
-            // レンズ情報
             var lensDir = directories.OfType<ExifSubIfdDirectory>().FirstOrDefault();
             if (lensDir != null)
-            {
                 photo.LensModel = lensDir.GetDescription(ExifDirectoryBase.TagLensModel);
-            }
 
-            // GPS情報
             var gpsDir = directories.OfType<GpsDirectory>().FirstOrDefault();
             if (gpsDir != null)
             {
@@ -101,21 +84,75 @@ public class ExifService
                     photo.Longitude = location.Value.Longitude;
                 }
             }
+
+            // レーティング情報の読み取り
+            ExtractRating(directories, exifIfd0Dir, photo);
         }
         catch
         {
-            // EXIF読み取り失敗時はデフォルト値を使用
             photo.DateTaken = File.GetCreationTime(filePath);
         }
 
         return photo;
     }
 
-    /// <summary>
-    /// Parses various tags in an attempt to obtain a single object representing the latitude and longitude
-    /// at which this image was captured.
-    /// </summary>
-    /// <returns>The geographical location of this image, or null if location could not be determined.</returns>
+    private static void ExtractRating(
+        IReadOnlyList<MetadataExtractor.Directory> directories,
+        ExifIfd0Directory? exifIfd0Dir,
+        Photo photo)
+    {
+        // 優先度 1: XMP xmp:Rating (Lightroom / Capture One / Adobe 標準)
+        // xmp:Rating = -1:リジェクト, 0:未評価, 1-5:星評価
+        var xmpDir = directories.OfType<XmpDirectory>().FirstOrDefault();
+        if (xmpDir?.XmpMeta != null)
+        {
+            // 優先度 1: XMP xmp:Rating (Lightroom / Capture One / Adobe 標準)
+            try
+            {
+                var ratingStr = xmpDir.XmpMeta.GetPropertyString(XmpNsAdobe, "Rating");
+                if (ratingStr != null && int.TryParse(ratingStr, out var xmpRating))
+                {
+                    if (xmpRating == -1)
+                        photo.IsRejected = true;
+                    else if (xmpRating >= 1 && xmpRating <= 5)
+                        photo.Rating = xmpRating;
+                    return;
+                }
+            }
+            catch { /* XmpException は無視 */ }
+
+            // 優先度 2: XMP MicrosoftPhoto:Rating (Windows フォトアプリ / OneDrive)
+            try
+            {
+                var msStr = xmpDir.XmpMeta.GetPropertyString(XmpNsMicrosoft, "Rating");
+                if (msStr != null && int.TryParse(msStr, out var msRating)
+                    && msRating >= 1 && msRating <= 5)
+                {
+                    photo.Rating = msRating;
+                    return;
+                }
+            }
+            catch { /* XmpException は無視 */ }
+        }
+
+        // 優先度 3: EXIF タグ 0x4746 (Windows フォトビューアー)
+        // 値: 1→1★, 25→2★, 50→3★, 75→4★, 99→5★
+        if (exifIfd0Dir != null && exifIfd0Dir.TryGetInt32(TagWindowsRating, out var winRating))
+        {
+            photo.Rating = MapWindowsExifRating(winRating);
+        }
+    }
+
+    private static int MapWindowsExifRating(int windowsValue) => windowsValue switch
+    {
+        >= 99 => 5,
+        >= 75 => 4,
+        >= 50 => 3,
+        >= 25 => 2,
+        >= 1  => 1,
+        _     => 0
+    };
+
     private GeoLocation? GetGeoLocation(GpsDirectory gpsDir)
     {
         return gpsDir.TryGetGeoLocation(out GeoLocation geoLocation) ? geoLocation : null;
