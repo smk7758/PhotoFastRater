@@ -139,9 +139,17 @@ cd photo-fast-rater
 
 # ビルド
 dotnet build
+dotnet build src/PhotoFastRater.UI
 
 # 実行
 dotnet run --project src/PhotoFastRater.UI
+
+# フォルダモードで起動
+dotnet run --project src/PhotoFastRater.UI --folder
+dotnet run --project src/PhotoFastRater.UI --folder "C:\path\to\photos"
+
+# リリースビルド
+dotnet publish src/PhotoFastRater.UI -c Release -r win-x64 --self-contained
 ```
 
 ### データベースマイグレーション

@@ -30,13 +30,16 @@ public partial class App : System.Windows.Application
 
         var args = e.Args;
 
-        if (args.Length >= 2 && args[0] == "--folder")
+        if (args.Length >= 1 && args[0] == "--folder")
         {
             // フォルダモードで起動
-            var folderPath = args[1];
+            var folderPath = args.Length >= 2 ? args[1] : null;
             var folderWindow = _serviceProvider.GetRequiredService<FolderModeWindow>();
-            folderWindow.LoadFolder(folderPath);
             folderWindow.Show();
+            if (!string.IsNullOrEmpty(folderPath))
+                folderWindow.LoadFolder(folderPath);
+            else
+                folderWindow.OpenFolderDialog();
         }
         else
         {
@@ -111,10 +114,12 @@ public partial class App : System.Windows.Application
         services.AddTransient<ManagedFoldersViewModel>();
         services.AddTransient<FolderModeViewModel>();
         services.AddSingleton<SettingsViewModel>();
+        services.AddTransient<FolderModeSettingsViewModel>();
 
         // Views
         services.AddTransient<MainWindow>();
         services.AddTransient<FolderModeWindow>();
+        services.AddTransient<FolderModeSettingsWindow>();
     }
 
     private (CacheConfiguration, UIConfiguration) LoadConfiguration()

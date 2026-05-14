@@ -1,5 +1,6 @@
 using MetadataExtractor;
 using MetadataExtractor.Formats.Exif;
+using MetadataExtractor.Formats.Jpeg;
 using MetadataExtractor.Formats.Xmp;
 using PhotoFastRater.Core.Models;
 using GeoLocation = MetadataExtractor.GeoLocation;
@@ -57,17 +58,30 @@ public class ExifService
                 if (shutterSpeed != null)
                     photo.ShutterSpeed = shutterSpeed;
 
-                if (exifSubIfdDir.TryGetInt32(ExifDirectoryBase.TagExifImageWidth, out var width))
-                    photo.Width = width;
-
-                if (exifSubIfdDir.TryGetInt32(ExifDirectoryBase.TagExifImageHeight, out var height))
-                    photo.Height = height;
             }
 
             if (exifIfd0Dir != null)
             {
                 photo.CameraMake = exifIfd0Dir.GetDescription(ExifDirectoryBase.TagMake);
                 photo.CameraModel = exifIfd0Dir.GetDescription(ExifDirectoryBase.TagModel);
+            }
+
+            // 解像度: 優先度1=JpegDirectory(SOFヘッダー), 2=IFD0, 3=SubIFD
+            var jpegDir = directories.OfType<JpegDirectory>().FirstOrDefault();
+            if (jpegDir != null)
+            {
+                if (jpegDir.TryGetInt32(JpegDirectory.TagImageWidth, out var jw) && jw > 0) photo.Width = jw;
+                if (jpegDir.TryGetInt32(JpegDirectory.TagImageHeight, out var jh) && jh > 0) photo.Height = jh;
+            }
+            if (photo.Width == 0 && exifIfd0Dir != null)
+            {
+                if (exifIfd0Dir.TryGetInt32(ExifDirectoryBase.TagImageWidth, out var iw) && iw > 0) photo.Width = iw;
+                if (exifIfd0Dir.TryGetInt32(ExifDirectoryBase.TagImageHeight, out var ih) && ih > 0) photo.Height = ih;
+            }
+            if (photo.Width == 0 && exifSubIfdDir != null)
+            {
+                if (exifSubIfdDir.TryGetInt32(ExifDirectoryBase.TagExifImageWidth, out var sw) && sw > 0) photo.Width = sw;
+                if (exifSubIfdDir.TryGetInt32(ExifDirectoryBase.TagExifImageHeight, out var sh) && sh > 0) photo.Height = sh;
             }
 
             var lensDir = directories.OfType<ExifSubIfdDirectory>().FirstOrDefault();

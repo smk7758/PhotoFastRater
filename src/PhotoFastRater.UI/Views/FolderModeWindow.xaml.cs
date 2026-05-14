@@ -20,6 +20,14 @@ public partial class FolderModeWindow : Window
         }
     }
 
+    public void OpenFolderDialog()
+    {
+        if (DataContext is FolderModeViewModel viewModel)
+        {
+            viewModel.OpenFolderCommand.Execute(null);
+        }
+    }
+
     private void Window_DragOver(object sender, System.Windows.DragEventArgs e)
     {
         e.Effects = e.Data.GetDataPresent(System.Windows.DataFormats.FileDrop)
@@ -34,5 +42,11 @@ public partial class FolderModeWindow : Window
         var folder = paths.FirstOrDefault(Directory.Exists);
         if (folder != null && DataContext is FolderModeViewModel viewModel)
             await viewModel.LoadFolderAsync(folder);
+    }
+
+    private void Window_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (DataContext is FolderModeViewModel viewModel && PhotoGrid != null)
+            viewModel.NotifyGridWidth(PhotoGrid.ActualWidth);
     }
 }

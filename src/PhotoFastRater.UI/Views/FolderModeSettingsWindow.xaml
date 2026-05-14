@@ -1,0 +1,70 @@
+<Window x:Class="PhotoFastRater.UI.Views.FolderModeSettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        Title="フォルダモード設定"
+        Width="420" SizeToContent="Height"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        Style="{StaticResource MaterialDesignWindow}">
+    <StackPanel Margin="20">
+
+        <!-- サムネイルサイズ -->
+        <TextBlock Text="デフォルトサムネイルサイズ" Style="{StaticResource MaterialDesignSubtitle1TextBlock}" Margin="0,0,0,4"/>
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+            <Slider x:Name="ThumbnailSlider"
+                    Minimum="100" Maximum="600"
+                    Value="{Binding DefaultThumbnailSize}"
+                    Width="280" VerticalAlignment="Center"/>
+            <TextBlock Text="{Binding DefaultThumbnailSize, StringFormat={}{0}px}"
+                       VerticalAlignment="Center" Margin="12,0,0,0" Width="55"/>
+        </StackPanel>
+
+        <Separator Margin="0,0,0,12"/>
+
+        <!-- RAW+JPEGグループ化 -->
+        <CheckBox Content="RAW+JPEGを1アイテムにまとめて表示（クリックで展開）"
+                  IsChecked="{Binding GroupRawJpeg}"
+                  Style="{StaticResource MaterialDesignCheckBox}"
+                  Margin="0,0,0,16"/>
+
+        <Separator Margin="0,0,0,12"/>
+
+        <!-- 写真アイテムのEXIF表示 -->
+        <CheckBox Content="写真アイテムの名前欄にEXIF情報を表示"
+                  IsChecked="{Binding ShowExifInItem}"
+                  x:Name="ShowExifCheckBox"
+                  Style="{StaticResource MaterialDesignCheckBox}"
+                  Margin="0,0,0,8"/>
+
+        <StackPanel Margin="24,0,0,16"
+                    IsEnabled="{Binding IsChecked, ElementName=ShowExifCheckBox}">
+            <CheckBox Content="レンズ名"
+                      IsChecked="{Binding ExifShowLens}"
+                      Style="{StaticResource MaterialDesignCheckBox}"
+                      Margin="0,4"/>
+            <CheckBox Content="撮影設定（F値 / シャッタースピード / ISO）"
+                      IsChecked="{Binding ExifShowSettings}"
+                      Style="{StaticResource MaterialDesignCheckBox}"
+                      Margin="0,4"/>
+            <CheckBox Content="撮影日時"
+                      IsChecked="{Binding ExifShowDate}"
+                      Style="{StaticResource MaterialDesignCheckBox}"
+                      Margin="0,4"/>
+            <CheckBox Content="カメラ機種名"
+                      IsChecked="{Binding ExifShowCamera}"
+                      Style="{StaticResource MaterialDesignCheckBox}"
+                      Margin="0,4"/>
+        </StackPanel>
+
+        <!-- ボタン -->
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+            <Button Content="キャンセル" Click="Cancel_Click"
+                    Style="{StaticResource MaterialDesignFlatButton}"
+                    Margin="0,0,8,0"/>
+            <Button Content="保存して閉じる" Click="Save_Click"
+                    Style="{StaticResource MaterialDesignRaisedButton}"/>
+        </StackPanel>
+
+    </StackPanel>
+</Window>

@@ -66,6 +66,32 @@ public partial class FolderSessionPhotoViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isSelected;
 
+    /// <summary>
+    /// RAW+JPEGペアで展開表示中かどうか（JPEGプライマリのみ使用）
+    /// </summary>
+    [ObservableProperty]
+    private bool _isExpanded;
+
+    /// <summary>
+    /// 撮影設定サマリー (例: "f/1.8  1/500s  ISO400")
+    /// </summary>
+    public string SettingsSummary
+    {
+        get
+        {
+            var parts = new List<string>();
+            if (Aperture.HasValue) parts.Add($"f/{Aperture.Value:0.0}");
+            if (!string.IsNullOrEmpty(ShutterSpeed)) parts.Add(ShutterSpeed);
+            if (ISO.HasValue) parts.Add($"ISO{ISO.Value}");
+            return string.Join("  ", parts);
+        }
+    }
+
+    /// <summary>
+    /// 撮影日時テキスト
+    /// </summary>
+    public string DateTakenText => DateTaken == default ? string.Empty : DateTaken.ToString("yyyy/MM/dd");
+
     public FolderSessionPhotoViewModel(FolderSessionPhoto photo)
     {
         _photo = photo;
