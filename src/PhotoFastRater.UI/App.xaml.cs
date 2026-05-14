@@ -192,6 +192,14 @@ public partial class App : System.Windows.Application
         return (cacheConfig, uiConfig);
     }
 
+    private void App_DispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
+    {
+        System.Windows.MessageBox.Show(
+            $"予期しないエラーが発生しました:\n\n{e.Exception.Message}\n\n{e.Exception.GetType().Name}",
+            "エラー", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+        e.Handled = true;
+    }
+
     protected override void OnExit(ExitEventArgs e)
     {
         _serviceProvider?.Dispose();
