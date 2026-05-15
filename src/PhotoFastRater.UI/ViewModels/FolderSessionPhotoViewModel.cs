@@ -59,6 +59,12 @@ public partial class FolderSessionPhotoViewModel : ViewModelBase
         }
     }
 
+    public void TriggerFullImageLoad()
+    {
+        if (_fullImage == null && !_fullImageLoading)
+            _ = LoadFullImageAsync();
+    }
+
     private async Task LoadFullImageAsync()
     {
         _fullImageLoading = true;

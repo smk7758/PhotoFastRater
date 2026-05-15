@@ -25,6 +25,7 @@ public partial class FolderModeViewModel : ViewModelBase
     private readonly Services.ExifWriteService _exifWriteService;
 
     public event Action? ShortcutsUpdated;
+    public event Action<bool>? BoundaryReached;
 
     // フォルダモード設定
     private FolderModeSettingsViewModel _settings = new();
@@ -67,6 +68,10 @@ public partial class FolderModeViewModel : ViewModelBase
 
     // 元画像表示切替
     [ObservableProperty] private bool _showOriginalImages = false;
+
+    // 写真アイテム表示モード
+    [ObservableProperty] private bool _uniformPhotoSize = false;
+    [ObservableProperty] private bool _nameLabelBelow = false;
 
     // フィルター適用済み表示コレクション
     public ObservableCollection<FolderSessionPhotoViewModel> DisplayPhotos { get; } = new();
@@ -189,44 +194,60 @@ public partial class FolderModeViewModel : ViewModelBase
         try
         {
             FolderPath = folderPath;
-            CurrentSession = await _sessionService.CreateSessionAsync(folderPath);
 
-            if (CurrentSession.Photos.Count == 0)
-            {
-                var progress = new Progress<int>(count =>
-                {
-                    StatusText = $"写真を読み込み中: {count}枚";
-                });
-                var photos = await _sessionService.LoadPhotosAsync(folderPath, progress);
-                CurrentSession.Photos = photos;
-            }
+            // キャッシュ済みセッションのレーティングを引継ぎ用に読む
+            var cachedSession = await _sessionService.LoadSessionAsync(folderPath);
 
+            // プログレッシブ表示: スキャン中に写真を逐次追加
             Photos.Clear();
-            var allVms = new List<FolderSessionPhotoViewModel>(CurrentSession.Photos.Count);
-            foreach (var photo in CurrentSession.Photos)
+            DisplayPhotos.Clear();
+
+            var uiProgress = new Progress<FolderSessionPhoto>(photo =>
             {
                 var photoVm = new FolderSessionPhotoViewModel(photo);
                 Photos.Add(photoVm);
-                allVms.Add(photoVm);
-            }
+                DisplayPhotos.Add(photoVm);
+                _ = LoadThumbnailIfMissingAsync(photoVm);
+            });
 
-            // フェーズ1: 最初の表示範囲推定分を即座にロード
-            var initialCount = Math.Min(50, allVms.Count);
-            for (int i = 0; i < initialCount; i++)
-                _ = LoadThumbnailAsync(allVms[i]);
+            var countProgress = new Progress<int>(count => StatusText = $"写真を読み込み中: {count}枚");
 
-            // フェーズ2: 残りは少し遅延させてロード（フェーズ1を優先）
-            if (allVms.Count > initialCount)
+            // 常に新鮮なスキャンを実行
+            var photos = await _sessionService.LoadPhotosAsync(folderPath, countProgress, uiProgress);
+
+            // キャッシュされたレーティングを引き継ぐ
+            if (cachedSession != null)
             {
-                var remaining = allVms.Skip(initialCount).ToList();
-                _ = Task.Run(async () =>
+                var ratingMap = cachedSession.Photos.ToDictionary(p => p.FilePath);
+                foreach (var photo in photos)
                 {
-                    await Task.Delay(300);
-                    foreach (var vm in remaining)
-                        _ = LoadThumbnailAsync(vm);
-                });
+                    if (ratingMap.TryGetValue(photo.FilePath, out var cached))
+                    {
+                        photo.Rating = cached.Rating;
+                        photo.IsFavorite = cached.IsFavorite;
+                        photo.IsRejected = cached.IsRejected;
+                    }
+                }
+                // VM にも反映
+                foreach (var vm in Photos)
+                {
+                    if (ratingMap.TryGetValue(vm.FilePath, out var cached))
+                    {
+                        vm.Rating = cached.Rating;
+                        vm.IsFavorite = cached.IsFavorite;
+                        vm.IsRejected = cached.IsRejected;
+                    }
+                }
             }
 
+            CurrentSession = new FolderSession
+            {
+                FolderPath = folderPath,
+                CreatedDate = DateTime.Now,
+                Photos = photos
+            };
+
+            // 全スキャン完了後にフィルター適用・統計更新
             RefreshDisplayPhotos();
             BuildPhotoTree();
             UpdateStatistics();
@@ -546,6 +567,8 @@ public partial class FolderModeViewModel : ViewModelBase
         var currentIndex = DisplayPhotos.IndexOf(SelectedPhoto!);
         if (currentIndex > 0)
             SelectPhoto(DisplayPhotos[currentIndex - 1]);
+        else
+            NotifyBoundary(atStart: true);
     }
 
     [RelayCommand]
@@ -555,6 +578,40 @@ public partial class FolderModeViewModel : ViewModelBase
         var currentIndex = DisplayPhotos.IndexOf(SelectedPhoto!);
         if (currentIndex < DisplayPhotos.Count - 1)
             SelectPhoto(DisplayPhotos[currentIndex + 1]);
+        else
+            NotifyBoundary(atStart: false);
+    }
+
+    [RelayCommand]
+    private void NavigateHome()
+    {
+        if (DisplayPhotos.Count > 0)
+            SelectPhoto(DisplayPhotos[0]);
+    }
+
+    [RelayCommand]
+    private void NavigateEnd()
+    {
+        if (DisplayPhotos.Count > 0)
+            SelectPhoto(DisplayPhotos[DisplayPhotos.Count - 1]);
+    }
+
+    private CancellationTokenSource? _boundaryCts;
+
+    private async void NotifyBoundary(bool atStart)
+    {
+        BoundaryReached?.Invoke(atStart);
+        _boundaryCts?.Cancel();
+        _boundaryCts = new CancellationTokenSource();
+        var token = _boundaryCts.Token;
+        StatusText = atStart ? "◀ 最初の写真です" : "最後の写真です ▶";
+        try
+        {
+            await Task.Delay(1500, token);
+            if (!token.IsCancellationRequested)
+                StatusText = $"{TotalPhotos}枚の写真";
+        }
+        catch (TaskCanceledException) { }
     }
 
     private bool CanNavigate()
@@ -657,50 +714,29 @@ public partial class FolderModeViewModel : ViewModelBase
             };
             monthNode.Children.Add(dayNode);
 
-            var photosByFolder = dateGroup
-                .GroupBy(p => Path.GetDirectoryName(p.FilePath) ?? "")
-                .ToList();
-
-            foreach (var folderGroup in photosByFolder)
+            // 同一日付の写真を直接 Day ノードの Photos にフラットに格納
+            foreach (var photoVm in dateGroup)
             {
-                var folderPath = folderGroup.Key;
-                var folderName = !string.IsNullOrEmpty(folderPath) ? Path.GetFileName(folderPath) : "(フォルダなし)";
-
-                var folderNode = new PhotoTreeNode
+                var photoModel = new Photo
                 {
-                    NodeType = TreeNodeType.Folder,
-                    Year = date.Year,
-                    Month = date.Month,
-                    Day = date.Day,
-                    FolderPath = folderPath,
-                    DisplayName = folderName
+                    FilePath = photoVm.FilePath,
+                    FileName = photoVm.FileName,
+                    DateTaken = photoVm.GetModel().DateTaken,
+                    Rating = photoVm.Rating,
+                    IsFavorite = photoVm.IsFavorite,
+                    IsRejected = photoVm.IsRejected,
+                    CameraModel = photoVm.CameraModel
                 };
 
-                foreach (var photoVm in folderGroup)
+                var treePhotoVm = new PhotoViewModel(photoModel)
                 {
-                    var photoModel = new Photo
-                    {
-                        FilePath = photoVm.FilePath,
-                        FileName = photoVm.FileName,
-                        DateTaken = photoVm.GetModel().DateTaken,
-                        Rating = photoVm.Rating,
-                        IsFavorite = photoVm.IsFavorite,
-                        IsRejected = photoVm.IsRejected,
-                        CameraModel = photoVm.CameraModel
-                    };
-
-                    var treePhotoVm = new PhotoViewModel(photoModel)
-                    {
-                        Rating = photoVm.Rating,
-                        IsFavorite = photoVm.IsFavorite,
-                        IsRejected = photoVm.IsRejected,
-                        Thumbnail = photoVm.Thumbnail
-                    };
-                    folderNode.Photos.Add(treePhotoVm);
-                    _ = LoadTreeThumbnailAsync(treePhotoVm);
-                }
-
-                dayNode.Children.Add(folderNode);
+                    Rating = photoVm.Rating,
+                    IsFavorite = photoVm.IsFavorite,
+                    IsRejected = photoVm.IsRejected,
+                    Thumbnail = photoVm.Thumbnail
+                };
+                dayNode.Photos.Add(treePhotoVm);
+                _ = LoadTreeThumbnailAsync(treePhotoVm);
             }
         }
     }

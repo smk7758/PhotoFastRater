@@ -79,11 +79,22 @@
                     Margin="4,0"/>
             <TextBlock Text="原画像"
                        VerticalAlignment="Center"/>
-            <!-- Content="原画像" -->
             <ToggleButton
                 IsChecked="{Binding ShowOriginalImages}"
                 Margin="4,0"
                 Padding="12,6"/>
+            <Separator Margin="8,0"/>
+            <ToggleButton Content="同一サイズ"
+                          IsChecked="{Binding UniformPhotoSize}"
+                          Margin="4,0"
+                          Padding="12,6"/>
+            <ToggleButton Content="名前下表示"
+                          IsChecked="{Binding NameLabelBelow}"
+                          Margin="4,0"
+                          Padding="12,6"/>
+            <Button Content="プレビュー"
+                    Click="OpenPreview_Click"
+                    Margin="4,0"/>
             <Separator Margin="8,0"/>
             <Button Content="設定"
                     Command="{Binding OpenSettingsCommand}"
@@ -212,8 +223,13 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
                             <Grid>
-                                <Border Width="{Binding DataContext.ThumbnailSize, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                        Margin="4"
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <Border Grid.Row="0"
+                                        Width="{Binding DataContext.ThumbnailSize, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                        Margin="4,4,4,0"
                                         BorderThickness="2"
                                         Cursor="Hand"
                                         Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=Window}}">
@@ -221,6 +237,8 @@
                                         <MultiBinding Converter="{StaticResource AspectRatioToHeightConverter}">
                                             <Binding Path="PhotoAspectRatio"/>
                                             <Binding Path="DataContext.ThumbnailSize"
+                                                     RelativeSource="{RelativeSource AncestorType=ItemsControl}"/>
+                                            <Binding Path="DataContext.UniformPhotoSize"
                                                      RelativeSource="{RelativeSource AncestorType=ItemsControl}"/>
                                         </MultiBinding>
                                     </Border.Height>
@@ -320,9 +338,12 @@
                                                        Foreground="White"
                                                        FontSize="9"/>
                                         </Border>
-                                        <!-- ファイル名 + EXIF -->
+                                        <!-- ファイル名 + EXIF (オーバーレイ: NameLabelBelow=False のとき表示) -->
                                         <StackPanel VerticalAlignment="Bottom"
-                                                    Background="#BB000000">
+                                                    Background="#BB000000"
+                                                    Visibility="{Binding DataContext.NameLabelBelow,
+                                                        RelativeSource={RelativeSource AncestorType=ItemsControl},
+                                                        Converter={StaticResource InverseBooleanToVisibilityConverter}}">
                                             <TextBlock Text="{Binding FileName}"
                                                        Foreground="White"
                                                        FontSize="10"
@@ -367,13 +388,34 @@
                                             </StackPanel>
                                             <StackPanel Orientation="Horizontal"
                                                         Margin="4,0,4,2">
-                                                <TextBlock Text="★"
-                                                           Foreground="Yellow"
-                                                           FontSize="11"/>
+                                                <TextBlock FontSize="11">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Text" Value="★"/>
+                                                            <Setter Property="Foreground" Value="Yellow"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Rating}" Value="0">
+                                                                    <Setter Property="Text" Value="☆"/>
+                                                                    <Setter Property="Foreground" Value="Gray"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
                                                 <TextBlock Text="{Binding Rating}"
-                                                           Foreground="White"
                                                            FontSize="10"
-                                                           Margin="2,0"/>
+                                                           Margin="2,0">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Foreground" Value="White"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Rating}" Value="0">
+                                                                    <Setter Property="Foreground" Value="Gray"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
                                                 <TextBlock Text="♥"
                                                            Foreground="Red"
                                                            FontSize="11"
@@ -388,69 +430,136 @@
                                         </StackPanel>
                                     </Grid>
                                 </Border>
+                                <!-- 名前下表示エリア (NameLabelBelow=True のとき表示) -->
+                                <Border Grid.Row="1"
+                                        Background="{DynamicResource MaterialDesignPaper}"
+                                        Padding="4,2"
+                                        Width="{Binding DataContext.ThumbnailSize, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                        Visibility="{Binding DataContext.NameLabelBelow,
+                                            RelativeSource={RelativeSource AncestorType=ItemsControl},
+                                            Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <StackPanel>
+                                    <TextBlock Text="{Binding FileName}"
+                                               FontSize="10"
+                                               TextTrimming="CharacterEllipsis"/>
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock FontSize="11">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Text" Value="★"/>
+                                                    <Setter Property="Foreground" Value="#FFB300"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Rating}" Value="0">
+                                                            <Setter Property="Text" Value="☆"/>
+                                                            <Setter Property="Foreground" Value="Gray"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                        <TextBlock Text="{Binding Rating}"
+                                                   FontSize="10"
+                                                   Margin="2,0">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Rating}" Value="0">
+                                                            <Setter Property="Foreground" Value="Gray"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                        <TextBlock Text="♥"
+                                                   Foreground="Red"
+                                                   FontSize="11"
+                                                   Margin="8,0,0,0"
+                                                   Visibility="{Binding IsFavorite, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                        <TextBlock Text="✕"
+                                                   Foreground="OrangeRed"
+                                                   FontSize="11"
+                                                   Margin="8,0,0,0"
+                                                   Visibility="{Binding IsRejected, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                    </StackPanel>
+                                    </StackPanel>
+                                </Border>
                             </Grid>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </ScrollViewer>
 
-            <!-- ツリー表示 -->
-            <TreeView Grid.Column="0"
-                      ItemsSource="{Binding PhotoTree}"
-                      Visibility="{Binding IsTreeViewMode, Converter={StaticResource BooleanToVisibilityConverter}}">
-                <TreeView.ItemTemplate>
-                    <HierarchicalDataTemplate ItemsSource="{Binding Children}">
-                        <TextBlock Text="{Binding DisplayNameWithCount}"
-                                   Margin="0,0,8,0"/>
-                        <HierarchicalDataTemplate.ItemTemplate>
-                            <HierarchicalDataTemplate ItemsSource="{Binding Children}">
-                                <TextBlock Text="{Binding DisplayNameWithCount}"
-                                           Margin="0,0,8,0"/>
-                                <HierarchicalDataTemplate.ItemTemplate>
-                                    <HierarchicalDataTemplate ItemsSource="{Binding Children}">
-                                        <TextBlock Text="{Binding DisplayNameWithCount}"
-                                                   Margin="0,0,8,0"/>
-                                        <HierarchicalDataTemplate.ItemTemplate>
-                                            <HierarchicalDataTemplate ItemsSource="{Binding Photos}">
-                                                <TextBlock Text="{Binding DisplayNameWithCount}"
-                                                           Margin="0,0,8,0"/>
-                                                <HierarchicalDataTemplate.ItemTemplate>
-                                                    <DataTemplate>
-                                                        <Border Width="120"
-                                                                Height="120"
-                                                                Margin="4"
-                                                                BorderBrush="Gray"
-                                                                BorderThickness="1"
-                                                                Cursor="Hand">
-                                                            <Border.InputBindings>
-                                                                <MouseBinding MouseAction="LeftDoubleClick"
-                                                                              Command="{Binding DataContext.OpenTreePhotoCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                              CommandParameter="{Binding}"/>
-                                                            </Border.InputBindings>
-                                                            <Grid>
-                                                                <Image Source="{Binding Thumbnail}"
-                                                                       Stretch="Uniform"/>
-                                                                <StackPanel VerticalAlignment="Bottom"
-                                                                            Background="#80000000">
-                                                                    <TextBlock Text="{Binding FileName}"
-                                                                               Foreground="White"
-                                                                               FontSize="8"
-                                                                               TextTrimming="CharacterEllipsis"
-                                                                               Margin="2"/>
-                                                                </StackPanel>
-                                                            </Grid>
-                                                        </Border>
-                                                    </DataTemplate>
-                                                </HierarchicalDataTemplate.ItemTemplate>
-                                            </HierarchicalDataTemplate>
-                                        </HierarchicalDataTemplate.ItemTemplate>
-                                    </HierarchicalDataTemplate>
-                                </HierarchicalDataTemplate.ItemTemplate>
-                            </HierarchicalDataTemplate>
-                        </HierarchicalDataTemplate.ItemTemplate>
-                    </HierarchicalDataTemplate>
-                </TreeView.ItemTemplate>
-            </TreeView>
+            <!-- ツリー表示 (Year → Month → Day グリッド) -->
+            <ScrollViewer Grid.Column="0"
+                          VerticalScrollBarVisibility="Auto"
+                          Visibility="{Binding IsTreeViewMode, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <TreeView ItemsSource="{Binding PhotoTree}">
+                    <TreeView.ItemTemplate>
+                        <!-- Year ノード -->
+                        <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                            <TextBlock Text="{Binding DisplayNameWithCount}"
+                                       FontWeight="Bold"
+                                       Margin="0,0,8,0"/>
+                            <HierarchicalDataTemplate.ItemTemplate>
+                                <!-- Month ノード -->
+                                <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                                    <TextBlock Text="{Binding DisplayNameWithCount}"
+                                               Margin="0,0,8,0"/>
+                                    <HierarchicalDataTemplate.ItemTemplate>
+                                        <!-- Day ノード: Expander + WrapPanel で写真をグリッド表示 -->
+                                        <DataTemplate>
+                                            <Expander IsExpanded="True"
+                                                      Margin="0,4">
+                                                <Expander.Header>
+                                                    <TextBlock Text="{Binding DisplayNameWithCount}"
+                                                               FontWeight="SemiBold"/>
+                                                </Expander.Header>
+                                                <ItemsControl ItemsSource="{Binding Photos}"
+                                                              Margin="8,4,0,4">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <WrapPanel/>
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Border Width="100"
+                                                                    Height="100"
+                                                                    Margin="2"
+                                                                    BorderBrush="Gray"
+                                                                    BorderThickness="1"
+                                                                    Cursor="Hand">
+                                                                <Border.InputBindings>
+                                                                    <MouseBinding MouseAction="LeftDoubleClick"
+                                                                                  Command="{Binding DataContext.OpenTreePhotoCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                                  CommandParameter="{Binding}"/>
+                                                                </Border.InputBindings>
+                                                                <Grid>
+                                                                    <Image Source="{Binding Thumbnail}"
+                                                                           Stretch="Uniform"/>
+                                                                    <StackPanel VerticalAlignment="Bottom"
+                                                                                Background="#80000000">
+                                                                        <TextBlock Text="{Binding FileName}"
+                                                                                   Foreground="White"
+                                                                                   FontSize="8"
+                                                                                   TextTrimming="CharacterEllipsis"
+                                                                                   Margin="2"/>
+                                                                    </StackPanel>
+                                                                </Grid>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </Expander>
+                                        </DataTemplate>
+                                    </HierarchicalDataTemplate.ItemTemplate>
+                                </HierarchicalDataTemplate>
+                            </HierarchicalDataTemplate.ItemTemplate>
+                        </HierarchicalDataTemplate>
+                    </TreeView.ItemTemplate>
+                </TreeView>
+            </ScrollViewer>
 
             <!-- サイドパネル -->
             <Border Grid.Column="1"

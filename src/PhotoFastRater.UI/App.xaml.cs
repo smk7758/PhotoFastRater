@@ -128,6 +128,7 @@ public partial class App : System.Windows.Application
         services.AddTransient<MainWindow>();
         services.AddTransient<FolderModeWindow>();
         services.AddTransient<FolderModeSettingsWindow>();
+        services.AddTransient<PhotoPreviewWindow>();
     }
 
     private (CacheConfiguration, UIConfiguration) LoadConfiguration()

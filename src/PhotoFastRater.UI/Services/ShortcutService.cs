@@ -28,6 +28,8 @@ public class ShortcutService
         new() { CommandName = "ToggleFavorite", DisplayName = "お気に入りトグル",       Key = Key.F },
         new() { CommandName = "ToggleReject",   DisplayName = "リジェクトトグル",       Key = Key.R },
         new() { CommandName = "ReloadFolder",   DisplayName = "フォルダ再読み込み",     Key = Key.F5 },
+        new() { CommandName = "NavigateHome",   DisplayName = "先頭に移動",             Key = Key.Home },
+        new() { CommandName = "NavigateEnd",    DisplayName = "終端に移動",             Key = Key.End },
     };
 
     public List<ShortcutEntry> Load()

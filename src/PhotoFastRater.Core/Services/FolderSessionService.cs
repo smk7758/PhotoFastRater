@@ -52,7 +52,8 @@ public class FolderSessionService
     /// </summary>
     public async Task<List<FolderSessionPhoto>> LoadPhotosAsync(
         string folderPath,
-        IProgress<int>? progress = null)
+        IProgress<int>? progress = null,
+        IProgress<FolderSessionPhoto>? progressPhoto = null)
     {
         return await Task.Run(() =>
         {
@@ -101,6 +102,7 @@ public class FolderSessionService
                     }
 
                     photos.Add(photo);
+                    progressPhoto?.Report(photo);
                     progress?.Report(i + 1);
                 }
                 catch
