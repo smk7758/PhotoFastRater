@@ -47,6 +47,7 @@ public partial class FolderSessionPhotoViewModel : ViewModelBase
     [ObservableProperty]
     private double _photoAspectRatio = 1.0;
 
+    private readonly Func<string, Task<BitmapImage?>>? _rawFullImageLoader;
     private BitmapImage? _thumbnail;
     private BitmapImage? _fullImage;
     private bool _fullImageLoading;
@@ -62,9 +63,36 @@ public partial class FolderSessionPhotoViewModel : ViewModelBase
             _ = LoadFullImageAsync();
     }
 
+    public void ClearFullImage()
+    {
+        if (_fullImage == null) return;
+        _fullImage = null;
+        _fullImageLoading = false;
+        OnPropertyChanged(nameof(FullImage));
+        OnPropertyChanged(nameof(IsLoadingFullImage));
+    }
+
     private async Task LoadFullImageAsync()
     {
-        if (IsRawFile) return;
+        if (IsRawFile)
+        {
+            if (_rawFullImageLoader == null) return;
+            _fullImageLoading = true;
+            OnPropertyChanged(nameof(IsLoadingFullImage));
+            try
+            {
+                _fullImage = await _rawFullImageLoader(FilePath);
+                OnPropertyChanged(nameof(FullImage));
+            }
+            catch { }
+            finally
+            {
+                _fullImageLoading = false;
+                OnPropertyChanged(nameof(IsLoadingFullImage));
+            }
+            return;
+        }
+
         _fullImageLoading = true;
         OnPropertyChanged(nameof(IsLoadingFullImage));
         try
@@ -166,9 +194,11 @@ public partial class FolderSessionPhotoViewModel : ViewModelBase
     /// </summary>
     public string DateTakenText => DateTaken == default ? string.Empty : DateTaken.ToString("yyyy/MM/dd");
 
-    public FolderSessionPhotoViewModel(FolderSessionPhoto photo)
+    public FolderSessionPhotoViewModel(FolderSessionPhoto photo,
+        Func<string, Task<BitmapImage?>>? rawFullImageLoader = null)
     {
         _photo = photo;
+        _rawFullImageLoader = rawFullImageLoader;
         FilePath = photo.FilePath;
         FileName = photo.FileName;
         Rating = photo.Rating;

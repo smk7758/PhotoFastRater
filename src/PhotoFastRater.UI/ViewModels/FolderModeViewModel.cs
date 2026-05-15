@@ -1,8 +1,10 @@
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Windows.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.DependencyInjection;
+using PhotoFastRater.Core.ImageProcessing;
 using PhotoFastRater.Core.Models;
 using PhotoFastRater.Core.Services;
 using PhotoFastRater.Core.UI;
@@ -23,6 +25,7 @@ public partial class FolderModeViewModel : ViewModelBase
     private readonly UIConfiguration _uiConfig;
     private readonly ExifService _exifService;
     private readonly Services.ExifWriteService _exifWriteService;
+    private readonly RawThumbnailGenerator _rawGenerator;
 
     public event Action? ShortcutsUpdated;
     public event Action<bool>? BoundaryReached;
@@ -107,7 +110,8 @@ public partial class FolderModeViewModel : ViewModelBase
         ImageLoader imageLoader,
         UIConfiguration uiConfig,
         ExifService exifService,
-        Services.ExifWriteService exifWriteService)
+        Services.ExifWriteService exifWriteService,
+        RawThumbnailGenerator rawGenerator)
     {
         _sessionService = sessionService;
         _serviceProvider = serviceProvider;
@@ -115,6 +119,7 @@ public partial class FolderModeViewModel : ViewModelBase
         _uiConfig = uiConfig;
         _exifService = exifService;
         _exifWriteService = exifWriteService;
+        _rawGenerator = rawGenerator;
 
         _settings.Load();
         ApplySettingsToViewModel();
@@ -154,46 +159,31 @@ public partial class FolderModeViewModel : ViewModelBase
         if (FilterDateTo.HasValue)
             filtered = filtered.Where(p => p.DateTaken < FilterDateTo.Value.AddDays(1));
 
-        // RAW+JPEGグループ化: RAWは通常ループでスキップし、JPEGのIsExpanded=Trueのとき直後に挿入
+        // RAW+JPEGグループ化: ペアのJPEGがフィルター済みにあるRAWはスキップ、JPEGのIsExpanded=TrueのときRAWを直後に挿入
         var filteredList = filtered.ToList();
+        var filteredSet = new HashSet<string>(filteredList.Select(p => p.FilePath));
         var result = new List<FolderSessionPhotoViewModel>();
-        var insertedRawPaths = new HashSet<string>();
 
         foreach (var photo in filteredList)
         {
-            if (_settings.GroupRawJpeg && photo.HasPair && photo.IsRawFile)
+            if (_settings.GroupRawJpeg && photo.HasPair && photo.IsRawFile
+                && filteredSet.Contains(photo.PairedFilePath!))
             {
-                // JPEGが展開済みでここに来た場合のフォールバック（通常はJPEGループで挿入済み）
-                if (!insertedRawPaths.Contains(photo.FilePath))
-                {
-                    var primary = Photos.FirstOrDefault(p => p.FilePath == photo.PairedFilePath);
-                    if (primary?.IsExpanded == true)
-                    {
-                        photo.IsGroupedWithPair = true;
-                        result.Add(photo);
-                        insertedRawPaths.Add(photo.FilePath);
-                    }
-                    else
-                    {
-                        photo.IsGroupedWithPair = false;
-                    }
-                }
+                photo.IsGroupedWithPair = false;
                 continue;
             }
 
             photo.IsGroupedWithPair = false;
             result.Add(photo);
 
-            // JPEG+RAWのJPEGでIsExpanded=TrueのときRAWを直後に挿入
             if (_settings.GroupRawJpeg && photo.HasPair && !photo.IsRawFile && photo.IsExpanded)
             {
                 var raw = Photos.FirstOrDefault(p => p.FilePath == photo.PairedFilePath);
-                if (raw != null && filteredList.Contains(raw))
+                if (raw != null && filteredSet.Contains(raw.FilePath))
                 {
                     raw.IsGroupedWithPair = true;
                     photo.IsGroupedWithPair = true;
                     result.Add(raw);
-                    insertedRawPaths.Add(raw.FilePath);
                 }
             }
         }
@@ -235,7 +225,8 @@ public partial class FolderModeViewModel : ViewModelBase
 
             var uiProgress = new Progress<FolderSessionPhoto>(photo =>
             {
-                var photoVm = new FolderSessionPhotoViewModel(photo);
+                Func<string, Task<BitmapImage?>>? rawLoader = photo.IsRawFile ? LoadRawFullImageAsync : null;
+                var photoVm = new FolderSessionPhotoViewModel(photo, rawLoader);
                 Photos.Add(photoVm);
                 DisplayPhotos.Add(photoVm);
                 _ = LoadThumbnailIfMissingAsync(photoVm);
@@ -728,10 +719,9 @@ public partial class FolderModeViewModel : ViewModelBase
         try
         {
             var thumbnail = await _imageLoader.LoadAsync(photoVm.FilePath);
-            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
             {
                 photoVm.Thumbnail = thumbnail;
-                // AutoOrient後の実寸でアスペクト比を更新
                 if (thumbnail != null && thumbnail.PixelWidth > 0 && thumbnail.PixelHeight > 0)
                     photoVm.PhotoAspectRatio = (double)thumbnail.PixelHeight / thumbnail.PixelWidth;
             });
@@ -739,6 +729,37 @@ public partial class FolderModeViewModel : ViewModelBase
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[FolderMode] サムネイル読み込みエラー: {photoVm.FilePath} - {ex.Message}");
+        }
+    }
+
+    private async Task<BitmapImage?> LoadRawFullImageAsync(string filePath)
+    {
+        var bytes = await _rawGenerator.ExtractEmbeddedJpegBytesAsync(filePath);
+        if (bytes.Length == 0) return null;
+        return await Task.Run(() =>
+        {
+            var bmp = new BitmapImage();
+            using var ms = new System.IO.MemoryStream(bytes);
+            bmp.BeginInit();
+            bmp.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+            bmp.StreamSource = ms;
+            bmp.EndInit();
+            bmp.Freeze();
+            return bmp;
+        });
+    }
+
+    public void EvictNonVisibleIfNeeded(IReadOnlyCollection<FolderSessionPhotoViewModel> visiblePhotos)
+    {
+        long limitBytes = (long)_settings.MaxFullImageMemoryMB * 1024 * 1024;
+        long usedBytes = System.Diagnostics.Process.GetCurrentProcess().WorkingSet64;
+        if (usedBytes < limitBytes) return;
+
+        var visibleSet = new HashSet<FolderSessionPhotoViewModel>(visiblePhotos);
+        foreach (var photo in DisplayPhotos)
+        {
+            if (!visibleSet.Contains(photo))
+                photo.ClearFullImage();
         }
     }
 

@@ -15,6 +15,11 @@ public class FolderSessionService
         ".raw", ".cr2", ".cr3", ".nef", ".arw", ".dng", ".orf", ".raf", ".rw2"
     };
 
+    private static readonly HashSet<string> _rawExtSet = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ".raw", ".cr2", ".cr3", ".nef", ".arw", ".dng", ".orf", ".raf", ".rw2"
+    };
+
     public FolderSessionService(ExifService exifService)
     {
         _exifService = exifService;
@@ -77,7 +82,8 @@ public class FolderSessionService
                         FilePath = filePath,
                         FileName = fileInfo.Name,
                         FileSize = fileInfo.Length,
-                        DateTaken = fileInfo.LastWriteTime
+                        DateTaken = fileInfo.LastWriteTime,
+                        IsRawFile = _rawExtSet.Contains(Path.GetExtension(filePath).ToLowerInvariant())
                     };
 
                     try

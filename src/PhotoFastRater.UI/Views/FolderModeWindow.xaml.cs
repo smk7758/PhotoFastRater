@@ -20,6 +20,7 @@ public partial class FolderModeWindow : Window
     private readonly Dictionary<string, ICommand> _commandMap;
     private List<ShortcutEntry> _activeShortcuts = new();
     private PhotoPreviewWindow? _previewWindow;
+    private CancellationTokenSource? _fullImageScrollDebounce;
 
     public FolderModeWindow(FolderModeViewModel viewModel, ShortcutService shortcutService, IServiceProvider serviceProvider)
     {
@@ -77,6 +78,15 @@ public partial class FolderModeWindow : Window
 
         _activeShortcuts = _shortcutService.Load();
         PreviewKeyDown += HandleShortcutKeys;
+        PreviewMouseWheel += (_, e) =>
+        {
+            if (Keyboard.Modifiers == ModifierKeys.Control)
+            {
+                int delta = e.Delta > 0 ? 20 : -20;
+                _vm.ThumbnailSize = Math.Clamp(_vm.ThumbnailSize + delta, 100, 2000);
+                e.Handled = true;
+            }
+        };
 
         Loaded += (_, _) =>
         {
@@ -89,7 +99,16 @@ public partial class FolderModeWindow : Window
         if (Math.Abs(e.VerticalChange) < 1 && Math.Abs(e.HorizontalChange) < 1) return;
         _ = LoadVisibleThumbnailsAsync();
         if (_vm.ShowOriginalImages)
-            _ = TriggerVisibleFullImageLoadAsync();
+        {
+            _fullImageScrollDebounce?.Cancel();
+            _fullImageScrollDebounce = new CancellationTokenSource();
+            var token = _fullImageScrollDebounce.Token;
+            _ = Task.Delay(300, token).ContinueWith(t =>
+            {
+                if (!t.IsCanceled)
+                    Dispatcher.InvokeAsync(() => _ = TriggerVisibleFullImageLoadAsync());
+            }, TaskScheduler.Default);
+        }
     }
 
     private async Task LoadVisibleThumbnailsAsync()
@@ -122,6 +141,8 @@ public partial class FolderModeWindow : Window
         await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Loaded);
         var top = PhotoScrollViewer.VerticalOffset;
         var bottom = top + PhotoScrollViewer.ViewportHeight;
+        var visiblePhotos = new List<FolderSessionPhotoViewModel>();
+
         for (int i = 0; i < _vm.DisplayPhotos.Count; i++)
         {
             try
@@ -129,10 +150,15 @@ public partial class FolderModeWindow : Window
                 if (PhotoGrid.ItemContainerGenerator.ContainerFromIndex(i) is not FrameworkElement c) continue;
                 var pos = c.TransformToVisual(PhotoScrollViewer).Transform(new System.Windows.Point(0, 0));
                 if (pos.Y < bottom && pos.Y + c.ActualHeight > top)
+                {
+                    visiblePhotos.Add(_vm.DisplayPhotos[i]);
                     _vm.DisplayPhotos[i].TriggerFullImageLoad();
+                }
             }
             catch (InvalidOperationException) { }
         }
+
+        _vm.EvictNonVisibleIfNeeded(visiblePhotos);
     }
 
     private void HandleShortcutKeys(object sender, System.Windows.Input.KeyEventArgs e)

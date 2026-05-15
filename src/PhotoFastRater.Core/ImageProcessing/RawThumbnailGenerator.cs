@@ -61,6 +61,59 @@ public class RawThumbnailGenerator : IThumbnailGenerator
         });
     }
 
+    /// <summary>
+    /// RAW ファイルから最大の埋込み JPEG をリサイズなしで抽出する（原画像モード用）
+    /// </summary>
+    public async Task<byte[]> ExtractEmbeddedJpegBytesAsync(string filePath)
+    {
+        return await Task.Run(() =>
+        {
+            try
+            {
+                const int maxScanBytes = 20 * 1024 * 1024;
+                using var fs = File.OpenRead(filePath);
+                int readLen = (int)Math.Min(fs.Length, maxScanBytes);
+                var buf = new byte[readLen];
+                readLen = fs.Read(buf, 0, readLen);
+
+                byte[]? best = null;
+                int i = 0;
+                while (i < readLen - 3)
+                {
+                    if (buf[i] == 0xFF && buf[i + 1] == 0xD8 && buf[i + 2] == 0xFF)
+                    {
+                        int end = FindJpegEnd(buf, i, readLen);
+                        int length = end - i;
+                        // 50KB 以上の JPEG のみ対象（小さい EXIF サムネイルを除外）
+                        if (length > 50_000 && (best == null || length > best.Length))
+                            best = buf[i..end];
+                        i = end > i + 1 ? end : i + 1;
+                    }
+                    else i++;
+                }
+
+                if (best != null)
+                {
+                    try
+                    {
+                        using var ms = new MemoryStream(best);
+                        using var image = Image.Load(ms);
+                        image.Mutate(x => x.AutoOrient());
+                        using var outMs = new MemoryStream();
+                        image.SaveAsJpeg(outMs, new JpegEncoder { Quality = 92 });
+                        return outMs.ToArray();
+                    }
+                    catch { return best; }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"RAW full JPEG extract failed: {filePath}: {ex.Message}");
+            }
+            return Array.Empty<byte>();
+        });
+    }
+
     private byte[] FindEmbeddedJpeg(string filePath, int targetSize)
     {
         try

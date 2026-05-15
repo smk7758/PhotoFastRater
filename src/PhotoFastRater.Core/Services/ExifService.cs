@@ -66,6 +66,17 @@ public class ExifService
                 photo.CameraModel = exifIfd0Dir.GetDescription(ExifDirectoryBase.TagModel);
             }
 
+            // IFD0 フォールバック: 一部 RAW フォーマットで SubIFD に撮影設定が入らない場合がある
+            if (exifIfd0Dir != null)
+            {
+                if (photo.Aperture == null && exifIfd0Dir.TryGetDouble(ExifDirectoryBase.TagFNumber, out var ap)) photo.Aperture = ap;
+                if (photo.ISO == null && exifIfd0Dir.TryGetInt32(ExifDirectoryBase.TagIsoEquivalent, out var iso)) photo.ISO = iso;
+                if (photo.FocalLength == null && exifIfd0Dir.TryGetDouble(ExifDirectoryBase.TagFocalLength, out var fl)) photo.FocalLength = fl;
+                if (photo.ExposureCompensation == null && exifIfd0Dir.TryGetDouble(ExifDirectoryBase.TagExposureBias, out var ec)) photo.ExposureCompensation = ec;
+                if (photo.ShutterSpeed == null) photo.ShutterSpeed = exifIfd0Dir.GetDescription(ExifDirectoryBase.TagExposureTime);
+                if (photo.LensModel == null) photo.LensModel = exifIfd0Dir.GetDescription(ExifDirectoryBase.TagLensModel);
+            }
+
             // 解像度: 優先度1=JpegDirectory(SOFヘッダー), 2=IFD0, 3=SubIFD
             var jpegDir = directories.OfType<JpegDirectory>().FirstOrDefault();
             if (jpegDir != null)
