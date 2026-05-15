@@ -6,15 +6,23 @@
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         xmlns:sys="clr-namespace:System;assembly=mscorlib"
         mc:Ignorable="d"
-        Title="Photo Fast Rater" Height="800" Width="1400"
+        Title="Photo Fast Rater"
+        Height="800"
+        Width="1400"
         Background="{DynamicResource MaterialDesignPaper}">
 
     <Window.InputBindings>
-        <KeyBinding Key="Up" Command="{Binding PhotoGrid.NavigateUpCommand}"/>
-        <KeyBinding Key="Down" Command="{Binding PhotoGrid.NavigateDownCommand}"/>
-        <KeyBinding Key="Left" Command="{Binding PhotoGrid.NavigateLeftCommand}"/>
-        <KeyBinding Key="Right" Command="{Binding PhotoGrid.NavigateRightCommand}"/>
-        <KeyBinding Key="Enter" Command="{Binding PhotoGrid.OpenPhotoCommand}" CommandParameter="{Binding PhotoGrid.SelectedPhoto}"/>
+        <KeyBinding Key="Up"
+                Command="{Binding PhotoGrid.NavigateUpCommand}"/>
+        <KeyBinding Key="Down"
+                Command="{Binding PhotoGrid.NavigateDownCommand}"/>
+        <KeyBinding Key="Left"
+                Command="{Binding PhotoGrid.NavigateLeftCommand}"/>
+        <KeyBinding Key="Right"
+                Command="{Binding PhotoGrid.NavigateRightCommand}"/>
+        <KeyBinding Key="Enter"
+                Command="{Binding PhotoGrid.OpenPhotoCommand}"
+                CommandParameter="{Binding PhotoGrid.SelectedPhoto}"/>
     </Window.InputBindings>
 
     <Grid>
@@ -25,7 +33,8 @@
         </Grid.RowDefinitions>
 
         <!-- ツールバー -->
-        <ToolBar Grid.Row="0" Padding="8">
+        <ToolBar Grid.Row="0"
+                Padding="8">
             <Button Content="インポート"
                     Command="{Binding ImportFolderCommand}"
                     Style="{StaticResource MaterialDesignRaisedButton}"/>
@@ -42,19 +51,23 @@
                           Margin="0,0,0,0"
                           ToolTip="グリッド/ツリー表示を切り替え"/>
             <Separator Margin="8,0"/>
-            <TextBlock Text="検索:" VerticalAlignment="Center" Margin="8,0"/>
-            <TextBox Width="200" Margin="4,0"/>
+            <TextBlock Text="検索:"
+                    VerticalAlignment="Center"
+                    Margin="8,0"/>
+            <TextBox Width="200"
+                    Margin="4,0"/>
         </ToolBar>
 
         <!-- メインコンテンツ -->
-        <TabControl Grid.Row="1" Margin="8">
+        <TabControl Grid.Row="1"
+                Margin="8">
             <TabItem Header="写真一覧">
                 <Grid>
                     <!-- グリッド表示 -->
                     <ScrollViewer VerticalScrollBarVisibility="Auto"
-                                 Visibility="{Binding PhotoGrid.IsTreeViewMode, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+                                  Visibility="{Binding PhotoGrid.IsTreeViewMode, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
                         <ItemsControl ItemsSource="{Binding PhotoGrid.Photos}"
-                                     VirtualizingPanel.IsVirtualizing="False">
+                                      VirtualizingPanel.IsVirtualizing="False">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <WrapPanel/>
@@ -62,47 +75,72 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Width="200" Height="200" Margin="4"
-                                            BorderBrush="Gray" BorderThickness="2"
+                                    <Border Width="200"
+                                            Height="200"
+                                            Margin="4"
+                                            BorderBrush="Gray"
+                                            BorderThickness="2"
                                             Background="White"
                                             Cursor="Hand"
                                             Tag="{Binding}">
                                         <Border.Style>
                                             <Style TargetType="Border">
                                                 <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                                        <Setter Property="BorderBrush" Value="#2196F3"/>
-                                                        <Setter Property="Background" Value="#E3F2FD"/>
+                                                    <DataTrigger Binding="{Binding IsSelected}"
+                                                            Value="True">
+                                                        <Setter Property="BorderBrush"
+                                                                Value="#2196F3"/>
+                                                        <Setter Property="Background"
+                                                                Value="#E3F2FD"/>
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>
                                         </Border.Style>
                                         <Border.InputBindings>
                                             <MouseBinding MouseAction="LeftClick"
-                                                         Command="{Binding DataContext.PhotoGrid.SelectPhotoCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                         CommandParameter="{Binding}"/>
+                                                          Command="{Binding DataContext.PhotoGrid.SelectPhotoCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                          CommandParameter="{Binding}"/>
                                             <MouseBinding MouseAction="LeftDoubleClick"
-                                                         Command="{Binding DataContext.PhotoGrid.OpenPhotoCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                         CommandParameter="{Binding}"/>
+                                                          Command="{Binding DataContext.PhotoGrid.OpenPhotoCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                          CommandParameter="{Binding}"/>
                                         </Border.InputBindings>
                                         <Border.ContextMenu>
                                             <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}">
-                                                <MenuItem Header="レーティング" DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
-                                                    <MenuItem Header="★ 0" Tag="0" Click="RatingMenuItem_Click"/>
-                                                    <MenuItem Header="★ 1" Tag="1" Click="RatingMenuItem_Click"/>
-                                                    <MenuItem Header="★★ 2" Tag="2" Click="RatingMenuItem_Click"/>
-                                                    <MenuItem Header="★★★ 3" Tag="3" Click="RatingMenuItem_Click"/>
-                                                    <MenuItem Header="★★★★ 4" Tag="4" Click="RatingMenuItem_Click"/>
-                                                    <MenuItem Header="★★★★★ 5" Tag="5" Click="RatingMenuItem_Click"/>
+                                                <MenuItem Header="レーティング"
+                                                        DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                    <MenuItem Header="★ 0"
+                                                            Tag="0"
+                                                            Click="RatingMenuItem_Click"/>
+                                                    <MenuItem Header="★ 1"
+                                                            Tag="1"
+                                                            Click="RatingMenuItem_Click"/>
+                                                    <MenuItem Header="★★ 2"
+                                                            Tag="2"
+                                                            Click="RatingMenuItem_Click"/>
+                                                    <MenuItem Header="★★★ 3"
+                                                            Tag="3"
+                                                            Click="RatingMenuItem_Click"/>
+                                                    <MenuItem Header="★★★★ 4"
+                                                            Tag="4"
+                                                            Click="RatingMenuItem_Click"/>
+                                                    <MenuItem Header="★★★★★ 5"
+                                                            Tag="5"
+                                                            Click="RatingMenuItem_Click"/>
                                                 </MenuItem>
                                                 <Separator/>
-                                                <MenuItem Header="お気に入り切り替え" Click="ToggleFavorite_Click"/>
-                                                <MenuItem Header="リジェクト切り替え" Click="ToggleReject_Click"/>
+                                                <MenuItem Header="お気に入り切り替え"
+                                                        Click="ToggleFavorite_Click"/>
+                                                <MenuItem Header="リジェクト切り替え"
+                                                        Click="ToggleReject_Click"/>
                                                 <Separator/>
-                                                <MenuItem Header="SNSエクスポート" Click="ExportToSocialMedia_Click"/>
+                                                <MenuItem Header="SNSエクスポート"
+                                                        Click="ExportToSocialMedia_Click"/>
                                                 <Separator/>
-                                                <MenuItem Header="DBから削除" Click="DeleteFromDatabase_Click"/>
-                                                <MenuItem Header="ファイルを削除" Click="DeleteFile_Click" Foreground="Red"/>
+                                                <MenuItem Header="DBから削除"
+                                                        Click="DeleteFromDatabase_Click"/>
+                                                <MenuItem Header="ファイルを削除"
+                                                        Click="DeleteFile_Click"
+                                                        Foreground="Red"/>
                                             </ContextMenu>
                                         </Border.ContextMenu>
                                         <Grid>
@@ -111,21 +149,21 @@
                                                    HorizontalAlignment="Center"
                                                    VerticalAlignment="Center"/>
                                             <StackPanel VerticalAlignment="Bottom"
-                                                       Background="#80000000"
-                                                       Margin="4">
+                                                        Background="#80000000"
+                                                        Margin="4">
                                                 <TextBlock Text="{Binding FileName}"
-                                                          Foreground="White"
-                                                          FontSize="10"
-                                                          TextTrimming="CharacterEllipsis"
-                                                          Margin="4"/>
+                                                           Foreground="White"
+                                                           FontSize="10"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Margin="4"/>
                                                 <StackPanel Orientation="Horizontal">
                                                     <TextBlock Text="★"
-                                                              Foreground="Yellow"
-                                                              FontSize="12"/>
+                                                               Foreground="Yellow"
+                                                               FontSize="12"/>
                                                     <TextBlock Text="{Binding Rating}"
-                                                              Foreground="White"
-                                                              FontSize="10"
-                                                              Margin="2,0"/>
+                                                               Foreground="White"
+                                                               FontSize="10"
+                                                               Margin="2,0"/>
                                                 </StackPanel>
                                             </StackPanel>
                                         </Grid>
@@ -141,33 +179,40 @@
                         <TreeView.ItemTemplate>
                             <HierarchicalDataTemplate ItemsSource="{Binding Children}">
                                 <StackPanel Orientation="Horizontal">
-                                    <TextBlock Text="{Binding DisplayNameWithCount}" Margin="0,0,8,0"/>
+                                    <TextBlock Text="{Binding DisplayNameWithCount}"
+                                            Margin="0,0,8,0"/>
                                 </StackPanel>
                                 <HierarchicalDataTemplate.ItemTemplate>
                                     <HierarchicalDataTemplate ItemsSource="{Binding Children}">
                                         <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="{Binding DisplayNameWithCount}" Margin="0,0,8,0"/>
+                                            <TextBlock Text="{Binding DisplayNameWithCount}"
+                                                    Margin="0,0,8,0"/>
                                         </StackPanel>
                                         <HierarchicalDataTemplate.ItemTemplate>
                                             <HierarchicalDataTemplate ItemsSource="{Binding Children}">
                                                 <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="{Binding DisplayNameWithCount}" Margin="0,0,8,0"/>
+                                                    <TextBlock Text="{Binding DisplayNameWithCount}"
+                                                            Margin="0,0,8,0"/>
                                                 </StackPanel>
                                                 <HierarchicalDataTemplate.ItemTemplate>
                                                     <HierarchicalDataTemplate ItemsSource="{Binding Photos}">
                                                         <StackPanel Orientation="Horizontal">
-                                                            <TextBlock Text="{Binding DisplayNameWithCount}" Margin="0,0,8,0"/>
+                                                            <TextBlock Text="{Binding DisplayNameWithCount}"
+                                                                    Margin="0,0,8,0"/>
                                                         </StackPanel>
                                                         <HierarchicalDataTemplate.ItemTemplate>
                                                             <DataTemplate>
-                                                                <Border Width="150" Height="150" Margin="2"
-                                                                        BorderBrush="Gray" BorderThickness="1"
+                                                                <Border Width="150"
+                                                                        Height="150"
+                                                                        Margin="2"
+                                                                        BorderBrush="Gray"
+                                                                        BorderThickness="1"
                                                                         Background="White"
                                                                         Cursor="Hand">
                                                                     <Border.InputBindings>
                                                                         <MouseBinding MouseAction="LeftDoubleClick"
-                                                                                     Command="{Binding DataContext.PhotoGrid.OpenPhotoCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                                                     CommandParameter="{Binding}"/>
+                                                                                      Command="{Binding DataContext.PhotoGrid.OpenPhotoCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                                      CommandParameter="{Binding}"/>
                                                                     </Border.InputBindings>
                                                                     <Grid>
                                                                         <Image Source="{Binding Thumbnail}"
@@ -202,20 +247,21 @@
                         <RowDefinition Height="*"/>
                     </Grid.RowDefinitions>
 
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                    <StackPanel Orientation="Horizontal"
+                            Margin="0,0,0,16">
                         <TextBox Width="200"
-                                Text="{Binding Events.NewEventName, UpdateSourceTrigger=PropertyChanged}"
-                                materialDesign:HintAssist.Hint="イベント名"/>
+                                 Text="{Binding Events.NewEventName, UpdateSourceTrigger=PropertyChanged}"
+                                 materialDesign:HintAssist.Hint="イベント名"/>
                         <Button Content="イベント作成"
-                               Margin="8,0,0,0"/>
+                                Margin="8,0,0,0"/>
                         <Button Content="自動グルーピング"
-                               Command="{Binding Events.AutoGroupPhotosCommand}"
-                               Margin="8,0,0,0"/>
+                                Command="{Binding Events.AutoGroupPhotosCommand}"
+                                Margin="8,0,0,0"/>
                     </StackPanel>
 
                     <ListBox Grid.Row="1"
-                            ItemsSource="{Binding Events.Events}"
-                            DisplayMemberPath="Name"/>
+                             ItemsSource="{Binding Events.Events}"
+                             DisplayMemberPath="Name"/>
                 </Grid>
             </TabItem>
 
@@ -229,33 +275,36 @@
                     </Grid.RowDefinitions>
 
                     <TextBlock Text="エクスポート設定"
-                              FontSize="18"
-                              FontWeight="Bold"
-                              Margin="0,0,0,16"/>
+                               FontSize="18"
+                               FontWeight="Bold"
+                               Margin="0,0,0,16"/>
 
                     <StackPanel Grid.Row="1">
                         <CheckBox Content="枠を追加"
-                                 IsChecked="{Binding Export.EnableFrame}"/>
-                        <StackPanel Orientation="Horizontal" Margin="20,0,0,0">
-                            <TextBlock Text="枠の幅:" VerticalAlignment="Center"/>
+                                  IsChecked="{Binding Export.EnableFrame}"/>
+                        <StackPanel Orientation="Horizontal"
+                                Margin="20,0,0,0">
+                            <TextBlock Text="枠の幅:"
+                                    VerticalAlignment="Center"/>
                             <Slider Width="200"
-                                   Minimum="10" Maximum="100"
-                                   Value="{Binding Export.FrameWidth}"
-                                   IsEnabled="{Binding Export.EnableFrame}"
-                                   Margin="8,0"/>
+                                    Minimum="10"
+                                    Maximum="100"
+                                    Value="{Binding Export.FrameWidth}"
+                                    IsEnabled="{Binding Export.EnableFrame}"
+                                    Margin="8,0"/>
                             <TextBlock Text="{Binding Export.FrameWidth}"
-                                      VerticalAlignment="Center"/>
+                                       VerticalAlignment="Center"/>
                         </StackPanel>
 
                         <CheckBox Content="EXIF情報を表示"
-                                 IsChecked="{Binding Export.EnableExifOverlay}"
-                                 Margin="0,16,0,0"/>
+                                  IsChecked="{Binding Export.EnableExifOverlay}"
+                                  Margin="0,16,0,0"/>
 
                         <ComboBox Width="200"
-                                 HorizontalAlignment="Left"
-                                 Margin="0,8,0,0"
-                                 materialDesign:HintAssist.Hint="SNSプラットフォーム"
-                                 SelectedValue="{Binding Export.TargetPlatform}">
+                                  HorizontalAlignment="Left"
+                                  Margin="0,8,0,0"
+                                  materialDesign:HintAssist.Hint="SNSプラットフォーム"
+                                  SelectedValue="{Binding Export.TargetPlatform}">
                             <ComboBoxItem Content="Instagram"/>
                             <ComboBoxItem Content="Twitter"/>
                             <ComboBoxItem Content="Facebook"/>
@@ -263,10 +312,10 @@
                     </StackPanel>
 
                     <Button Grid.Row="3"
-                           Content="エクスポート"
-                           HorizontalAlignment="Left"
-                           VerticalAlignment="Bottom"
-                           Style="{StaticResource MaterialDesignRaisedButton}"/>
+                            Content="エクスポート"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Bottom"
+                            Style="{StaticResource MaterialDesignRaisedButton}"/>
                 </Grid>
             </TabItem>
 
@@ -275,67 +324,75 @@
                     <!-- キャッシュ設定タブ -->
                     <TabItem Header="キャッシュ">
                         <ScrollViewer>
-                            <StackPanel Margin="16" MaxWidth="600" HorizontalAlignment="Left">
+                            <StackPanel Margin="16"
+                                    MaxWidth="600"
+                                    HorizontalAlignment="Left">
                                 <TextBlock Text="キャッシュ設定"
-                                          FontSize="18"
-                                          FontWeight="Bold"
-                                          Margin="0,0,0,16"/>
+                                           FontSize="18"
+                                           FontWeight="Bold"
+                                           Margin="0,0,0,16"/>
 
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <StackPanel Orientation="Horizontal"
+                                        Margin="0,0,0,8">
                                     <TextBox Width="400"
-                                            Text="{Binding Settings.CachePath}"
-                                            materialDesign:HintAssist.Hint="キャッシュフォルダ（SSD推奨）"
-                                            IsReadOnly="True"/>
+                                             Text="{Binding Settings.CachePath}"
+                                             materialDesign:HintAssist.Hint="キャッシュフォルダ（SSD推奨）"
+                                             IsReadOnly="True"/>
                                     <Button Content="参照"
-                                           Command="{Binding Settings.SelectCachePathCommand}"
-                                           Margin="8,0,0,0"/>
+                                            Command="{Binding Settings.SelectCachePathCommand}"
+                                            Margin="8,0,0,0"/>
                                 </StackPanel>
 
-                                <StackPanel Orientation="Horizontal" Margin="0,16,0,8">
+                                <StackPanel Orientation="Horizontal"
+                                        Margin="0,16,0,8">
                                     <TextBlock Text="メモリキャッシュサイズ (MB):"
-                                              VerticalAlignment="Center"
-                                              Width="200"/>
+                                               VerticalAlignment="Center"
+                                               Width="200"/>
                                     <Slider Width="200"
-                                           Minimum="100" Maximum="2000"
-                                           Value="{Binding Settings.MaxMemoryCacheSizeMB}"
-                                           TickFrequency="100"
-                                           IsSnapToTickEnabled="True"/>
+                                            Minimum="100"
+                                            Maximum="2000"
+                                            Value="{Binding Settings.MaxMemoryCacheSizeMB}"
+                                            TickFrequency="100"
+                                            IsSnapToTickEnabled="True"/>
                                     <TextBlock Text="{Binding Settings.MaxMemoryCacheSizeMB}"
-                                              VerticalAlignment="Center"
-                                              Margin="8,0"/>
+                                               VerticalAlignment="Center"
+                                               Margin="8,0"/>
                                 </StackPanel>
 
-                                <StackPanel Orientation="Horizontal" Margin="0,8,0,8">
+                                <StackPanel Orientation="Horizontal"
+                                        Margin="0,8,0,8">
                                     <TextBlock Text="サムネイルサイズ (px):"
-                                              VerticalAlignment="Center"
-                                              Width="200"/>
+                                               VerticalAlignment="Center"
+                                               Width="200"/>
                                     <Slider Width="200"
-                                           Minimum="256" Maximum="1024"
-                                           Value="{Binding Settings.ThumbnailSize}"
-                                           TickFrequency="128"
-                                           IsSnapToTickEnabled="True"/>
+                                            Minimum="256"
+                                            Maximum="1024"
+                                            Value="{Binding Settings.ThumbnailSize}"
+                                            TickFrequency="128"
+                                            IsSnapToTickEnabled="True"/>
                                     <TextBlock Text="{Binding Settings.ThumbnailSize}"
-                                              VerticalAlignment="Center"
-                                              Margin="8,0"/>
+                                               VerticalAlignment="Center"
+                                               Margin="8,0"/>
                                 </StackPanel>
 
                                 <CheckBox Content="RAWファイル対応を有効にする"
-                                         IsChecked="{Binding Settings.EnableRAWSupport}"
-                                         Margin="0,16,0,0"/>
+                                          IsChecked="{Binding Settings.EnableRAWSupport}"
+                                          Margin="0,16,0,0"/>
 
-                                <StackPanel Orientation="Horizontal" Margin="0,24,0,0">
+                                <StackPanel Orientation="Horizontal"
+                                        Margin="0,24,0,0">
                                     <Button Content="設定を保存"
-                                           Command="{Binding Settings.SaveSettingsCommand}"
-                                           Style="{StaticResource MaterialDesignRaisedButton}"/>
+                                            Command="{Binding Settings.SaveSettingsCommand}"
+                                            Style="{StaticResource MaterialDesignRaisedButton}"/>
                                     <Button Content="キャッシュをクリア"
-                                           Command="{Binding Settings.ClearCacheCommand}"
-                                           Margin="8,0,0,0"/>
+                                            Command="{Binding Settings.ClearCacheCommand}"
+                                            Margin="8,0,0,0"/>
                                 </StackPanel>
 
                                 <TextBlock Text="{Binding Settings.CurrentCacheSize, StringFormat='現在のキャッシュサイズ: {0:N0} bytes'}"
-                                          Margin="0,16,0,0"
-                                          FontSize="12"
-                                          Foreground="Gray"/>
+                                           Margin="0,16,0,0"
+                                           FontSize="12"
+                                           Foreground="Gray"/>
                             </StackPanel>
                         </ScrollViewer>
                     </TabItem>
@@ -351,47 +408,62 @@
                             </Grid.RowDefinitions>
 
                             <!-- フォルダリスト -->
-                            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
+                            <StackPanel Grid.Row="0"
+                                    Orientation="Horizontal"
+                                    Margin="0,0,0,8">
                                 <TextBlock Text="登録フォルダ一覧"
-                                          FontSize="16"
-                                          FontWeight="Bold"
-                                          VerticalAlignment="Center"/>
+                                           FontSize="16"
+                                           FontWeight="Bold"
+                                           VerticalAlignment="Center"/>
                                 <Button Content="フォルダ追加"
-                                       Command="{Binding Settings.ManagedFolders.AddFolderCommand}"
-                                       Margin="16,0,0,0"
-                                       Style="{StaticResource MaterialDesignRaisedButton}"/>
+                                        Command="{Binding Settings.ManagedFolders.AddFolderCommand}"
+                                        Margin="16,0,0,0"
+                                        Style="{StaticResource MaterialDesignRaisedButton}"/>
                                 <Button Content="削除"
-                                       Command="{Binding Settings.ManagedFolders.RemoveFolderCommand}"
-                                       Margin="8,0,0,0"/>
+                                        Command="{Binding Settings.ManagedFolders.RemoveFolderCommand}"
+                                        Margin="8,0,0,0"/>
                                 <Button Content="スキャン"
-                                       Command="{Binding Settings.ManagedFolders.ScanFolderCommand}"
-                                       Margin="8,0,0,0"/>
+                                        Command="{Binding Settings.ManagedFolders.ScanFolderCommand}"
+                                        Margin="8,0,0,0"/>
                                 <Button Content="一括スキャン"
-                                       Command="{Binding Settings.ManagedFolders.ScanAllFoldersCommand}"
-                                       Margin="8,0,0,0"
-                                       Style="{StaticResource MaterialDesignRaisedButton}"/>
+                                        Command="{Binding Settings.ManagedFolders.ScanAllFoldersCommand}"
+                                        Margin="8,0,0,0"
+                                        Style="{StaticResource MaterialDesignRaisedButton}"/>
                             </StackPanel>
 
                             <DataGrid Grid.Row="1"
-                                     ItemsSource="{Binding Settings.ManagedFolders.Folders}"
-                                     SelectedItem="{Binding Settings.ManagedFolders.SelectedFolder}"
-                                     AutoGenerateColumns="False"
-                                     CanUserAddRows="False"
-                                     Margin="0,8,0,8">
+                                      ItemsSource="{Binding Settings.ManagedFolders.Folders}"
+                                      SelectedItem="{Binding Settings.ManagedFolders.SelectedFolder}"
+                                      AutoGenerateColumns="False"
+                                      CanUserAddRows="False"
+                                      Margin="0,8,0,8">
                                 <DataGrid.Columns>
-                                    <DataGridCheckBoxColumn Header="有効" Binding="{Binding IsActive}" Width="50"/>
-                                    <DataGridTextColumn Header="フォルダパス" Binding="{Binding FolderPath}" Width="*" IsReadOnly="True"/>
-                                    <DataGridCheckBoxColumn Header="再帰" Binding="{Binding IsRecursive}" Width="50"/>
-                                    <DataGridTextColumn Header="写真数" Binding="{Binding PhotoCount}" Width="80" IsReadOnly="True"/>
-                                    <DataGridTextColumn Header="最終スキャン" Binding="{Binding LastScanDateDisplay}" Width="150" IsReadOnly="True"/>
+                                    <DataGridCheckBoxColumn Header="有効"
+                                            Binding="{Binding IsActive}"
+                                            Width="50"/>
+                                    <DataGridTextColumn Header="フォルダパス"
+                                            Binding="{Binding FolderPath}"
+                                            Width="*"
+                                            IsReadOnly="True"/>
+                                    <DataGridCheckBoxColumn Header="再帰"
+                                            Binding="{Binding IsRecursive}"
+                                            Width="50"/>
+                                    <DataGridTextColumn Header="写真数"
+                                            Binding="{Binding PhotoCount}"
+                                            Width="80"
+                                            IsReadOnly="True"/>
+                                    <DataGridTextColumn Header="最終スキャン"
+                                            Binding="{Binding LastScanDateDisplay}"
+                                            Width="150"
+                                            IsReadOnly="True"/>
                                 </DataGrid.Columns>
                             </DataGrid>
 
                             <TextBlock Grid.Row="2"
-                                      Text="{Binding Settings.ManagedFolders.ScanStatus}"
-                                      FontSize="12"
-                                      Foreground="Gray"
-                                      Margin="0,8"/>
+                                       Text="{Binding Settings.ManagedFolders.ScanStatus}"
+                                       FontSize="12"
+                                       Foreground="Gray"
+                                       Margin="0,8"/>
 
                             <!-- 除外パターン -->
                             <Grid Grid.Row="3">
@@ -400,29 +472,40 @@
                                     <RowDefinition Height="*"/>
                                 </Grid.RowDefinitions>
 
-                                <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,8,0,8">
+                                <StackPanel Grid.Row="0"
+                                        Orientation="Horizontal"
+                                        Margin="0,8,0,8">
                                     <TextBlock Text="除外パターン"
-                                              FontSize="14"
-                                              FontWeight="Bold"
-                                              VerticalAlignment="Center"/>
+                                               FontSize="14"
+                                               FontWeight="Bold"
+                                               VerticalAlignment="Center"/>
                                     <Button Content="パターン追加"
-                                           Command="{Binding Settings.ManagedFolders.AddPatternCommand}"
-                                           Margin="16,0,0,0"/>
+                                            Command="{Binding Settings.ManagedFolders.AddPatternCommand}"
+                                            Margin="16,0,0,0"/>
                                     <Button Content="削除"
-                                           Command="{Binding Settings.ManagedFolders.RemovePatternCommand}"
-                                           Margin="8,0,0,0"/>
+                                            Command="{Binding Settings.ManagedFolders.RemovePatternCommand}"
+                                            Margin="8,0,0,0"/>
                                 </StackPanel>
 
                                 <DataGrid Grid.Row="1"
-                                         ItemsSource="{Binding Settings.ManagedFolders.ExclusionPatterns}"
-                                         SelectedItem="{Binding Settings.ManagedFolders.SelectedPattern}"
-                                         AutoGenerateColumns="False"
-                                         CanUserAddRows="False">
+                                          ItemsSource="{Binding Settings.ManagedFolders.ExclusionPatterns}"
+                                          SelectedItem="{Binding Settings.ManagedFolders.SelectedPattern}"
+                                          AutoGenerateColumns="False"
+                                          CanUserAddRows="False">
                                     <DataGrid.Columns>
-                                        <DataGridCheckBoxColumn Header="有効" Binding="{Binding IsEnabled}" Width="50"/>
-                                        <DataGridTextColumn Header="パターン" Binding="{Binding PatternString}" Width="*"/>
-                                        <DataGridTextColumn Header="タイプ" Binding="{Binding TypeDisplay}" Width="120" IsReadOnly="True"/>
-                                        <DataGridTextColumn Header="説明" Binding="{Binding Description}" Width="200"/>
+                                        <DataGridCheckBoxColumn Header="有効"
+                                                Binding="{Binding IsEnabled}"
+                                                Width="50"/>
+                                        <DataGridTextColumn Header="パターン"
+                                                Binding="{Binding PatternString}"
+                                                Width="*"/>
+                                        <DataGridTextColumn Header="タイプ"
+                                                Binding="{Binding TypeDisplay}"
+                                                Width="120"
+                                                IsReadOnly="True"/>
+                                        <DataGridTextColumn Header="説明"
+                                                Binding="{Binding Description}"
+                                                Width="200"/>
                                     </DataGrid.Columns>
                                 </DataGrid>
                             </Grid>
