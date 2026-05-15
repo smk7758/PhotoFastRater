@@ -48,19 +48,27 @@
                     Command="{Binding OpenFolderCommand}"
                     Style="{StaticResource MaterialDesignRaisedButton}"/>
             <Separator Margin="8,0"/>
-            <ToggleButton Content="ツリー表示"
-                          IsChecked="{Binding IsTreeViewMode}"
-                          Margin="4,0"/>
-            <ToggleButton Content="フィルター"
-                          IsChecked="{Binding IsFilterPanelOpen}"
-                          Margin="4,0"/>
+            <TextBlock Text="ツリー表示"
+                       VerticalAlignment="Center"/>
+            <!-- Content="ツリー表示" -->
+            <ToggleButton
+                IsChecked="{Binding IsTreeViewMode}"
+                Margin="4,0"
+                Padding="16,8"/>
+            <!-- Content="フィルター" -->
+            <TextBlock Text="フィルター"
+                       VerticalAlignment="Center"/>
+            <ToggleButton
+                IsChecked="{Binding IsFilterPanelOpen}"
+                Margin="4,0"
+                Padding="16,8"/>
             <Separator Margin="8,0"/>
             <!-- サムネイルサイズスライダー -->
             <TextBlock Text="サイズ:"
                        VerticalAlignment="Center"
                        Margin="4,0"/>
             <Slider Minimum="100"
-                    Maximum="500"
+                    Maximum="2000"
                     Value="{Binding ThumbnailSize}"
                     Width="120"
                     VerticalAlignment="Center"
