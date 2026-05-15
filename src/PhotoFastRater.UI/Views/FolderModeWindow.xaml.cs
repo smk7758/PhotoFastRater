@@ -88,6 +88,8 @@ public partial class FolderModeWindow : Window
     {
         if (Math.Abs(e.VerticalChange) < 1 && Math.Abs(e.HorizontalChange) < 1) return;
         _ = LoadVisibleThumbnailsAsync();
+        if (_vm.ShowOriginalImages)
+            _ = TriggerVisibleFullImageLoadAsync();
     }
 
     private async Task LoadVisibleThumbnailsAsync()

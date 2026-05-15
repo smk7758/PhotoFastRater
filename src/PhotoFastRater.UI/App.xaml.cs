@@ -198,6 +198,12 @@ public partial class App : System.Windows.Application
             }
         }
 
+        // 利用可能な物理RAMを確認し、キャッシュ上限を動的設定
+        var gcInfo = GC.GetGCMemoryInfo();
+        long availableRamMB = gcInfo.TotalAvailableMemoryBytes / (1024 * 1024);
+        int dynamicLimit = (int)Math.Min(availableRamMB / 2, cacheConfig.MaxMemoryCacheSizeMB);
+        cacheConfig.MaxMemoryCacheSizeMB = Math.Max(dynamicLimit, 128);
+
         return (cacheConfig, uiConfig);
     }
 

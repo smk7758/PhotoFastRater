@@ -17,6 +17,8 @@ public partial class FolderModeSettingsViewModel : ObservableObject
     [ObservableProperty] private bool _exifShowDate = false;
     [ObservableProperty] private bool _exifShowCamera = false;
     [ObservableProperty] private bool _groupRawJpeg = true;
+    [ObservableProperty] private bool _showMemoryWarning = true;
+    [ObservableProperty] private int _maxFullImageMemoryMB = 1024;
 
     public void Load()
     {
@@ -34,6 +36,8 @@ public partial class FolderModeSettingsViewModel : ObservableObject
             if (root.TryGetProperty("exifShowDate", out v)) ExifShowDate = v.GetBoolean();
             if (root.TryGetProperty("exifShowCamera", out v)) ExifShowCamera = v.GetBoolean();
             if (root.TryGetProperty("groupRawJpeg", out v)) GroupRawJpeg = v.GetBoolean();
+            if (root.TryGetProperty("showMemoryWarning", out v)) ShowMemoryWarning = v.GetBoolean();
+            if (root.TryGetProperty("maxFullImageMemoryMB", out v) && v.TryGetInt32(out var m)) MaxFullImageMemoryMB = m;
         }
         catch { }
     }
@@ -53,7 +57,9 @@ public partial class FolderModeSettingsViewModel : ObservableObject
                 exifShowSettings = ExifShowSettings,
                 exifShowDate = ExifShowDate,
                 exifShowCamera = ExifShowCamera,
-                groupRawJpeg = GroupRawJpeg
+                groupRawJpeg = GroupRawJpeg,
+                showMemoryWarning = ShowMemoryWarning,
+                maxFullImageMemoryMB = MaxFullImageMemoryMB
             };
             File.WriteAllText(SettingsPath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
         }

@@ -154,19 +154,47 @@ public partial class FolderModeViewModel : ViewModelBase
         if (FilterDateTo.HasValue)
             filtered = filtered.Where(p => p.DateTaken < FilterDateTo.Value.AddDays(1));
 
-        // RAW+JPEGグループ化: RAWは非表示、JPEGのIsExpanded=trueの場合のみ追加
+        // RAW+JPEGグループ化: RAWは通常ループでスキップし、JPEGのIsExpanded=Trueのとき直後に挿入
+        var filteredList = filtered.ToList();
         var result = new List<FolderSessionPhotoViewModel>();
-        foreach (var photo in filtered)
+        var insertedRawPaths = new HashSet<string>();
+
+        foreach (var photo in filteredList)
         {
             if (_settings.GroupRawJpeg && photo.HasPair && photo.IsRawFile)
             {
-                var primary = Photos.FirstOrDefault(p => p.FilePath == photo.PairedFilePath);
-                if (primary?.IsExpanded == true)
-                    result.Add(photo);
+                // JPEGが展開済みでここに来た場合のフォールバック（通常はJPEGループで挿入済み）
+                if (!insertedRawPaths.Contains(photo.FilePath))
+                {
+                    var primary = Photos.FirstOrDefault(p => p.FilePath == photo.PairedFilePath);
+                    if (primary?.IsExpanded == true)
+                    {
+                        photo.IsGroupedWithPair = true;
+                        result.Add(photo);
+                        insertedRawPaths.Add(photo.FilePath);
+                    }
+                    else
+                    {
+                        photo.IsGroupedWithPair = false;
+                    }
+                }
+                continue;
             }
-            else
+
+            photo.IsGroupedWithPair = false;
+            result.Add(photo);
+
+            // JPEG+RAWのJPEGでIsExpanded=TrueのときRAWを直後に挿入
+            if (_settings.GroupRawJpeg && photo.HasPair && !photo.IsRawFile && photo.IsExpanded)
             {
-                result.Add(photo);
+                var raw = Photos.FirstOrDefault(p => p.FilePath == photo.PairedFilePath);
+                if (raw != null && filteredList.Contains(raw))
+                {
+                    raw.IsGroupedWithPair = true;
+                    photo.IsGroupedWithPair = true;
+                    result.Add(raw);
+                    insertedRawPaths.Add(raw.FilePath);
+                }
             }
         }
 
@@ -278,9 +306,33 @@ public partial class FolderModeViewModel : ViewModelBase
         }
     }
 
+    private DateTime _lastMemoryWarningTime = DateTime.MinValue;
+
+    private bool CheckMemoryAndWarn()
+    {
+        long limitBytes = (long)_settings.MaxFullImageMemoryMB * 1024 * 1024;
+        long usedBytes = System.Diagnostics.Process.GetCurrentProcess().WorkingSet64;
+        if (usedBytes < limitBytes) return true;
+
+        if (_settings.ShowMemoryWarning && (DateTime.Now - _lastMemoryWarningTime).TotalSeconds > 60)
+        {
+            _lastMemoryWarningTime = DateTime.Now;
+            System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                MessageBox.Show(
+                    $"メモリ使用量が上限（{_settings.MaxFullImageMemoryMB}MB）に達しました。\n" +
+                    "フルイメージの読み込みをスキップします。\n" +
+                    "設定からメモリ上限を変更するか、フォルダを再読み込みしてください。",
+                    "メモリ不足", MessageBoxButton.OK, MessageBoxImage.Warning);
+            });
+        }
+        return false;
+    }
+
     private void PrefetchNearbyFullImages(int selectedIndex)
     {
         if (!ShowOriginalImages) return;
+        if (!CheckMemoryAndWarn()) return;
         for (int delta = -2; delta <= 2; delta++)
         {
             int idx = selectedIndex + delta;
@@ -545,6 +597,8 @@ public partial class FolderModeViewModel : ViewModelBase
         settingsVm.ExifShowDate = ExifItemShowDate;
         settingsVm.ExifShowCamera = ExifItemShowCamera;
         settingsVm.GroupRawJpeg = _settings.GroupRawJpeg;
+        settingsVm.ShowMemoryWarning = _settings.ShowMemoryWarning;
+        settingsVm.MaxFullImageMemoryMB = _settings.MaxFullImageMemoryMB;
 
         var window = _serviceProvider.GetRequiredService<Views.FolderModeSettingsWindow>();
         // DataContextをsettingsVmに差し替え

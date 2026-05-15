@@ -54,15 +54,7 @@ public partial class FolderSessionPhotoViewModel : ViewModelBase
     public bool IsLoadingFullImage => _fullImageLoading;
     public bool IsThumbnailLoading => _thumbnail == null;
 
-    public BitmapImage? FullImage
-    {
-        get
-        {
-            if (_fullImage == null && !_fullImageLoading)
-                _ = LoadFullImageAsync();
-            return _fullImage;
-        }
-    }
+    public BitmapImage? FullImage => _fullImage;
 
     public void TriggerFullImageLoad()
     {
@@ -72,6 +64,7 @@ public partial class FolderSessionPhotoViewModel : ViewModelBase
 
     private async Task LoadFullImageAsync()
     {
+        if (IsRawFile) return;
         _fullImageLoading = true;
         OnPropertyChanged(nameof(IsLoadingFullImage));
         try
@@ -148,6 +141,12 @@ public partial class FolderSessionPhotoViewModel : ViewModelBase
     private bool _isExpanded;
 
     /// <summary>
+    /// RAW+JPEGグループとして表示中（オレンジ枠線でグループを示す）
+    /// </summary>
+    [ObservableProperty]
+    private bool _isGroupedWithPair;
+
+    /// <summary>
     /// 撮影設定サマリー (例: "f/1.8  1/500s  ISO400")
     /// </summary>
     public string SettingsSummary
@@ -211,5 +210,5 @@ public partial class FolderSessionPhotoViewModel : ViewModelBase
     /// <summary>
     /// ペア表示用のテキスト
     /// </summary>
-    public string PairBadgeText => HasPair ? (IsRawFile ? "RAW+JPG" : "JPG+RAW") : string.Empty;
+    public string PairBadgeText => HasPair ? (IsRawFile ? "(JPEG)+RAW" : "JPEG+(RAW)") : string.Empty;
 }
