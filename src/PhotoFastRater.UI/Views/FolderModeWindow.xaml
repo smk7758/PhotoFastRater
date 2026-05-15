@@ -14,25 +14,6 @@
         Drop="Window_Drop"
         SizeChanged="Window_SizeChanged">
 
-    <Window.InputBindings>
-        <KeyBinding Key="Up"
-                    Command="{Binding NavigateUpCommand}"/>
-        <KeyBinding Key="Down"
-                    Command="{Binding NavigateDownCommand}"/>
-        <KeyBinding Key="Left"
-                    Command="{Binding NavigateLeftCommand}"/>
-        <KeyBinding Key="Right"
-                    Command="{Binding NavigateRightCommand}"/>
-        <KeyBinding Key="Tab"
-                    Command="{Binding NavigateRightCommand}"/>
-        <KeyBinding Key="Tab"
-                    Modifiers="Shift"
-                    Command="{Binding NavigateLeftCommand}"/>
-        <KeyBinding Key="O"
-                    Modifiers="Control"
-                    Command="{Binding OpenFolderCommand}"/>
-    </Window.InputBindings>
-
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -93,8 +74,19 @@
                     Style="{StaticResource MaterialDesignRaisedButton}"
                     Margin="4,0"/>
             <Separator Margin="8,0"/>
+            <Button Content="再読み込み"
+                    Command="{Binding ReloadFolderCommand}"
+                    Margin="4,0"/>
+            <ToggleButton Content="原画像"
+                          IsChecked="{Binding ShowOriginalImages}"
+                          Margin="4,0"
+                          Padding="12,6"/>
+            <Separator Margin="8,0"/>
             <Button Content="設定"
                     Command="{Binding OpenSettingsCommand}"
+                    Margin="4,0"/>
+            <Button Content="ショートカット設定"
+                    Command="{Binding OpenKeyboardShortcutsCommand}"
                     Margin="4,0"/>
         </ToolBar>
 
@@ -221,7 +213,8 @@
                                         Height="{Binding DataContext.ThumbnailSize, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                         Margin="4"
                                         BorderThickness="2"
-                                        Cursor="Hand">
+                                        Cursor="Hand"
+                                        Tag="{Binding DataContext, RelativeSource={RelativeSource AncestorType=Window}}">
                                     <Border.Style>
                                         <Style TargetType="Border">
                                             <Setter Property="BorderBrush"
@@ -241,6 +234,26 @@
                                             </Style.Triggers>
                                         </Style>
                                     </Border.Style>
+                                    <Border.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Header="この写真を再読み込み"
+                                                      Command="{Binding PlacementTarget.Tag.ReloadPhotoCommand,
+                                                                RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      CommandParameter="{Binding PlacementTarget.DataContext,
+                                                                RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                                            <MenuItem Header="エクスプローラーで開く"
+                                                      Command="{Binding PlacementTarget.Tag.OpenPhotoFolderCommand,
+                                                                RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      CommandParameter="{Binding PlacementTarget.DataContext,
+                                                                RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                                            <Separator/>
+                                            <MenuItem Header="開く（ダブルクリックと同じ）"
+                                                      Command="{Binding PlacementTarget.Tag.OpenPhotoCommand,
+                                                                RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      CommandParameter="{Binding PlacementTarget.DataContext,
+                                                                RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                                        </ContextMenu>
+                                    </Border.ContextMenu>
                                     <Border.InputBindings>
                                         <MouseBinding MouseAction="LeftClick"
                                                       Command="{Binding DataContext.SelectPhotoCommand, RelativeSource={RelativeSource AncestorType=Window}}"
@@ -255,10 +268,22 @@
                                                 Width="4"
                                                 HorizontalAlignment="Left"
                                                 Visibility="{Binding IsRawFile, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                                        <Image Source="{Binding Thumbnail}"
-                                               Stretch="Uniform"
+                                        <Image Stretch="Uniform"
                                                HorizontalAlignment="Center"
-                                               VerticalAlignment="Center"/>
+                                               VerticalAlignment="Center">
+                                            <Image.Style>
+                                                <Style TargetType="Image">
+                                                    <Setter Property="Source" Value="{Binding Thumbnail}"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Value="True"
+                                                            Binding="{Binding DataContext.ShowOriginalImages,
+                                                                      RelativeSource={RelativeSource AncestorType=ItemsControl}}">
+                                                            <Setter Property="Source" Value="{Binding FullImage}"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Image.Style>
+                                        </Image>
                                         <!-- ペアバッジ -->
                                         <Border Background="#CC4CAF50"
                                                 CornerRadius="4"
@@ -447,20 +472,19 @@
                             <Button Content="×"
                                     Command="{Binding SetRatingCommand}"
                                     CommandParameter="0"
-                                    Margin="2"
-                                    Width="30">
+                                    Height="32" MinWidth="36" FontSize="13" Margin="2">
                                 <Button.Style>
-                                    <Style TargetType="Button"
-                                           BasedOn="{StaticResource MaterialDesignFlatButton}">
-                                        <Setter Property="Foreground"
-                                                Value="Gray"/>
+                                    <Style TargetType="Button">
+                                        <Setter Property="Foreground" Value="Gray"/>
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Setter Property="BorderBrush" Value="Gray"/>
                                         <Style.Triggers>
                                             <DataTrigger Value="True"
                                                          Binding="{Binding SelectedPhoto.Rating,
                                                           Converter={StaticResource RatingEqualConverter},
                                                           ConverterParameter=0}">
-                                                <Setter Property="Foreground"
-                                                        Value="#E53935"/>
+                                                <Setter Property="Foreground" Value="#E53935"/>
+                                                <Setter Property="BorderBrush" Value="#E53935"/>
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
@@ -469,20 +493,19 @@
                             <Button Content="★1"
                                     Command="{Binding SetRatingCommand}"
                                     CommandParameter="1"
-                                    Margin="2"
-                                    Width="34">
+                                    Height="32" MinWidth="36" FontSize="13" Margin="2">
                                 <Button.Style>
-                                    <Style TargetType="Button"
-                                           BasedOn="{StaticResource MaterialDesignFlatButton}">
-                                        <Setter Property="Foreground"
-                                                Value="Gray"/>
+                                    <Style TargetType="Button">
+                                        <Setter Property="Foreground" Value="Gray"/>
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Setter Property="BorderBrush" Value="Gray"/>
                                         <Style.Triggers>
                                             <DataTrigger Value="True"
                                                          Binding="{Binding SelectedPhoto.Rating,
                                                           Converter={StaticResource RatingEqualConverter},
                                                           ConverterParameter=1}">
-                                                <Setter Property="Foreground"
-                                                        Value="#FFB300"/>
+                                                <Setter Property="Foreground" Value="#FFB300"/>
+                                                <Setter Property="BorderBrush" Value="#FFB300"/>
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
@@ -491,20 +514,19 @@
                             <Button Content="★2"
                                     Command="{Binding SetRatingCommand}"
                                     CommandParameter="2"
-                                    Margin="2"
-                                    Width="34">
+                                    Height="32" MinWidth="36" FontSize="13" Margin="2">
                                 <Button.Style>
-                                    <Style TargetType="Button"
-                                           BasedOn="{StaticResource MaterialDesignFlatButton}">
-                                        <Setter Property="Foreground"
-                                                Value="Gray"/>
+                                    <Style TargetType="Button">
+                                        <Setter Property="Foreground" Value="Gray"/>
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Setter Property="BorderBrush" Value="Gray"/>
                                         <Style.Triggers>
                                             <DataTrigger Value="True"
                                                          Binding="{Binding SelectedPhoto.Rating,
                                                           Converter={StaticResource RatingEqualConverter},
                                                           ConverterParameter=2}">
-                                                <Setter Property="Foreground"
-                                                        Value="#FFB300"/>
+                                                <Setter Property="Foreground" Value="#FFB300"/>
+                                                <Setter Property="BorderBrush" Value="#FFB300"/>
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
@@ -513,20 +535,19 @@
                             <Button Content="★3"
                                     Command="{Binding SetRatingCommand}"
                                     CommandParameter="3"
-                                    Margin="2"
-                                    Width="34">
+                                    Height="32" MinWidth="36" FontSize="13" Margin="2">
                                 <Button.Style>
-                                    <Style TargetType="Button"
-                                           BasedOn="{StaticResource MaterialDesignFlatButton}">
-                                        <Setter Property="Foreground"
-                                                Value="Gray"/>
+                                    <Style TargetType="Button">
+                                        <Setter Property="Foreground" Value="Gray"/>
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Setter Property="BorderBrush" Value="Gray"/>
                                         <Style.Triggers>
                                             <DataTrigger Value="True"
                                                          Binding="{Binding SelectedPhoto.Rating,
                                                           Converter={StaticResource RatingEqualConverter},
                                                           ConverterParameter=3}">
-                                                <Setter Property="Foreground"
-                                                        Value="#FFB300"/>
+                                                <Setter Property="Foreground" Value="#FFB300"/>
+                                                <Setter Property="BorderBrush" Value="#FFB300"/>
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
@@ -535,20 +556,19 @@
                             <Button Content="★4"
                                     Command="{Binding SetRatingCommand}"
                                     CommandParameter="4"
-                                    Margin="2"
-                                    Width="34">
+                                    Height="32" MinWidth="36" FontSize="13" Margin="2">
                                 <Button.Style>
-                                    <Style TargetType="Button"
-                                           BasedOn="{StaticResource MaterialDesignFlatButton}">
-                                        <Setter Property="Foreground"
-                                                Value="Gray"/>
+                                    <Style TargetType="Button">
+                                        <Setter Property="Foreground" Value="Gray"/>
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Setter Property="BorderBrush" Value="Gray"/>
                                         <Style.Triggers>
                                             <DataTrigger Value="True"
                                                          Binding="{Binding SelectedPhoto.Rating,
                                                           Converter={StaticResource RatingEqualConverter},
                                                           ConverterParameter=4}">
-                                                <Setter Property="Foreground"
-                                                        Value="#FFB300"/>
+                                                <Setter Property="Foreground" Value="#FFB300"/>
+                                                <Setter Property="BorderBrush" Value="#FFB300"/>
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
@@ -557,20 +577,19 @@
                             <Button Content="★5"
                                     Command="{Binding SetRatingCommand}"
                                     CommandParameter="5"
-                                    Margin="2"
-                                    Width="34">
+                                    Height="32" MinWidth="36" FontSize="13" Margin="2">
                                 <Button.Style>
-                                    <Style TargetType="Button"
-                                           BasedOn="{StaticResource MaterialDesignFlatButton}">
-                                        <Setter Property="Foreground"
-                                                Value="Gray"/>
+                                    <Style TargetType="Button">
+                                        <Setter Property="Foreground" Value="Gray"/>
+                                        <Setter Property="Background" Value="Transparent"/>
+                                        <Setter Property="BorderBrush" Value="Gray"/>
                                         <Style.Triggers>
                                             <DataTrigger Value="True"
                                                          Binding="{Binding SelectedPhoto.Rating,
                                                           Converter={StaticResource RatingEqualConverter},
                                                           ConverterParameter=5}">
-                                                <Setter Property="Foreground"
-                                                        Value="#FFB300"/>
+                                                <Setter Property="Foreground" Value="#FFB300"/>
+                                                <Setter Property="BorderBrush" Value="#FFB300"/>
                                             </DataTrigger>
                                         </Style.Triggers>
                                     </Style>

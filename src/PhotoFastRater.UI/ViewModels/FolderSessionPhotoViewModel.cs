@@ -40,6 +40,41 @@ public partial class FolderSessionPhotoViewModel : ViewModelBase
     public int Height => _photo.Height;
 
     private BitmapImage? _thumbnail;
+    private BitmapImage? _fullImage;
+    private bool _fullImageLoading;
+
+    public BitmapImage? FullImage
+    {
+        get
+        {
+            if (_fullImage == null && !_fullImageLoading)
+                _ = LoadFullImageAsync();
+            return _fullImage;
+        }
+    }
+
+    private async Task LoadFullImageAsync()
+    {
+        _fullImageLoading = true;
+        try
+        {
+            var path = FilePath;
+            var bmp = await Task.Run(() =>
+            {
+                var bi = new BitmapImage();
+                bi.BeginInit();
+                bi.UriSource = new Uri(path);
+                bi.CacheOption = BitmapCacheOption.OnLoad;
+                bi.EndInit();
+                bi.Freeze();
+                return bi;
+            });
+            _fullImage = bmp;
+            OnPropertyChanged(nameof(FullImage));
+        }
+        catch { }
+        finally { _fullImageLoading = false; }
+    }
 
     public BitmapImage? Thumbnail
     {

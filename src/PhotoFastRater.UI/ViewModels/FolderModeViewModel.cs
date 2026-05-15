@@ -21,6 +21,9 @@ public partial class FolderModeViewModel : ViewModelBase
     private readonly IServiceProvider _serviceProvider;
     private readonly ImageLoader _imageLoader;
     private readonly UIConfiguration _uiConfig;
+    private readonly ExifService _exifService;
+
+    public event Action? ShortcutsUpdated;
 
     // フォルダモード設定
     private FolderModeSettingsViewModel _settings = new();
@@ -61,6 +64,9 @@ public partial class FolderModeViewModel : ViewModelBase
     [ObservableProperty] private bool _exifItemShowDate = false;
     [ObservableProperty] private bool _exifItemShowCamera = false;
 
+    // 元画像表示切替
+    [ObservableProperty] private bool _showOriginalImages = false;
+
     // フィルター適用済み表示コレクション
     public ObservableCollection<FolderSessionPhotoViewModel> DisplayPhotos { get; } = new();
 
@@ -90,12 +96,14 @@ public partial class FolderModeViewModel : ViewModelBase
         FolderSessionService sessionService,
         IServiceProvider serviceProvider,
         ImageLoader imageLoader,
-        UIConfiguration uiConfig)
+        UIConfiguration uiConfig,
+        ExifService exifService)
     {
         _sessionService = sessionService;
         _serviceProvider = serviceProvider;
         _imageLoader = imageLoader;
         _uiConfig = uiConfig;
+        _exifService = exifService;
 
         _settings.Load();
         ApplySettingsToViewModel();
@@ -266,10 +274,48 @@ public partial class FolderModeViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void OpenPhotoFolder()
+    private void OpenPhotoFolder(FolderSessionPhotoViewModel? photo)
     {
-        if (SelectedPhoto == null) return;
-        System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{SelectedPhoto.FilePath}\"");
+        var target = photo ?? SelectedPhoto;
+        if (target == null) return;
+        System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{target.FilePath}\"");
+    }
+
+    [RelayCommand]
+    private async Task ReloadFolderAsync()
+    {
+        if (string.IsNullOrEmpty(FolderPath)) return;
+        var result = MessageBox.Show(
+            $"フォルダを再読み込みします。\n現在のセッションは上書きされます。\n\n{FolderPath}",
+            "再読み込みの確認", MessageBoxButton.YesNo, MessageBoxImage.Question);
+        if (result != MessageBoxResult.Yes) return;
+        await LoadFolderAsync(FolderPath);
+    }
+
+    [RelayCommand]
+    private async Task ReloadPhotoAsync(FolderSessionPhotoViewModel? photo)
+    {
+        if (photo == null) return;
+        try
+        {
+            var exifPhoto = _exifService.ExtractExifData(photo.FilePath);
+            photo.Rating = exifPhoto.Rating;
+            photo.IsRejected = exifPhoto.IsRejected;
+            photo.Thumbnail = null;
+            await LoadThumbnailAsync(photo);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"再読み込みエラー: {ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    [RelayCommand]
+    private void OpenKeyboardShortcuts()
+    {
+        var window = _serviceProvider.GetRequiredService<Views.KeyboardShortcutsWindow>();
+        if (window.ShowDialog() == true)
+            ShortcutsUpdated?.Invoke();
     }
 
     [RelayCommand]

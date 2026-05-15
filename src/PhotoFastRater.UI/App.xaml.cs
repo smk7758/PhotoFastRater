@@ -116,6 +116,11 @@ public partial class App : System.Windows.Application
         services.AddSingleton<SettingsViewModel>();
         services.AddTransient<FolderModeSettingsViewModel>();
 
+        // Keyboard Shortcuts
+        services.AddSingleton<ShortcutService>();
+        services.AddTransient<KeyboardShortcutsViewModel>();
+        services.AddTransient<KeyboardShortcutsWindow>();
+
         // Views
         services.AddTransient<MainWindow>();
         services.AddTransient<FolderModeWindow>();
