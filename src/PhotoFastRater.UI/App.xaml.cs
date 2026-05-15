@@ -116,6 +116,9 @@ public partial class App : System.Windows.Application
         services.AddSingleton<SettingsViewModel>();
         services.AddTransient<FolderModeSettingsViewModel>();
 
+        // Metadata write-back
+        services.AddSingleton<ExifWriteService>();
+
         // Keyboard Shortcuts
         services.AddSingleton<ShortcutService>();
         services.AddTransient<KeyboardShortcutsViewModel>();

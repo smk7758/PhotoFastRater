@@ -22,6 +22,7 @@ public partial class FolderModeViewModel : ViewModelBase
     private readonly ImageLoader _imageLoader;
     private readonly UIConfiguration _uiConfig;
     private readonly ExifService _exifService;
+    private readonly Services.ExifWriteService _exifWriteService;
 
     public event Action? ShortcutsUpdated;
 
@@ -97,13 +98,15 @@ public partial class FolderModeViewModel : ViewModelBase
         IServiceProvider serviceProvider,
         ImageLoader imageLoader,
         UIConfiguration uiConfig,
-        ExifService exifService)
+        ExifService exifService,
+        Services.ExifWriteService exifWriteService)
     {
         _sessionService = sessionService;
         _serviceProvider = serviceProvider;
         _imageLoader = imageLoader;
         _uiConfig = uiConfig;
         _exifService = exifService;
+        _exifWriteService = exifWriteService;
 
         _settings.Load();
         ApplySettingsToViewModel();
@@ -199,11 +202,29 @@ public partial class FolderModeViewModel : ViewModelBase
             }
 
             Photos.Clear();
+            var allVms = new List<FolderSessionPhotoViewModel>(CurrentSession.Photos.Count);
             foreach (var photo in CurrentSession.Photos)
             {
                 var photoVm = new FolderSessionPhotoViewModel(photo);
                 Photos.Add(photoVm);
-                _ = LoadThumbnailAsync(photoVm);
+                allVms.Add(photoVm);
+            }
+
+            // フェーズ1: 最初の表示範囲推定分を即座にロード
+            var initialCount = Math.Min(50, allVms.Count);
+            for (int i = 0; i < initialCount; i++)
+                _ = LoadThumbnailAsync(allVms[i]);
+
+            // フェーズ2: 残りは少し遅延させてロード（フェーズ1を優先）
+            if (allVms.Count > initialCount)
+            {
+                var remaining = allVms.Skip(initialCount).ToList();
+                _ = Task.Run(async () =>
+                {
+                    await Task.Delay(300);
+                    foreach (var vm in remaining)
+                        _ = LoadThumbnailAsync(vm);
+                });
             }
 
             RefreshDisplayPhotos();
@@ -268,6 +289,10 @@ public partial class FolderModeViewModel : ViewModelBase
 
         SelectedPhoto.Rating = rating;
         SelectedPhoto.UpdateModel();
+
+        // JPEGファイルのEXIF/XMPにレーティングを書き戻し（エクスプローラーに反映）
+        var filePath = SelectedPhoto.FilePath;
+        _ = _exifWriteService.WriteRatingAsync(filePath, rating);
 
         UpdateStatistics();
         await SaveSessionAsync();
@@ -543,7 +568,7 @@ public partial class FolderModeViewModel : ViewModelBase
         return SelectedPhoto != null;
     }
 
-    private async Task LoadThumbnailAsync(FolderSessionPhotoViewModel photoVm)
+    internal async Task LoadThumbnailAsync(FolderSessionPhotoViewModel photoVm)
     {
         try
         {
@@ -551,12 +576,21 @@ public partial class FolderModeViewModel : ViewModelBase
             System.Windows.Application.Current.Dispatcher.Invoke(() =>
             {
                 photoVm.Thumbnail = thumbnail;
+                // AutoOrient後の実寸でアスペクト比を更新
+                if (thumbnail != null && thumbnail.PixelWidth > 0 && thumbnail.PixelHeight > 0)
+                    photoVm.PhotoAspectRatio = (double)thumbnail.PixelHeight / thumbnail.PixelWidth;
             });
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[FolderMode] サムネイル読み込みエラー: {photoVm.FilePath} - {ex.Message}");
         }
+    }
+
+    public Task LoadThumbnailIfMissingAsync(FolderSessionPhotoViewModel photoVm)
+    {
+        if (photoVm.Thumbnail != null) return Task.CompletedTask;
+        return LoadThumbnailAsync(photoVm);
     }
 
     private async Task LoadTreeThumbnailAsync(PhotoViewModel photoVm)

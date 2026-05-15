@@ -39,6 +39,12 @@ public partial class FolderSessionPhotoViewModel : ViewModelBase
     public int Width => _photo.Width;
     public int Height => _photo.Height;
 
+    /// <summary>
+    /// 表示用アスペクト比（高さ/幅）。サムネイルロード後にAutoOrient済み実寸で更新される。
+    /// </summary>
+    [ObservableProperty]
+    private double _photoAspectRatio = 1.0;
+
     private BitmapImage? _thumbnail;
     private BitmapImage? _fullImage;
     private bool _fullImageLoading;

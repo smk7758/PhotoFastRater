@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.Input;
@@ -50,6 +51,42 @@ public partial class FolderModeWindow : Window
 
         _activeShortcuts = _shortcutService.Load();
         PreviewKeyDown += HandleShortcutKeys;
+
+        Loaded += (_, _) =>
+        {
+            PhotoScrollViewer.ScrollChanged += OnPhotoScrollChanged;
+        };
+    }
+
+    private void OnPhotoScrollChanged(object sender, ScrollChangedEventArgs e)
+    {
+        if (Math.Abs(e.VerticalChange) < 1 && Math.Abs(e.HorizontalChange) < 1) return;
+        _ = LoadVisibleThumbnailsAsync();
+    }
+
+    private async Task LoadVisibleThumbnailsAsync()
+    {
+        await Dispatcher.InvokeAsync(() => { }, System.Windows.Threading.DispatcherPriority.Loaded);
+
+        var top = PhotoScrollViewer.VerticalOffset;
+        var bottom = top + PhotoScrollViewer.ViewportHeight;
+
+        for (int i = 0; i < _vm.DisplayPhotos.Count; i++)
+        {
+            var photo = _vm.DisplayPhotos[i];
+            if (photo.Thumbnail != null) continue;
+
+            try
+            {
+                if (PhotoGrid.ItemContainerGenerator.ContainerFromIndex(i) is not FrameworkElement container)
+                    continue;
+
+                var pos = container.TransformToVisual(PhotoScrollViewer).Transform(new System.Windows.Point(0, 0));
+                if (pos.Y < bottom && pos.Y + container.ActualHeight > top)
+                    _ = _vm.LoadThumbnailIfMissingAsync(photo);
+            }
+            catch (InvalidOperationException) { }
+        }
     }
 
     private void HandleShortcutKeys(object sender, System.Windows.Input.KeyEventArgs e)

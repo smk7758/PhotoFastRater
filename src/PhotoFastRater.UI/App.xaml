@@ -16,6 +16,7 @@
             <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter"/>
             <converters:NullOrEmptyToCollapsedConverter x:Key="NullOrEmptyToCollapsedConverter"/>
             <converters:RatingEqualConverter x:Key="RatingEqualConverter"/>
+            <converters:AspectRatioToHeightConverter x:Key="AspectRatioToHeightConverter"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

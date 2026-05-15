@@ -8,7 +8,9 @@
       "Bash(dotnet add package:*)",
       "Bash(dotnet clean:*)",
       "Bash(dotnet ef:*)",
-      "Bash(dotnet test:*)"
+      "Bash(dotnet test:*)",
+      "Bash(Get-Content \"src/PhotoFastRater.UI/ViewModels/FolderModeViewModel.cs\")",
+      "Bash(Get-Content \"src/PhotoFastRater.UI/ViewModels/FolderSessionPhotoViewModel.cs\")"
     ]
   }
 }

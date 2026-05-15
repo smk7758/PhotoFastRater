@@ -70,12 +70,17 @@ public class RawThumbnailGenerator : IThumbnailGenerator
             using var ms = new MemoryStream(thumbnailData);
             using var image = Image.Load(ms);
 
+            // EXIFの回転情報を適用
+            image.Mutate(x => x.AutoOrient());
+
             var size = CalculateSize(image.Size, targetSize);
 
             // 既にターゲットサイズ以下の場合はリサイズ不要
             if (size == image.Size)
             {
-                return thumbnailData;
+                using var outputMs2 = new MemoryStream();
+                image.SaveAsJpeg(outputMs2, new JpegEncoder { Quality = _jpegQuality });
+                return outputMs2.ToArray();
             }
 
             image.Mutate(x => x.Resize(new ResizeOptions

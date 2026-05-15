@@ -21,6 +21,9 @@ public class JpegThumbnailGenerator : IThumbnailGenerator
             {
                 using var image = Image.Load(filePath);
 
+                // EXIFの回転情報を適用してから縦横判定・リサイズ
+                image.Mutate(x => x.AutoOrient());
+
                 var size = CalculateSize(image.Size, targetSize);
 
                 image.Mutate(x => x.Resize(new ResizeOptions
