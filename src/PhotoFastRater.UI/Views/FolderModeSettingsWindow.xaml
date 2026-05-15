@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
         Title="フォルダモード設定"
-        Width="420" SizeToContent="Height"
+        Width="440" SizeToContent="Height"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner"
         Style="{StaticResource MaterialDesignWindow}">
@@ -65,7 +65,7 @@
                   IsChecked="{Binding ShowMemoryWarning}"
                   Style="{StaticResource MaterialDesignCheckBox}"
                   Margin="0,0,0,8"/>
-        <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
             <TextBlock Text="フルイメージメモリ上限:" VerticalAlignment="Center" Margin="0,0,8,0"/>
             <Slider Minimum="256" Maximum="4096"
                     Value="{Binding MaxFullImageMemoryMB}"
@@ -74,8 +74,35 @@
                        VerticalAlignment="Center" Margin="8,0,0,0" Width="60"/>
         </StackPanel>
 
+        <!-- メモリ推奨情報 -->
+        <StackPanel Margin="0,4,0,16">
+            <TextBlock FontSize="11" Foreground="{DynamicResource MaterialDesignBodyLight}">
+                <Run Text="システムRAM: "/>
+                <Run Text="{Binding SystemTotalRamMB, StringFormat={}{0}MB}"/>
+                <Run Text=" / 推奨設定値: "/>
+                <Run Text="{Binding RecommendedMaxFullImageMemoryMB, StringFormat={}{0}MB}"/>
+            </TextBlock>
+            <Border Background="#FFFFF9C4"
+                    BorderBrush="#FFFFF176"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Padding="8,4"
+                    Margin="0,4,0,0"
+                    Visibility="{Binding IsMemorySettingBelowRecommended,
+                        Converter={StaticResource BooleanToVisibilityConverter}}">
+                <TextBlock Text="現在の設定が推奨値より低い設定です。パフォーマンス向上のため、メモリ割り当てを増やすことを検討してください。"
+                           FontSize="11" TextWrapping="Wrap" Foreground="#FF5F4000"/>
+            </Border>
+        </StackPanel>
+
+        <Separator Margin="0,0,0,12"/>
+
         <!-- ボタン -->
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,0,0">
+            <Button Content="設定ファイルを開く (JSON)"
+                    Click="OpenSettingsFile_Click"
+                    Style="{StaticResource MaterialDesignFlatButton}"
+                    Margin="0,0,8,0"/>
             <Button Content="キャンセル" Click="Cancel_Click"
                     Style="{StaticResource MaterialDesignFlatButton}"
                     Margin="0,0,8,0"/>

@@ -96,8 +96,8 @@ public class ExifService
             }
 
             var lensDir = directories.OfType<ExifSubIfdDirectory>().FirstOrDefault();
-            if (lensDir != null)
-                photo.LensModel = lensDir.GetDescription(ExifDirectoryBase.TagLensModel);
+            var lensFromSubIfd = lensDir?.GetDescription(ExifDirectoryBase.TagLensModel);
+            if (lensFromSubIfd != null) photo.LensModel = lensFromSubIfd;
 
             var gpsDir = directories.OfType<GpsDirectory>().FirstOrDefault();
             if (gpsDir != null)

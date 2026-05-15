@@ -1,3 +1,4 @@
+using System.IO;
 using System.Windows;
 using PhotoFastRater.UI.ViewModels;
 
@@ -21,5 +22,13 @@ public partial class FolderModeSettingsWindow : Window
     private void Cancel_Click(object sender, RoutedEventArgs e)
     {
         DialogResult = false;
+    }
+
+    private void OpenSettingsFile_Click(object sender, RoutedEventArgs e)
+    {
+        var path = FolderModeSettingsViewModel.SettingsPath;
+        if (!File.Exists(path))
+            (DataContext as FolderModeSettingsViewModel)?.Save();
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(path) { UseShellExecute = true });
     }
 }

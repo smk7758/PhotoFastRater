@@ -50,8 +50,21 @@ public partial class PhotoGridViewModel : ViewModelBase
         }
     }
 
-    // グリッドの列数（WrapPanelの列数）
-    private const int GridColumns = 6;
+    [ObservableProperty] private int _thumbnailSize = 200;
+    private double _gridWidth = 1200;
+    private int _gridColumns = 6;
+    public int GridColumns { get => _gridColumns; private set => SetProperty(ref _gridColumns, value); }
+
+    partial void OnThumbnailSizeChanged(int value) => UpdateGridColumns();
+
+    public void NotifyGridWidth(double width)
+    {
+        _gridWidth = width;
+        UpdateGridColumns();
+    }
+
+    private void UpdateGridColumns() =>
+        GridColumns = Math.Max(1, (int)(_gridWidth / (ThumbnailSize + 8)));
 
     public PhotoGridViewModel(PhotoRepository photoRepository, ImageLoader imageLoader, SocialMediaExporter socialMediaExporter, UIConfiguration uiConfig)
     {

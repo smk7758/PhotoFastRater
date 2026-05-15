@@ -67,7 +67,8 @@
             <TabItem Header="写真一覧">
                 <Grid>
                     <!-- グリッド表示 -->
-                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                    <ScrollViewer x:Name="PhotoGridScrollViewer"
+                                  VerticalScrollBarVisibility="Auto"
                                   Visibility="{Binding PhotoGrid.IsTreeViewMode, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
                         <ItemsControl ItemsSource="{Binding PhotoGrid.Photos}"
                                       VirtualizingPanel.IsVirtualizing="False">
@@ -78,8 +79,8 @@
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Width="200"
-                                            Height="200"
+                                    <Border Width="{Binding DataContext.PhotoGrid.ThumbnailSize, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            Height="{Binding DataContext.PhotoGrid.ThumbnailSize, RelativeSource={RelativeSource AncestorType=Window}}"
                                             Margin="4"
                                             BorderBrush="Gray"
                                             BorderThickness="2"

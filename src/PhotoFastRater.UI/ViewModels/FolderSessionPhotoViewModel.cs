@@ -54,6 +54,7 @@ public partial class FolderSessionPhotoViewModel : ViewModelBase
 
     public bool IsLoadingFullImage => _fullImageLoading;
     public bool IsThumbnailLoading => _thumbnail == null;
+    public bool HasFullImage => _fullImage != null;
 
     public BitmapImage? FullImage => _fullImage;
 
@@ -69,6 +70,7 @@ public partial class FolderSessionPhotoViewModel : ViewModelBase
         _fullImage = null;
         _fullImageLoading = false;
         OnPropertyChanged(nameof(FullImage));
+        OnPropertyChanged(nameof(HasFullImage));
         OnPropertyChanged(nameof(IsLoadingFullImage));
     }
 
@@ -83,6 +85,7 @@ public partial class FolderSessionPhotoViewModel : ViewModelBase
             {
                 _fullImage = await _rawFullImageLoader(FilePath);
                 OnPropertyChanged(nameof(FullImage));
+                OnPropertyChanged(nameof(HasFullImage));
             }
             catch { }
             finally
@@ -127,6 +130,7 @@ public partial class FolderSessionPhotoViewModel : ViewModelBase
             });
             _fullImage = bmp;
             OnPropertyChanged(nameof(FullImage));
+            OnPropertyChanged(nameof(HasFullImage));
         }
         catch { }
         finally

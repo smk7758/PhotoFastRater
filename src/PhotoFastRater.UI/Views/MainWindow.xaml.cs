@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using Microsoft.Extensions.DependencyInjection;
 using PhotoFastRater.UI.ViewModels;
 
@@ -14,6 +15,26 @@ public partial class MainWindow : Window
         InitializeComponent();
         DataContext = viewModel;
         _serviceProvider = serviceProvider;
+
+        PreviewMouseWheel += (_, e) =>
+        {
+            if (Keyboard.Modifiers == ModifierKeys.Control)
+            {
+                int delta = e.Delta > 0 ? 20 : -20;
+                viewModel.PhotoGrid.ThumbnailSize = Math.Clamp(viewModel.PhotoGrid.ThumbnailSize + delta, 80, 600);
+                e.Handled = true;
+            }
+        };
+
+        Loaded += (_, _) =>
+        {
+            if (PhotoGridScrollViewer != null)
+            {
+                PhotoGridScrollViewer.SizeChanged += (s, e) =>
+                    viewModel.PhotoGrid.NotifyGridWidth(e.NewSize.Width);
+                viewModel.PhotoGrid.NotifyGridWidth(PhotoGridScrollViewer.ActualWidth);
+            }
+        };
     }
 
     private void OpenFolderMode_Click(object sender, System.Windows.RoutedEventArgs e)

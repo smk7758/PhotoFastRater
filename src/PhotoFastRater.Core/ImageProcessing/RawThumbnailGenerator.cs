@@ -27,6 +27,11 @@ public class RawThumbnailGenerator : IThumbnailGenerator
                 // RAWファイルからメタデータを読み取る
                 var directories = ImageMetadataReader.ReadMetadata(filePath);
 
+                // RAWファイル本体のIFD0 orientation を取得（埋め込みJPEGのfallback用）
+                int rawOrientation = 1;
+                var ifd0 = directories.OfType<ExifIfd0Directory>().FirstOrDefault();
+                ifd0?.TryGetInt32(ExifDirectoryBase.TagOrientation, out rawOrientation);
+
                 // ExifThumbnailDirectoryから埋め込みJPEGサムネイルを取得
                 var thumbnailDirectory = directories.OfType<ExifThumbnailDirectory>().FirstOrDefault();
 
@@ -45,13 +50,13 @@ public class RawThumbnailGenerator : IThumbnailGenerator
 
                         if (bytesRead == length)
                         {
-                            return ResizeThumbnail(buffer, targetSize);
+                            return ResizeThumbnail(buffer, targetSize, rawOrientation);
                         }
                     }
                 }
 
                 // ExifThumbnailDirectory で見つからない場合はバイトスキャンで埋め込みJPEGを探す
-                return FindEmbeddedJpeg(filePath, targetSize);
+                return FindEmbeddedJpeg(filePath, targetSize, rawOrientation);
             }
             catch (Exception ex)
             {
@@ -70,6 +75,16 @@ public class RawThumbnailGenerator : IThumbnailGenerator
         {
             try
             {
+                // RAWファイル本体のIFD0 orientation を取得
+                int rawOrientation = 1;
+                try
+                {
+                    var dirs = ImageMetadataReader.ReadMetadata(filePath);
+                    var ifd0 = dirs.OfType<ExifIfd0Directory>().FirstOrDefault();
+                    ifd0?.TryGetInt32(ExifDirectoryBase.TagOrientation, out rawOrientation);
+                }
+                catch { }
+
                 const int maxScanBytes = 20 * 1024 * 1024;
                 using var fs = File.OpenRead(filePath);
                 int readLen = (int)Math.Min(fs.Length, maxScanBytes);
@@ -98,7 +113,7 @@ public class RawThumbnailGenerator : IThumbnailGenerator
                     {
                         using var ms = new MemoryStream(best);
                         using var image = Image.Load(ms);
-                        image.Mutate(x => x.AutoOrient());
+                        ApplyOrientation(image, best, rawOrientation);
                         using var outMs = new MemoryStream();
                         image.SaveAsJpeg(outMs, new JpegEncoder { Quality = 92 });
                         return outMs.ToArray();
@@ -114,7 +129,7 @@ public class RawThumbnailGenerator : IThumbnailGenerator
         });
     }
 
-    private byte[] FindEmbeddedJpeg(string filePath, int targetSize)
+    private byte[] FindEmbeddedJpeg(string filePath, int targetSize, int rawOrientation = 1)
     {
         try
         {
@@ -145,7 +160,7 @@ public class RawThumbnailGenerator : IThumbnailGenerator
             }
 
             if (best != null)
-                return ResizeThumbnail(best, targetSize);
+                return ResizeThumbnail(best, targetSize, rawOrientation);
         }
         catch (Exception ex)
         {
@@ -164,15 +179,51 @@ public class RawThumbnailGenerator : IThumbnailGenerator
         return limit;
     }
 
-    private byte[] ResizeThumbnail(byte[] thumbnailData, int targetSize)
+    /// <summary>
+    /// 埋め込みJPEGの向きを補正する。
+    /// JPEGバイト列自身にorientation情報があればAutoOrient、なければRAWファイルのIFD0 orientationを適用。
+    /// </summary>
+    private static void ApplyOrientation(Image image, byte[] jpegBytes, int rawOrientation)
+    {
+        // MetadataExtractor でJPEGバイト列のorientation を読む
+        int jpegOrientation = 1;
+        try
+        {
+            using var ms = new MemoryStream(jpegBytes);
+            var dirs = ImageMetadataReader.ReadMetadata(ms);
+            dirs.OfType<ExifIfd0Directory>().FirstOrDefault()
+                ?.TryGetInt32(ExifDirectoryBase.TagOrientation, out jpegOrientation);
+        }
+        catch { }
+
+        if (jpegOrientation != 1)
+        {
+            // 埋め込みJPEG自身のorientation情報を使う
+            image.Mutate(x => x.AutoOrient());
+        }
+        else if (rawOrientation != 1)
+        {
+            // 埋め込みJPEGにorientationがないのでRAW IFD0のorientationを適用
+            var rot = rawOrientation switch
+            {
+                6 => RotateMode.Rotate90,
+                3 => RotateMode.Rotate180,
+                8 => RotateMode.Rotate270,
+                _ => RotateMode.None
+            };
+            if (rot != RotateMode.None)
+                image.Mutate(x => x.Rotate(rot));
+        }
+    }
+
+    private byte[] ResizeThumbnail(byte[] thumbnailData, int targetSize, int rawOrientation = 1)
     {
         try
         {
             using var ms = new MemoryStream(thumbnailData);
             using var image = Image.Load(ms);
 
-            // EXIFの回転情報を適用
-            image.Mutate(x => x.AutoOrient());
+            ApplyOrientation(image, thumbnailData, rawOrientation);
 
             var size = CalculateSize(image.Size, targetSize);
 

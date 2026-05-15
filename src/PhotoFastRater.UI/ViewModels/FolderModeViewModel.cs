@@ -95,6 +95,10 @@ public partial class FolderModeViewModel : ViewModelBase
     partial void OnFilterDateFromChanged(DateTime? value) => RefreshDisplayPhotos();
     partial void OnFilterDateToChanged(DateTime? value) => RefreshDisplayPhotos();
 
+    partial void OnNameLabelBelowChanged(bool value) { _settings.NameLabelBelow = value; _settings.Save(); }
+    partial void OnUniformPhotoSizeChanged(bool value) { _settings.UniformPhotoSize = value; _settings.Save(); }
+    partial void OnShowOriginalImagesChanged(bool value) { _settings.ShowOriginalImages = value; _settings.Save(); }
+
     public void NotifyGridWidth(double width)
     {
         _gridWidth = width;
@@ -133,6 +137,9 @@ public partial class FolderModeViewModel : ViewModelBase
         ExifItemShowSettings = _settings.ExifShowSettings;
         ExifItemShowDate = _settings.ExifShowDate;
         ExifItemShowCamera = _settings.ExifShowCamera;
+        NameLabelBelow = _settings.NameLabelBelow;
+        UniformPhotoSize = _settings.UniformPhotoSize;
+        ShowOriginalImages = _settings.ShowOriginalImages;
     }
 
     private void RefreshDisplayPhotos()
