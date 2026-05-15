@@ -1,5 +1,7 @@
 using System.Windows.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
+using MetadataExtractor;
+using MetadataExtractor.Formats.Exif;
 using PhotoFastRater.Core.Models;
 
 namespace PhotoFastRater.UI.ViewModels;
@@ -49,6 +51,9 @@ public partial class FolderSessionPhotoViewModel : ViewModelBase
     private BitmapImage? _fullImage;
     private bool _fullImageLoading;
 
+    public bool IsLoadingFullImage => _fullImageLoading;
+    public bool IsThumbnailLoading => _thumbnail == null;
+
     public BitmapImage? FullImage
     {
         get
@@ -68,15 +73,33 @@ public partial class FolderSessionPhotoViewModel : ViewModelBase
     private async Task LoadFullImageAsync()
     {
         _fullImageLoading = true;
+        OnPropertyChanged(nameof(IsLoadingFullImage));
         try
         {
             var path = FilePath;
             var bmp = await Task.Run(() =>
             {
+                // EXIF orientation を読んで回転を適用
+                int orientation = 1;
+                try
+                {
+                    var dirs = ImageMetadataReader.ReadMetadata(path);
+                    var ifd0 = dirs.OfType<ExifIfd0Directory>().FirstOrDefault();
+                    ifd0?.TryGetInt32(ExifDirectoryBase.TagOrientation, out orientation);
+                }
+                catch { }
+
                 var bi = new BitmapImage();
                 bi.BeginInit();
                 bi.UriSource = new Uri(path);
                 bi.CacheOption = BitmapCacheOption.OnLoad;
+                bi.Rotation = orientation switch
+                {
+                    6 => Rotation.Rotate90,
+                    3 => Rotation.Rotate180,
+                    8 => Rotation.Rotate270,
+                    _ => Rotation.Rotate0
+                };
                 bi.EndInit();
                 bi.Freeze();
                 return bi;
@@ -85,7 +108,11 @@ public partial class FolderSessionPhotoViewModel : ViewModelBase
             OnPropertyChanged(nameof(FullImage));
         }
         catch { }
-        finally { _fullImageLoading = false; }
+        finally
+        {
+            _fullImageLoading = false;
+            OnPropertyChanged(nameof(IsLoadingFullImage));
+        }
     }
 
     public BitmapImage? Thumbnail
@@ -98,7 +125,8 @@ public partial class FolderSessionPhotoViewModel : ViewModelBase
             {
                 _thumbnail = value;
                 OnPropertyChanged(nameof(Thumbnail));
-                OnPropertyChanged(nameof(ThumbnailStatus)); // テスト用
+                OnPropertyChanged(nameof(ThumbnailStatus));
+                OnPropertyChanged(nameof(IsThumbnailLoading));
                 System.Diagnostics.Debug.WriteLine($"[FolderSessionPhotoVM] OnPropertyChanged(nameof(Thumbnail)) called for {FileName}");
             }
             System.Diagnostics.Debug.WriteLine($"[FolderSessionPhotoVM] Thumbnail setter completed for {FileName}");

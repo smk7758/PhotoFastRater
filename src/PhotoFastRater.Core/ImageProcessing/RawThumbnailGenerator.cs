@@ -50,17 +50,65 @@ public class RawThumbnailGenerator : IThumbnailGenerator
                     }
                 }
 
-                // 埋め込みサムネイルがない場合は空の配列を返す
-                // （フォールバック処理は呼び出し側で実装）
-                return Array.Empty<byte>();
+                // ExifThumbnailDirectory で見つからない場合はバイトスキャンで埋め込みJPEGを探す
+                return FindEmbeddedJpeg(filePath, targetSize);
             }
             catch (Exception ex)
             {
-                // エラーログ（実装されている場合）
                 System.Diagnostics.Debug.WriteLine($"RAW thumbnail extraction failed for {filePath}: {ex.Message}");
                 return Array.Empty<byte>();
             }
         });
+    }
+
+    private byte[] FindEmbeddedJpeg(string filePath, int targetSize)
+    {
+        try
+        {
+            const int maxScanBytes = 20 * 1024 * 1024; // 20MB 上限
+            using var fs = File.OpenRead(filePath);
+            int readLen = (int)Math.Min(fs.Length, maxScanBytes);
+            var buf = new byte[readLen];
+            int bytesRead = fs.Read(buf, 0, readLen);
+            readLen = bytesRead;
+
+            byte[]? best = null;
+            int i = 0;
+            while (i < readLen - 3)
+            {
+                if (buf[i] == 0xFF && buf[i + 1] == 0xD8 && buf[i + 2] == 0xFF)
+                {
+                    int end = FindJpegEnd(buf, i, readLen);
+                    int length = end - i;
+                    // 2KB 以上の JPEG のみ対象（小さい EXIF サムネイルは除外）
+                    if (length > 2048 && (best == null || length > best.Length))
+                        best = buf[i..end];
+                    i = end > i + 1 ? end : i + 1;
+                }
+                else
+                {
+                    i++;
+                }
+            }
+
+            if (best != null)
+                return ResizeThumbnail(best, targetSize);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"RAW embedded JPEG scan failed for {filePath}: {ex.Message}");
+        }
+        return Array.Empty<byte>();
+    }
+
+    private static int FindJpegEnd(byte[] buf, int start, int limit)
+    {
+        for (int i = start + 2; i < limit - 1; i++)
+        {
+            if (buf[i] == 0xFF && buf[i + 1] == 0xD9)
+                return i + 2;
+        }
+        return limit;
     }
 
     private byte[] ResizeThumbnail(byte[] thumbnailData, int targetSize)

@@ -73,6 +73,9 @@ public partial class FolderModeViewModel : ViewModelBase
     [ObservableProperty] private bool _uniformPhotoSize = false;
     [ObservableProperty] private bool _nameLabelBelow = false;
 
+    // インラインプレビュー
+    [ObservableProperty] private bool _isInlinePreviewMode = false;
+
     // フィルター適用済み表示コレクション
     public ObservableCollection<FolderSessionPhotoViewModel> DisplayPhotos { get; } = new();
 
@@ -252,6 +255,8 @@ public partial class FolderModeViewModel : ViewModelBase
             BuildPhotoTree();
             UpdateStatistics();
             StatusText = $"{TotalPhotos}枚の写真を読み込みました";
+            // スキャン完了後にバックグラウンドで残りのサムネイルを先読み
+            _ = StartBackgroundThumbnailLoadAsync();
         }
         catch (Exception ex)
         {
@@ -261,6 +266,26 @@ public partial class FolderModeViewModel : ViewModelBase
         finally
         {
             IsLoading = false;
+        }
+    }
+
+    private async Task StartBackgroundThumbnailLoadAsync()
+    {
+        foreach (var photo in Photos.ToList())
+        {
+            await Task.Yield();
+            _ = LoadThumbnailIfMissingAsync(photo);
+        }
+    }
+
+    private void PrefetchNearbyFullImages(int selectedIndex)
+    {
+        if (!ShowOriginalImages) return;
+        for (int delta = -2; delta <= 2; delta++)
+        {
+            int idx = selectedIndex + delta;
+            if (idx >= 0 && idx < DisplayPhotos.Count)
+                DisplayPhotos[idx].TriggerFullImageLoad();
         }
     }
 
@@ -281,6 +306,9 @@ public partial class FolderModeViewModel : ViewModelBase
                 photo.IsExpanded = !photo.IsExpanded;
                 RefreshDisplayPhotos();
             }
+
+            // 原画像モードのとき隣接写真を先読み
+            PrefetchNearbyFullImages(DisplayPhotos.IndexOf(photo));
         }
     }
 
@@ -325,6 +353,22 @@ public partial class FolderModeViewModel : ViewModelBase
         var target = photo ?? SelectedPhoto;
         if (target == null) return;
         System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{target.FilePath}\"");
+    }
+
+    [RelayCommand]
+    private void CopyFileName(FolderSessionPhotoViewModel? photo)
+    {
+        var target = photo ?? SelectedPhoto;
+        if (target != null)
+            System.Windows.Clipboard.SetText(target.FileName);
+    }
+
+    [RelayCommand]
+    private void CopyFilePath(FolderSessionPhotoViewModel? photo)
+    {
+        var target = photo ?? SelectedPhoto;
+        if (target != null)
+            System.Windows.Clipboard.SetText(target.FilePath);
     }
 
     [RelayCommand]

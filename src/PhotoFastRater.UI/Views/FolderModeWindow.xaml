@@ -27,88 +27,67 @@
                  Padding="8">
             <Button Content="フォルダを開く"
                     Command="{Binding OpenFolderCommand}"
-                    Style="{StaticResource MaterialDesignRaisedButton}"/>
-            <Separator Margin="8,0"/>
-            <TextBlock Text="ツリー表示"
-                       VerticalAlignment="Center"/>
-            <!-- Content="ツリー表示" -->
-            <ToggleButton
-                IsChecked="{Binding IsTreeViewMode}"
-                Margin="4,0"
-                Padding="16,8"/>
-            <!-- Content="フィルター" -->
-            <TextBlock Text="フィルター"
-                       VerticalAlignment="Center"/>
-            <ToggleButton
-                IsChecked="{Binding IsFilterPanelOpen}"
-                Margin="4,0"
-                Padding="16,8"/>
-            <Separator Margin="8,0"/>
+                    Style="{StaticResource MaterialDesignRaisedButton}"
+                    ToolBar.OverflowMode="Never"/>
+            <Separator Margin="8,0" ToolBar.OverflowMode="Never"/>
+            <StackPanel Orientation="Horizontal" ToolBar.OverflowMode="AsNeeded">
+                <TextBlock Text="ツリー表示" VerticalAlignment="Center"/>
+                <ToggleButton IsChecked="{Binding IsTreeViewMode}" Margin="4,0" Padding="16,8"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" ToolBar.OverflowMode="AsNeeded">
+                <TextBlock Text="フィルター" VerticalAlignment="Center"/>
+                <ToggleButton IsChecked="{Binding IsFilterPanelOpen}" Margin="4,0" Padding="16,8"/>
+            </StackPanel>
+            <Separator Margin="8,0" ToolBar.OverflowMode="AsNeeded"/>
             <!-- サムネイルサイズスライダー -->
-            <TextBlock Text="サイズ:"
-                       VerticalAlignment="Center"
-                       Margin="4,0"/>
-            <Slider Minimum="100"
-                    Maximum="2000"
-                    Value="{Binding ThumbnailSize}"
-                    Width="120"
-                    VerticalAlignment="Center"
-                    Margin="4,0"/>
-            <TextBlock Text="{Binding ThumbnailSize, StringFormat={}{0}px}"
-                       VerticalAlignment="Center"
-                       Margin="4,0"
-                       Width="40"/>
-            <Separator Margin="8,0"/>
-            <TextBlock Text="{Binding RatedPhotos, StringFormat='評価済み: {0}枚'}"
-                       VerticalAlignment="Center"
-                       Margin="4,0"/>
-            <TextBlock Text="{Binding TotalPhotos, StringFormat='/ {0}枚'}"
-                       VerticalAlignment="Center"
-                       Margin="4,0"/>
-            <Separator Margin="8,0"/>
-            <Button Content="保存"
-                    Command="{Binding SaveSessionCommand}"
-                    Margin="4,0"/>
+            <StackPanel Orientation="Horizontal" ToolBar.OverflowMode="AsNeeded">
+                <TextBlock Text="サイズ:" VerticalAlignment="Center" Margin="4,0"/>
+                <Slider Minimum="100"
+                        Maximum="2000"
+                        Value="{Binding ThumbnailSize}"
+                        Width="120"
+                        VerticalAlignment="Center"
+                        Margin="4,0"/>
+                <TextBlock Text="{Binding ThumbnailSize, StringFormat={}{0}px}"
+                           VerticalAlignment="Center"
+                           Margin="4,0"
+                           Width="40"/>
+            </StackPanel>
+            <Separator Margin="8,0" ToolBar.OverflowMode="AsNeeded"/>
+            <StackPanel Orientation="Horizontal" ToolBar.OverflowMode="AsNeeded">
+                <TextBlock Text="{Binding RatedPhotos, StringFormat='評価済み: {0}枚'}" VerticalAlignment="Center" Margin="4,0"/>
+                <TextBlock Text="{Binding TotalPhotos, StringFormat='/ {0}枚'}" VerticalAlignment="Center" Margin="4,0"/>
+            </StackPanel>
+            <Separator Margin="8,0" ToolBar.OverflowMode="AsNeeded"/>
+            <Button Content="保存" Command="{Binding SaveSessionCommand}" Margin="4,0" ToolBar.OverflowMode="AsNeeded"/>
             <Button Content="DBに追加"
                     Command="{Binding ExportToDbCommand}"
                     Style="{StaticResource MaterialDesignRaisedButton}"
-                    Margin="4,0"/>
-            <Separator Margin="8,0"/>
-            <Button Content="再読み込み"
-                    Command="{Binding ReloadFolderCommand}"
-                    Margin="4,0"/>
-            <TextBlock Text="原画像"
-                       VerticalAlignment="Center"/>
-            <!-- Content="原画像" -->
-            <ToggleButton
-                IsChecked="{Binding ShowOriginalImages}"
-                Margin="4,0"
-                Padding="12,6"/>
-            <Separator Margin="8,0"/>
-            <TextBlock Text="同一サイズ表示"
-                       VerticalAlignment="Center"/>
-            <!-- Content="同一サイズ" -->
-            <ToggleButton
-                IsChecked="{Binding UniformPhotoSize}"
-                Margin="4,0"
-                Padding="12,6"/>
-            <TextBlock Text="下に名前欄を表示"
-                       VerticalAlignment="Center"/>
-            <!--  Content="名前下表示" -->
-            <ToggleButton
-                IsChecked="{Binding NameLabelBelow}"
-                Margin="4,0"
-                Padding="12,6"/>
-            <Button Content="プレビュー"
-                    Click="OpenPreview_Click"
-                    Margin="4,0"/>
-            <Separator Margin="8,0"/>
-            <Button Content="設定"
-                    Command="{Binding OpenSettingsCommand}"
-                    Margin="4,0"/>
-            <Button Content="ショートカット設定"
-                    Command="{Binding OpenKeyboardShortcutsCommand}"
-                    Margin="4,0"/>
+                    Margin="4,0"
+                    ToolBar.OverflowMode="AsNeeded"/>
+            <Separator Margin="8,0" ToolBar.OverflowMode="AsNeeded"/>
+            <Button Content="再読み込み" Command="{Binding ReloadFolderCommand}" Margin="4,0" ToolBar.OverflowMode="AsNeeded"/>
+            <StackPanel Orientation="Horizontal" ToolBar.OverflowMode="AsNeeded">
+                <TextBlock Text="原画像" VerticalAlignment="Center"/>
+                <ToggleButton IsChecked="{Binding ShowOriginalImages}" Margin="4,0" Padding="12,6"/>
+            </StackPanel>
+            <Separator Margin="8,0" ToolBar.OverflowMode="AsNeeded"/>
+            <StackPanel Orientation="Horizontal" ToolBar.OverflowMode="AsNeeded">
+                <TextBlock Text="同一サイズ" VerticalAlignment="Center"/>
+                <ToggleButton IsChecked="{Binding UniformPhotoSize}" Margin="4,0" Padding="12,6"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" ToolBar.OverflowMode="AsNeeded">
+                <TextBlock Text="名前下表示" VerticalAlignment="Center"/>
+                <ToggleButton IsChecked="{Binding NameLabelBelow}" Margin="4,0" Padding="12,6"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" ToolBar.OverflowMode="AsNeeded">
+                <TextBlock Text="インライン" VerticalAlignment="Center"/>
+                <ToggleButton IsChecked="{Binding IsInlinePreviewMode}" Margin="4,0" Padding="12,6"/>
+            </StackPanel>
+            <Button Content="プレビュー" Click="OpenPreview_Click" Margin="4,0" ToolBar.OverflowMode="AsNeeded"/>
+            <Separator Margin="8,0" ToolBar.OverflowMode="AsNeeded"/>
+            <Button Content="設定" Command="{Binding OpenSettingsCommand}" Margin="4,0" ToolBar.OverflowMode="AsNeeded"/>
+            <Button Content="ショートカット設定" Command="{Binding OpenKeyboardShortcutsCommand}" Margin="4,0" ToolBar.OverflowMode="AsNeeded"/>
         </ToolBar>
 
         <!-- フィルターパネル -->
@@ -211,8 +190,44 @@
               Margin="8">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="0" x:Name="InlinePreviewSplitterColumn"/>
+                <ColumnDefinition Width="0" x:Name="InlinePreviewColumn"/>
                 <ColumnDefinition Width="300"/>
             </Grid.ColumnDefinitions>
+
+            <!-- GridSplitter (インラインプレビュー用) -->
+            <GridSplitter Grid.Column="1" Width="5" HorizontalAlignment="Stretch"
+                          Background="Gray" Opacity="0.3"/>
+
+            <!-- インラインプレビューパネル -->
+            <Grid Grid.Column="2" Background="#FF1A1A1A">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Image Grid.Row="0" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Image.Style>
+                        <Style TargetType="Image">
+                            <Setter Property="Source" Value="{Binding SelectedPhoto.Thumbnail}"/>
+                            <Style.Triggers>
+                                <DataTrigger Value="True" Binding="{Binding ShowOriginalImages}">
+                                    <Setter Property="Source" Value="{Binding SelectedPhoto.FullImage}"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Image.Style>
+                </Image>
+                <Border Grid.Row="1" Background="#CC000000" Padding="8,4">
+                    <StackPanel>
+                        <TextBlock Text="{Binding SelectedPhoto.FileName}"
+                                   Foreground="White" FontSize="11" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{Binding SelectedPhoto.SettingsSummary}"
+                                   Foreground="#CCFFFFFF" FontSize="10" TextTrimming="CharacterEllipsis"/>
+                        <TextBlock Text="{Binding SelectedPhoto.DateTakenText}"
+                                   Foreground="#CCFFFFFF" FontSize="10"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
 
             <!-- 写真グリッド表示 -->
             <ScrollViewer x:Name="PhotoScrollViewer"
@@ -286,6 +301,17 @@
                                                                 RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                       CommandParameter="{Binding PlacementTarget.DataContext,
                                                                 RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                                            <Separator/>
+                                            <MenuItem Header="ファイル名をコピー"
+                                                      Command="{Binding PlacementTarget.Tag.CopyFileNameCommand,
+                                                                RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      CommandParameter="{Binding PlacementTarget.DataContext,
+                                                                RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                                            <MenuItem Header="パスをコピー"
+                                                      Command="{Binding PlacementTarget.Tag.CopyFilePathCommand,
+                                                                RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      CommandParameter="{Binding PlacementTarget.DataContext,
+                                                                RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
                                         </ContextMenu>
                                     </Border.ContextMenu>
                                     <Border.InputBindings>
@@ -302,24 +328,65 @@
                                                 Width="4"
                                                 HorizontalAlignment="Left"
                                                 Visibility="{Binding IsRawFile, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                        <!-- 下層: サムネイル（常に表示、原画像ロード中のフォールバック） -->
+                                        <Image Source="{Binding Thumbnail}"
+                                               Stretch="Uniform"
+                                               HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"/>
+                                        <!-- 上層: 原画像（ShowOriginalImages=True のとき表示） -->
                                         <Image Stretch="Uniform"
                                                HorizontalAlignment="Center"
                                                VerticalAlignment="Center">
                                             <Image.Style>
                                                 <Style TargetType="Image">
-                                                    <Setter Property="Source"
-                                                            Value="{Binding Thumbnail}"/>
+                                                    <Setter Property="Source" Value="{x:Null}"/>
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
                                                     <Style.Triggers>
                                                         <DataTrigger Value="True"
                                                                      Binding="{Binding DataContext.ShowOriginalImages,
                                                                       RelativeSource={RelativeSource AncestorType=ItemsControl}}">
-                                                            <Setter Property="Source"
-                                                                    Value="{Binding FullImage}"/>
+                                                            <Setter Property="Source" Value="{Binding FullImage}"/>
+                                                            <Setter Property="Visibility" Value="Visible"/>
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
                                             </Image.Style>
                                         </Image>
+                                        <!-- サムネイル未読込みプレースホルダー -->
+                                        <Border Background="#FFE0E0E0"
+                                                Visibility="{Binding IsThumbnailLoading, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                            <TextBlock Text="読込中"
+                                                       HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center"
+                                                       Foreground="Gray"
+                                                       FontSize="10"/>
+                                        </Border>
+                                        <!-- 原画像モードでFullImage読み込み中オーバーレイ -->
+                                        <Border>
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <MultiDataTrigger>
+                                                            <MultiDataTrigger.Conditions>
+                                                                <Condition Value="True"
+                                                                    Binding="{Binding DataContext.ShowOriginalImages,
+                                                                        RelativeSource={RelativeSource AncestorType=ItemsControl}}"/>
+                                                                <Condition Value="True" Binding="{Binding IsLoadingFullImage}"/>
+                                                            </MultiDataTrigger.Conditions>
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </MultiDataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <Border Background="#AA808080">
+                                                <TextBlock Text="読込中"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"
+                                                           Foreground="White"
+                                                           FontSize="10"/>
+                                            </Border>
+                                        </Border>
                                         <!-- ペアバッジ -->
                                         <Border Background="#CC4CAF50"
                                                 CornerRadius="4"
@@ -355,7 +422,14 @@
                                                        Foreground="White"
                                                        FontSize="10"
                                                        TextTrimming="CharacterEllipsis"
-                                                       Margin="4,2"/>
+                                                       Margin="4,2">
+                                                <TextBlock.ContextMenu>
+                                                    <ContextMenu>
+                                                        <MenuItem Header="ファイル名をコピー" Click="CopyFileName_Click"/>
+                                                        <MenuItem Header="パスをコピー" Click="CopyFilePath_Click"/>
+                                                    </ContextMenu>
+                                                </TextBlock.ContextMenu>
+                                            </TextBlock>
                                             <!-- EXIF行（設定で有効時のみ表示） -->
                                             <StackPanel Visibility="{Binding DataContext.ShowExifInItem,
                                                                      RelativeSource={RelativeSource AncestorType=ItemsControl},
@@ -456,7 +530,43 @@
                                     <StackPanel>
                                         <TextBlock Text="{Binding FileName}"
                                                    FontSize="10"
-                                                   TextTrimming="CharacterEllipsis"/>
+                                                   TextTrimming="CharacterEllipsis">
+                                            <TextBlock.ContextMenu>
+                                                <ContextMenu>
+                                                    <MenuItem Header="ファイル名をコピー" Click="CopyFileName_Click"/>
+                                                    <MenuItem Header="パスをコピー" Click="CopyFilePath_Click"/>
+                                                </ContextMenu>
+                                            </TextBlock.ContextMenu>
+                                        </TextBlock>
+                                        <!-- EXIF行（ShowExifInItem=True のとき表示） -->
+                                        <StackPanel Visibility="{Binding DataContext.ShowExifInItem,
+                                                                 RelativeSource={RelativeSource AncestorType=ItemsControl},
+                                                                 Converter={StaticResource BooleanToVisibilityConverter}}">
+                                            <TextBlock Text="{Binding LensModel}"
+                                                       FontSize="9"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Visibility="{Binding DataContext.ExifItemShowLens,
+                                                                   RelativeSource={RelativeSource AncestorType=ItemsControl},
+                                                                   Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                            <TextBlock Text="{Binding SettingsSummary}"
+                                                       FontSize="9"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Visibility="{Binding DataContext.ExifItemShowSettings,
+                                                                   RelativeSource={RelativeSource AncestorType=ItemsControl},
+                                                                   Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                            <TextBlock Text="{Binding DateTakenText}"
+                                                       FontSize="9"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Visibility="{Binding DataContext.ExifItemShowDate,
+                                                                   RelativeSource={RelativeSource AncestorType=ItemsControl},
+                                                                   Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                            <TextBlock Text="{Binding CameraModel}"
+                                                       FontSize="9"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Visibility="{Binding DataContext.ExifItemShowCamera,
+                                                                   RelativeSource={RelativeSource AncestorType=ItemsControl},
+                                                                   Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                        </StackPanel>
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock FontSize="11">
                                                 <TextBlock.Style>
@@ -585,7 +695,7 @@
             </ScrollViewer>
 
             <!-- サイドパネル -->
-            <Border Grid.Column="1"
+            <Border Grid.Column="3"
                     BorderBrush="Gray"
                     BorderThickness="1,0,0,0"
                     Padding="8">

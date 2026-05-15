@@ -62,6 +62,10 @@ public partial class FolderModeWindow : Window
                 _vm.SelectedPhoto?.TriggerFullImageLoad();
                 _ = TriggerVisibleFullImageLoadAsync();
             }
+            else if (e.PropertyName == nameof(FolderModeViewModel.IsInlinePreviewMode))
+            {
+                UpdateInlinePreviewLayout();
+            }
         };
 
         viewModel.ShortcutsUpdated += () => _activeShortcuts = _shortcutService.Load();
@@ -233,6 +237,7 @@ public partial class FolderModeWindow : Window
 
     private void OpenPreview_Click(object sender, RoutedEventArgs e)
     {
+        _vm.SelectedPhoto?.TriggerFullImageLoad();
         if (_previewWindow != null && _previewWindow.IsLoaded)
         {
             _previewWindow.Activate();
@@ -240,6 +245,32 @@ public partial class FolderModeWindow : Window
         }
         _previewWindow = _serviceProvider.GetRequiredService<PhotoPreviewWindow>();
         _previewWindow.Show();
+    }
+
+    private void UpdateInlinePreviewLayout()
+    {
+        if (_vm.IsInlinePreviewMode)
+        {
+            InlinePreviewColumn.Width = new System.Windows.GridLength(400, System.Windows.GridUnitType.Pixel);
+            InlinePreviewSplitterColumn.Width = new System.Windows.GridLength(5, System.Windows.GridUnitType.Pixel);
+        }
+        else
+        {
+            InlinePreviewColumn.Width = new System.Windows.GridLength(0);
+            InlinePreviewSplitterColumn.Width = new System.Windows.GridLength(0);
+        }
+    }
+
+    private void CopyFileName_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is FolderSessionPhotoViewModel vm)
+            System.Windows.Clipboard.SetText(vm.FileName);
+    }
+
+    private void CopyFilePath_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is FolderSessionPhotoViewModel vm)
+            System.Windows.Clipboard.SetText(vm.FilePath);
     }
 
     public async void LoadFolder(string folderPath)
