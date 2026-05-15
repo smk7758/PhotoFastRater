@@ -79,19 +79,26 @@
                     Margin="4,0"/>
             <TextBlock Text="原画像"
                        VerticalAlignment="Center"/>
+            <!-- Content="原画像" -->
             <ToggleButton
                 IsChecked="{Binding ShowOriginalImages}"
                 Margin="4,0"
                 Padding="12,6"/>
             <Separator Margin="8,0"/>
-            <ToggleButton Content="同一サイズ"
-                          IsChecked="{Binding UniformPhotoSize}"
-                          Margin="4,0"
-                          Padding="12,6"/>
-            <ToggleButton Content="名前下表示"
-                          IsChecked="{Binding NameLabelBelow}"
-                          Margin="4,0"
-                          Padding="12,6"/>
+            <TextBlock Text="同一サイズ表示"
+                       VerticalAlignment="Center"/>
+            <!-- Content="同一サイズ" -->
+            <ToggleButton
+                IsChecked="{Binding UniformPhotoSize}"
+                Margin="4,0"
+                Padding="12,6"/>
+            <TextBlock Text="下に名前欄を表示"
+                       VerticalAlignment="Center"/>
+            <!--  Content="名前下表示" -->
+            <ToggleButton
+                IsChecked="{Binding NameLabelBelow}"
+                Margin="4,0"
+                Padding="12,6"/>
             <Button Content="プレビュー"
                     Click="OpenPreview_Click"
                     Margin="4,0"/>
@@ -391,12 +398,17 @@
                                                 <TextBlock FontSize="11">
                                                     <TextBlock.Style>
                                                         <Style TargetType="TextBlock">
-                                                            <Setter Property="Text" Value="★"/>
-                                                            <Setter Property="Foreground" Value="Yellow"/>
+                                                            <Setter Property="Text"
+                                                                    Value="★"/>
+                                                            <Setter Property="Foreground"
+                                                                    Value="Yellow"/>
                                                             <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding Rating}" Value="0">
-                                                                    <Setter Property="Text" Value="☆"/>
-                                                                    <Setter Property="Foreground" Value="Gray"/>
+                                                                <DataTrigger Binding="{Binding Rating}"
+                                                                             Value="0">
+                                                                    <Setter Property="Text"
+                                                                            Value="☆"/>
+                                                                    <Setter Property="Foreground"
+                                                                            Value="Gray"/>
                                                                 </DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
@@ -407,10 +419,13 @@
                                                            Margin="2,0">
                                                     <TextBlock.Style>
                                                         <Style TargetType="TextBlock">
-                                                            <Setter Property="Foreground" Value="White"/>
+                                                            <Setter Property="Foreground"
+                                                                    Value="White"/>
                                                             <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding Rating}" Value="0">
-                                                                    <Setter Property="Foreground" Value="Gray"/>
+                                                                <DataTrigger Binding="{Binding Rating}"
+                                                                             Value="0">
+                                                                    <Setter Property="Foreground"
+                                                                            Value="Gray"/>
                                                                 </DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
@@ -439,49 +454,57 @@
                                             RelativeSource={RelativeSource AncestorType=ItemsControl},
                                             Converter={StaticResource BooleanToVisibilityConverter}}">
                                     <StackPanel>
-                                    <TextBlock Text="{Binding FileName}"
-                                               FontSize="10"
-                                               TextTrimming="CharacterEllipsis"/>
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock FontSize="11">
-                                            <TextBlock.Style>
-                                                <Style TargetType="TextBlock">
-                                                    <Setter Property="Text" Value="★"/>
-                                                    <Setter Property="Foreground" Value="#FFB300"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding Rating}" Value="0">
-                                                            <Setter Property="Text" Value="☆"/>
-                                                            <Setter Property="Foreground" Value="Gray"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </TextBlock.Style>
-                                        </TextBlock>
-                                        <TextBlock Text="{Binding Rating}"
+                                        <TextBlock Text="{Binding FileName}"
                                                    FontSize="10"
-                                                   Margin="2,0">
-                                            <TextBlock.Style>
-                                                <Style TargetType="TextBlock">
-                                                    <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding Rating}" Value="0">
-                                                            <Setter Property="Foreground" Value="Gray"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </TextBlock.Style>
-                                        </TextBlock>
-                                        <TextBlock Text="♥"
-                                                   Foreground="Red"
-                                                   FontSize="11"
-                                                   Margin="8,0,0,0"
-                                                   Visibility="{Binding IsFavorite, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                                        <TextBlock Text="✕"
-                                                   Foreground="OrangeRed"
-                                                   FontSize="11"
-                                                   Margin="8,0,0,0"
-                                                   Visibility="{Binding IsRejected, Converter={StaticResource BooleanToVisibilityConverter}}"/>
-                                    </StackPanel>
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock FontSize="11">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Text"
+                                                                Value="★"/>
+                                                        <Setter Property="Foreground"
+                                                                Value="#FFB300"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Rating}"
+                                                                         Value="0">
+                                                                <Setter Property="Text"
+                                                                        Value="☆"/>
+                                                                <Setter Property="Foreground"
+                                                                        Value="Gray"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                            <TextBlock Text="{Binding Rating}"
+                                                       FontSize="10"
+                                                       Margin="2,0">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground"
+                                                                Value="{DynamicResource MaterialDesignBody}"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Rating}"
+                                                                         Value="0">
+                                                                <Setter Property="Foreground"
+                                                                        Value="Gray"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                            <TextBlock Text="♥"
+                                                       Foreground="Red"
+                                                       FontSize="11"
+                                                       Margin="8,0,0,0"
+                                                       Visibility="{Binding IsFavorite, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                            <TextBlock Text="✕"
+                                                       Foreground="OrangeRed"
+                                                       FontSize="11"
+                                                       Margin="8,0,0,0"
+                                                       Visibility="{Binding IsRejected, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                        </StackPanel>
                                     </StackPanel>
                                 </Border>
                             </Grid>
