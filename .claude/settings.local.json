@@ -10,7 +10,9 @@
       "Bash(dotnet ef:*)",
       "Bash(dotnet test:*)",
       "Bash(Get-Content \"src/PhotoFastRater.UI/ViewModels/FolderModeViewModel.cs\")",
-      "Bash(Get-Content \"src/PhotoFastRater.UI/ViewModels/FolderSessionPhotoViewModel.cs\")"
+      "Bash(Get-Content \"src/PhotoFastRater.UI/ViewModels/FolderSessionPhotoViewModel.cs\")",
+      "Bash(Get-ChildItem -Path \"C:\\\\Programming\\\\PhotoFastRater\\\\src\\\\PhotoFastRater.Core\\\\\" -Recurse -File | Select-Object FullName | Sort-Object FullName)",
+      "Bash(find C:\\\\\\\\Programming\\\\\\\\PhotoFastRater -type f -name \"*.csproj\")"
     ]
   }
 }
