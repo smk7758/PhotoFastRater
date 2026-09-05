@@ -26,6 +26,9 @@ jobs:
       - name: Verify formatting
         run: dotnet format whitespace PhotoFastRater.sln --verify-no-changes --no-restore
 
+      - name: Verify code style
+        run: dotnet format style PhotoFastRater.sln --verify-no-changes --no-restore
+
       - name: Build
         run: dotnet build PhotoFastRater.sln -c Release --no-restore
 
@@ -34,3 +37,6 @@ jobs:
 
       - name: Audit dependencies
         run: dotnet list PhotoFastRater.sln package --vulnerable --include-transitive
+
+      - name: Verify win-x64 package
+        run: dotnet publish src/PhotoFastRater.UI/PhotoFastRater.UI.csproj -p:PublishProfile=win-x64 --no-restore

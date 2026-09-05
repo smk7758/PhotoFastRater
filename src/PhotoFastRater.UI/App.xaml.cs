@@ -21,6 +21,8 @@ namespace PhotoFastRater.UI;
 
 public partial class App : System.Windows.Application
 {
+    private static readonly Action<ILogger, Exception?> LogUnhandledException =
+        LoggerMessage.Define(LogLevel.Critical, new EventId(1000, "UnhandledUiException"), "Unhandled UI exception");
     private ServiceProvider? _serviceProvider;
 
     protected override void OnStartup(StartupEventArgs e)
@@ -79,7 +81,10 @@ public partial class App : System.Windows.Application
         services.AddPooledDbContextFactory<PhotoDbContext>(options =>
             options.UseSqlite($"Data Source={dbPath};Cache=Shared;Default Timeout=5"));
         services.AddSingleton<DatabaseInitializer>();
-        services.AddLogging(builder => builder.AddDebug());
+        var logPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "PhotoFastRater", "Logs", $"PhotoFastRater-{DateTime.UtcNow:yyyyMMdd}.log");
+        services.AddLogging(builder => builder.AddDebug().AddProvider(new LocalFileLoggerProvider(logPath)));
 
         // Repositories
         services.AddSingleton<PhotoRepository>();
@@ -235,6 +240,8 @@ public partial class App : System.Windows.Application
 
     private void App_DispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
     {
+        if (_serviceProvider?.GetService<ILogger<App>>() is { } logger)
+            LogUnhandledException(logger, e.Exception);
         System.Windows.MessageBox.Show(
             $"予期しないエラーが発生しました:\n\n{e.Exception.Message}\n\n{e.Exception.GetType().Name}",
             "エラー", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);

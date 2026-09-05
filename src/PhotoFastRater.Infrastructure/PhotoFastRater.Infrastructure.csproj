@@ -12,8 +12,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Explicit security overrides keep vulnerable transitive versions out of locked restores. -->
-    <PackageReference Include="System.Security.Cryptography.Xml" />
     <PackageReference Include="SixLabors.ImageSharp" />
     <PackageReference Include="SixLabors.ImageSharp.Drawing" />
     <PackageReference Include="MetadataExtractor" />
