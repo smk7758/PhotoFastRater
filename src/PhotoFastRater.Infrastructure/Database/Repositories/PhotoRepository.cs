@@ -117,6 +117,24 @@ public class PhotoRepository : IPhotoCatalog
             .FirstOrDefaultAsync(p => p.NormalizedPath == normalizedPath || (p.NormalizedPath == null && p.FilePath == filePath));
     }
 
+    /// <summary>Loads a bounded export selection in one query without relationship graphs.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when the selection exceeds the UI batch limit.</exception>
+    public async Task<IReadOnlyList<Photo>> GetByIdsAsync(
+        IReadOnlyCollection<int> ids,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(ids);
+        if (ids.Count is < 1 or > 1280 || ids.Any(id => id <= 0))
+            throw new ArgumentOutOfRangeException(nameof(ids), "Export requires 1 to 1,280 valid photo IDs.");
+
+        var distinctIds = ids.Distinct().ToArray();
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        return await context.Photos.AsNoTracking()
+            .Where(photo => distinctIds.Contains(photo.Id))
+            .OrderBy(photo => photo.Id)
+            .ToListAsync(cancellationToken);
+    }
+
     /// <summary>Returns normalized paths already present for one bounded scan batch.</summary>
     public async Task<IReadOnlySet<string>> GetExistingNormalizedPathsAsync(
         IReadOnlyCollection<string> filePaths,

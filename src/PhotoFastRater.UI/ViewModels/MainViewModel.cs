@@ -134,7 +134,7 @@ public partial class MainViewModel : ViewModelBase, IDisposable
     private async Task AddTagToBatchAsync()
     {
         var ids = GetBatchPhotoIds();
-        if (ids.Count == 0)
+        if (ids.Length == 0)
         {
             await ShowBatchRequirementAsync();
             return;
@@ -147,7 +147,7 @@ public partial class MainViewModel : ViewModelBase, IDisposable
     private async Task AddBatchToCollectionAsync()
     {
         var ids = GetBatchPhotoIds();
-        if (ids.Count == 0)
+        if (ids.Length == 0)
         {
             await ShowBatchRequirementAsync();
             return;
@@ -163,7 +163,7 @@ public partial class MainViewModel : ViewModelBase, IDisposable
         }
     }
 
-    private IReadOnlyCollection<int> GetBatchPhotoIds() => PhotoGrid.Photos
+    private int[] GetBatchPhotoIds() => PhotoGrid.Photos
         .Where(photo => photo.IsBatchSelected)
         .Select(photo => photo.Id)
         .Distinct()
@@ -215,6 +215,26 @@ public partial class MainViewModel : ViewModelBase, IDisposable
         }
     }
 
+    [RelayCommand]
+    private async Task ExportBatchSelectionAsync()
+    {
+        var ids = GetBatchPhotoIds();
+        if (ids.Length == 0)
+        {
+            await ShowBatchRequirementAsync();
+            return;
+        }
+        await Export.ExportBatchAsync(ids);
+        StatusText = Export.BatchStatus;
+    }
+
+    [RelayCommand]
+    private async Task RetryFailedExportsAsync()
+    {
+        await Export.RetryFailuresAsync();
+        StatusText = Export.BatchStatus;
+    }
+
     private async Task SearchAfterDelayAsync(string text, CancellationToken cancellationToken)
     {
         try
@@ -237,6 +257,7 @@ public partial class MainViewModel : ViewModelBase, IDisposable
         _importCancellation?.Cancel();
         _importCancellation?.Dispose();
         PhotoGrid.Dispose();
+        Export.Dispose();
         GC.SuppressFinalize(this);
     }
 }

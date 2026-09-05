@@ -37,7 +37,10 @@ public sealed record ExportRecipe(
     int RotationDegrees,
     int? MaximumWidth,
     int? MaximumHeight,
-    bool PreserveMetadata);
+    bool PreserveMetadata,
+    int FrameWidth = 0,
+    string FrameColor = "#FFFFFF",
+    bool IncludeExifOverlay = false);
 
 /// <summary>Stores the durable user choices for a two-to-four-pane comparison.</summary>
 public sealed record CompareWorkspaceState

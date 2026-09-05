@@ -123,6 +123,7 @@ public partial class App : System.Windows.Application
 
         // Export
         services.AddSingleton<SocialMediaExporter>();
+        services.AddSingleton<IExportService, BatchExportService>();
 
         // ViewModels
         services.AddTransient<MainViewModel>();
