@@ -28,6 +28,9 @@ public partial class MainViewModel : ViewModelBase, IDisposable
     private SettingsViewModel _settings;
 
     [ObservableProperty]
+    private LibraryOrganizationViewModel _organization;
+
+    [ObservableProperty]
     private string _statusText = "準備完了";
 
     [ObservableProperty]
@@ -55,6 +58,7 @@ public partial class MainViewModel : ViewModelBase, IDisposable
         EventViewModel events,
         ExportViewModel export,
         SettingsViewModel settings,
+        LibraryOrganizationViewModel organization,
         IUserInteractionService interaction)
     {
         _photoRepository = photoRepository;
@@ -63,6 +67,7 @@ public partial class MainViewModel : ViewModelBase, IDisposable
         _events = events;
         _export = export;
         _settings = settings;
+        _organization = organization;
         _interaction = interaction;
     }
 
@@ -73,6 +78,7 @@ public partial class MainViewModel : ViewModelBase, IDisposable
         await PhotoGrid.LoadAllPhotosAsync();
         StatusText = $"{PhotoGrid.TotalPhotoCount:N0}枚中 {PhotoGrid.Photos.Count:N0}枚を表示";
         await Events.LoadEventsAsync();
+        await Organization.LoadAsync();
     }
 
     [RelayCommand]
@@ -123,6 +129,50 @@ public partial class MainViewModel : ViewModelBase, IDisposable
     private void CancelImport() => _importCancellation?.Cancel();
 
     private bool CanCancelImport() => IsImporting;
+
+    [RelayCommand]
+    private async Task AddTagToBatchAsync()
+    {
+        var ids = GetBatchPhotoIds();
+        if (ids.Count == 0)
+        {
+            await ShowBatchRequirementAsync();
+            return;
+        }
+        await Organization.AddTagAsync(ids);
+        StatusText = Organization.StatusText;
+    }
+
+    [RelayCommand]
+    private async Task AddBatchToCollectionAsync()
+    {
+        var ids = GetBatchPhotoIds();
+        if (ids.Count == 0)
+        {
+            await ShowBatchRequirementAsync();
+            return;
+        }
+        try
+        {
+            await Organization.AddToSelectedCollectionAsync(ids);
+            StatusText = Organization.StatusText;
+        }
+        catch (InvalidOperationException exception)
+        {
+            await _interaction.NotifyAsync("コレクション", exception.Message, UserNotificationKind.Warning);
+        }
+    }
+
+    private IReadOnlyCollection<int> GetBatchPhotoIds() => PhotoGrid.Photos
+        .Where(photo => photo.IsBatchSelected)
+        .Select(photo => photo.Id)
+        .Distinct()
+        .ToArray();
+
+    private Task ShowBatchRequirementAsync() => _interaction.NotifyAsync(
+        "一括操作",
+        "写真カード左上のチェックを1つ以上選択してください。",
+        UserNotificationKind.Warning);
 
     /// <summary>Explains the compare precondition without coupling the window to MessageBox.</summary>
     public Task ShowCompareRequirementAsync() => _interaction.NotifyAsync(

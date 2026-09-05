@@ -41,6 +41,11 @@ public partial class PhotoViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isSelected;
 
+    [ObservableProperty]
+    private bool _isBatchSelected;
+
+    public bool IsMissing => _photo.IsMissing;
+
     public PhotoViewModel(Photo photo)
     {
         _photo = photo;

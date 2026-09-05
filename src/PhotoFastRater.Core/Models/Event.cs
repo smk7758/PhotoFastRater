@@ -16,9 +16,19 @@ public class Event
 
     public string? CoverPhotoPath { get; set; }
     public int PhotoCount { get; set; }
+    public string? AutoGroupKey { get; set; }
 
     public List<PhotoEventMapping> Photos { get; set; } = new();
 }
+
+/// <summary>Represents an auto-group proposal that has not yet changed the catalog.</summary>
+public sealed record EventCandidate(
+    string Key,
+    string Name,
+    DateTime StartDate,
+    DateTime EndDate,
+    string? Location,
+    IReadOnlyList<int> PhotoIds);
 
 public enum EventType
 {

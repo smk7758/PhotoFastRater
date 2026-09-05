@@ -61,4 +61,6 @@ public class Photo
 
     // リレーション
     public List<PhotoEventMapping> Events { get; set; } = new();
+    public List<PhotoTagMapping> Tags { get; set; } = [];
+    public List<PhotoCollectionMapping> Collections { get; set; } = [];
 }

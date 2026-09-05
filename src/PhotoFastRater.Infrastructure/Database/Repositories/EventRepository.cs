@@ -80,6 +80,38 @@ public class EventRepository
         }
     }
 
+    /// <summary>Confirms one preview candidate atomically and ignores an already confirmed key.</summary>
+    public async Task<bool> ConfirmCandidateAsync(EventCandidate candidate, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(candidate);
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+        if (await context.Events.AnyAsync(item => item.AutoGroupKey == candidate.Key, cancellationToken))
+            return false;
+
+        var evt = new Event
+        {
+            Name = candidate.Name,
+            Type = EventType.Event,
+            StartDate = candidate.StartDate,
+            EndDate = candidate.EndDate,
+            Location = candidate.Location,
+            PhotoCount = candidate.PhotoIds.Count,
+            AutoGroupKey = candidate.Key
+        };
+        context.Events.Add(evt);
+        await context.SaveChangesAsync(cancellationToken);
+        context.PhotoEventMappings.AddRange(candidate.PhotoIds.Distinct().Select(photoId => new PhotoEventMapping
+        {
+            PhotoId = photoId,
+            EventId = evt.Id,
+            AddedDate = DateTime.UtcNow
+        }));
+        await context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return true;
+    }
+
     public async Task RemovePhotoFromEventAsync(int photoId, int eventId)
     {
         await using var context = await _contextFactory.CreateDbContextAsync();

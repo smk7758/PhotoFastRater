@@ -13,6 +13,10 @@ public class PhotoDbContext : DbContext
     public DbSet<Lens> Lenses { get; set; } = null!;
     public DbSet<ManagedFolder> ManagedFolders { get; set; } = null!;
     public DbSet<FolderExclusionPattern> FolderExclusionPatterns { get; set; } = null!;
+    public DbSet<PhotoTag> PhotoTags { get; set; } = null!;
+    public DbSet<PhotoTagMapping> PhotoTagMappings { get; set; } = null!;
+    public DbSet<PhotoCollection> PhotoCollections { get; set; } = null!;
+    public DbSet<PhotoCollectionMapping> PhotoCollectionMappings { get; set; } = null!;
 
     public PhotoDbContext(DbContextOptions<PhotoDbContext> options) : base(options)
     {
@@ -44,6 +48,7 @@ public class PhotoDbContext : DbContext
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.StartDate);
             entity.HasIndex(e => e.EndDate);
+            entity.HasIndex(e => e.AutoGroupKey).IsUnique().HasFilter("AutoGroupKey IS NOT NULL");
         });
 
         // PhotoEventMapping (多対多)
@@ -94,6 +99,36 @@ public class PhotoDbContext : DbContext
         {
             entity.HasKey(e => e.Id);
             entity.HasIndex(e => e.IsEnabled);
+        });
+
+        modelBuilder.Entity<PhotoTag>(entity =>
+        {
+            entity.HasKey(tag => tag.Id);
+            entity.Property(tag => tag.Name).HasMaxLength(128);
+            entity.Property(tag => tag.NormalizedName).HasMaxLength(128);
+            entity.HasIndex(tag => tag.NormalizedName).IsUnique();
+        });
+        modelBuilder.Entity<PhotoTagMapping>(entity =>
+        {
+            entity.HasKey(mapping => new { mapping.PhotoId, mapping.TagId });
+            entity.HasOne(mapping => mapping.Photo).WithMany(photo => photo.Tags).HasForeignKey(mapping => mapping.PhotoId);
+            entity.HasOne(mapping => mapping.Tag).WithMany(tag => tag.Photos).HasForeignKey(mapping => mapping.TagId);
+        });
+        modelBuilder.Entity<PhotoCollection>(entity =>
+        {
+            entity.HasKey(collection => collection.Id);
+            entity.Property(collection => collection.Name).HasMaxLength(128);
+            entity.HasIndex(collection => new { collection.ParentId, collection.Name }).IsUnique();
+            entity.HasOne(collection => collection.Parent)
+                .WithMany(parent => parent.Children)
+                .HasForeignKey(collection => collection.ParentId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<PhotoCollectionMapping>(entity =>
+        {
+            entity.HasKey(mapping => new { mapping.PhotoId, mapping.CollectionId });
+            entity.HasOne(mapping => mapping.Photo).WithMany(photo => photo.Collections).HasForeignKey(mapping => mapping.PhotoId);
+            entity.HasOne(mapping => mapping.Collection).WithMany(collection => collection.Photos).HasForeignKey(mapping => mapping.CollectionId);
         });
     }
 }

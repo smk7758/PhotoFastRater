@@ -160,7 +160,7 @@ public class PhotoRepository : IPhotoCatalog
         {
             var phrase = $"\"{query.Text.Trim().Replace("\"", "\"\"", StringComparison.Ordinal)}\"";
             photos = context.Photos.FromSqlInterpolated(
-                $"SELECT p.* FROM Photos AS p INNER JOIN PhotoSearch ON PhotoSearch.rowid = p.Id WHERE PhotoSearch MATCH {phrase}")
+                $"SELECT p.* FROM Photos AS p WHERE p.Id IN (SELECT rowid FROM PhotoSearch WHERE PhotoSearch MATCH {phrase}) OR p.Id IN (SELECT pt.PhotoId FROM PhotoTagMappings AS pt INNER JOIN TagSearch ON TagSearch.rowid = pt.TagId WHERE TagSearch MATCH {phrase})")
                 .AsNoTracking();
         }
 
@@ -317,7 +317,9 @@ public class PhotoRepository : IPhotoCatalog
 
     private static IQueryable<Photo> ApplyFilters(IQueryable<Photo> photos, PhotoSearchQuery query)
     {
-        if (!query.IncludeMissing)
+        if (query.MissingOnly)
+            photos = photos.Where(photo => photo.IsMissing);
+        else if (!query.IncludeMissing)
             photos = photos.Where(photo => !photo.IsMissing);
         if (query.MinimumRating.HasValue)
             photos = photos.Where(photo => photo.Rating >= query.MinimumRating.Value);

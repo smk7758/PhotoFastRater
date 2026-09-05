@@ -87,6 +87,7 @@ public partial class App : System.Windows.Application
         services.AddSingleton<EventRepository>();
         services.AddSingleton<ManagedFolderRepository>();
         services.AddSingleton<FolderExclusionPatternRepository>();
+        services.AddSingleton<LibraryOrganizationRepository>();
         services.AddSingleton<IPhotoChangeNotifier, PhotoChangeNotifier>();
         services.AddSingleton<IXmpSidecarStore, XmpSidecarStore>();
         services.AddSingleton<XmpSyncQueue>();
@@ -133,6 +134,7 @@ public partial class App : System.Windows.Application
         services.AddTransient<SettingsViewModel>();
         services.AddTransient<FolderModeSettingsViewModel>();
         services.AddScoped<CompareWorkspaceViewModel>();
+        services.AddScoped<LibraryOrganizationViewModel>();
 
         // Metadata write-back
         services.AddSingleton<IEmbeddedMetadataWriter, EmbeddedMetadataWriter>();

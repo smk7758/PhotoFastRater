@@ -50,6 +50,9 @@ public partial class PhotoGridViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     private bool _isTreeViewMode;
 
+    [ObservableProperty]
+    private bool _missingOnly;
+
     /// <summary>
     /// IsTreeViewMode が変更されたときの処理
     /// </summary>
@@ -549,7 +552,9 @@ public partial class PhotoGridViewModel : ViewModelBase, IDisposable
         _currentQuery = new PhotoSearchQuery(
             Text: _currentQuery.Text,
             MinimumRating: FilterRating > 0 ? FilterRating : null,
-            CameraModel: string.IsNullOrWhiteSpace(FilterCamera) ? null : FilterCamera);
+            CameraModel: string.IsNullOrWhiteSpace(FilterCamera) ? null : FilterCamera,
+            IncludeMissing: MissingOnly,
+            MissingOnly: MissingOnly);
         await Photos.ResetAsync();
         await LoadVisiblePhotosAsync(0, Math.Min(Photos.Count, 50));
 
@@ -560,6 +565,13 @@ public partial class PhotoGridViewModel : ViewModelBase, IDisposable
             BuildPhotoTree();
             System.Diagnostics.Debug.WriteLine($"[PhotoGrid] BuildPhotoTree完了");
         }
+    }
+
+    [RelayCommand]
+    private async Task ToggleMissingOnlyAsync()
+    {
+        MissingOnly = !MissingOnly;
+        await ApplyFiltersAsync();
     }
 
     private async Task<PagedResult<PhotoViewModel>> LoadPageAsync(

@@ -80,6 +80,12 @@ public partial class MainWindow : Window
         }
     }
 
+    private void CollectionTree_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
+    {
+        if (DataContext is MainViewModel viewModel)
+            viewModel.Organization.SelectedCollection = e.NewValue as CollectionNodeViewModel;
+    }
+
     private async void RatingMenuItem_Click(object sender, RoutedEventArgs e)
     {
         if (sender is System.Windows.Controls.MenuItem menuItem &&

@@ -15,7 +15,7 @@ namespace PhotoFastRater.Infrastructure.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "10.0.1");
+            modelBuilder.HasAnnotation("ProductVersion", "10.0.11");
 
             modelBuilder.Entity("PhotoFastRater.Core.Models.Camera", b =>
                 {
@@ -51,6 +51,9 @@ namespace PhotoFastRater.Infrastructure.Migrations
                     b.Property<string>("CoverPhotoPath")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("AutoGroupKey")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Description")
                         .HasColumnType("TEXT");
 
@@ -84,6 +87,10 @@ namespace PhotoFastRater.Infrastructure.Migrations
                     b.HasIndex("EndDate");
 
                     b.HasIndex("StartDate");
+
+                    b.HasIndex("AutoGroupKey")
+                        .IsUnique()
+                        .HasFilter("AutoGroupKey IS NOT NULL");
 
                     b.ToTable("Events");
                 });
@@ -419,6 +426,107 @@ namespace PhotoFastRater.Infrastructure.Migrations
                     b.ToTable("PhotoEventMappings");
                 });
 
+            modelBuilder.Entity("PhotoFastRater.Core.Models.PhotoCollection", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("ParentId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ParentId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("PhotoCollections");
+                });
+
+            modelBuilder.Entity("PhotoFastRater.Core.Models.PhotoCollectionMapping", b =>
+                {
+                    b.Property<int>("PhotoId").HasColumnType("INTEGER");
+                    b.Property<int>("CollectionId").HasColumnType("INTEGER");
+                    b.Property<DateTime>("AddedUtc").HasColumnType("TEXT");
+                    b.HasKey("PhotoId", "CollectionId");
+                    b.HasIndex("CollectionId");
+                    b.ToTable("PhotoCollectionMappings");
+                });
+
+            modelBuilder.Entity("PhotoFastRater.Core.Models.PhotoTag", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+                    b.Property<string>("NormalizedName")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("TEXT");
+                    b.HasKey("Id");
+                    b.HasIndex("NormalizedName").IsUnique();
+                    b.ToTable("PhotoTags");
+                });
+
+            modelBuilder.Entity("PhotoFastRater.Core.Models.PhotoTagMapping", b =>
+                {
+                    b.Property<int>("PhotoId").HasColumnType("INTEGER");
+                    b.Property<int>("TagId").HasColumnType("INTEGER");
+                    b.Property<DateTime>("AddedUtc").HasColumnType("TEXT");
+                    b.HasKey("PhotoId", "TagId");
+                    b.HasIndex("TagId");
+                    b.ToTable("PhotoTagMappings");
+                });
+
+            modelBuilder.Entity("PhotoFastRater.Core.Models.PhotoCollection", b =>
+                {
+                    b.HasOne("PhotoFastRater.Core.Models.PhotoCollection", "Parent")
+                        .WithMany("Children")
+                        .HasForeignKey("ParentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                    b.Navigation("Parent");
+                });
+
+            modelBuilder.Entity("PhotoFastRater.Core.Models.PhotoCollectionMapping", b =>
+                {
+                    b.HasOne("PhotoFastRater.Core.Models.PhotoCollection", "Collection")
+                        .WithMany("Photos")
+                        .HasForeignKey("CollectionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                    b.HasOne("PhotoFastRater.Core.Models.Photo", "Photo")
+                        .WithMany("Collections")
+                        .HasForeignKey("PhotoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                    b.Navigation("Collection");
+                    b.Navigation("Photo");
+                });
+
+            modelBuilder.Entity("PhotoFastRater.Core.Models.PhotoTagMapping", b =>
+                {
+                    b.HasOne("PhotoFastRater.Core.Models.PhotoTag", "Tag")
+                        .WithMany("Photos")
+                        .HasForeignKey("TagId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                    b.HasOne("PhotoFastRater.Core.Models.Photo", "Photo")
+                        .WithMany("Tags")
+                        .HasForeignKey("PhotoId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                    b.Navigation("Photo");
+                    b.Navigation("Tag");
+                });
+
             modelBuilder.Entity("PhotoFastRater.Core.Models.PhotoEventMapping", b =>
                 {
                     b.HasOne("PhotoFastRater.Core.Models.Event", "Event")
@@ -443,9 +551,22 @@ namespace PhotoFastRater.Infrastructure.Migrations
                     b.Navigation("Photos");
                 });
 
+            modelBuilder.Entity("PhotoFastRater.Core.Models.PhotoCollection", b =>
+                {
+                    b.Navigation("Children");
+                    b.Navigation("Photos");
+                });
+
+            modelBuilder.Entity("PhotoFastRater.Core.Models.PhotoTag", b =>
+                {
+                    b.Navigation("Photos");
+                });
+
             modelBuilder.Entity("PhotoFastRater.Core.Models.Photo", b =>
                 {
                     b.Navigation("Events");
+                    b.Navigation("Collections");
+                    b.Navigation("Tags");
                 });
 #pragma warning restore 612, 618
         }

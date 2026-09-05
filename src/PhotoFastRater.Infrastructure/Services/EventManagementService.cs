@@ -14,9 +14,9 @@ public class EventManagementService
         _photoRepository = photoRepository;
     }
 
-    // 自動グルーピング: 日付・場所で近い写真をグループ化
-    public async Task<List<Event>> AutoGroupByProximityAsync(
-        List<Photo> photos,
+    /// <summary>Builds deterministic candidates without changing the database.</summary>
+    public IReadOnlyList<EventCandidate> PreviewAutoGroups(
+        IReadOnlyList<Photo> photos,
         TimeSpan maxTimeDifference,
         double maxDistanceKm = 5.0)
     {
@@ -24,7 +24,7 @@ public class EventManagementService
         var sorted = photos.OrderBy(p => p.DateTaken).ToList();
 
         if (sorted.Count == 0)
-            return new List<Event>();
+            return [];
 
         var currentGroup = new List<Photo> { sorted[0] };
 
@@ -51,31 +51,28 @@ public class EventManagementService
         }
         groups.Add(currentGroup);
 
-        // イベント作成
-        var events = new List<Event>();
-        foreach (var group in groups.Where(g => g.Count > 1))
+        return groups.Where(group => group.Count > 1).Select(group => new EventCandidate(
+            Key: CreateGroupKey(group),
+            Name: $"イベント {group[0].DateTaken:yyyy/MM/dd}",
+            StartDate: group.Min(photo => photo.DateTaken),
+            EndDate: group.Max(photo => photo.DateTaken),
+            Location: group[0].LocationName,
+            PhotoIds: group.Select(photo => photo.Id).Order().ToArray())).ToArray();
+    }
+
+    /// <summary>Confirms previewed groups; stable keys make repeated confirmation idempotent.</summary>
+    public async Task<int> ConfirmAutoGroupsAsync(
+        IReadOnlyCollection<EventCandidate> candidates,
+        CancellationToken cancellationToken = default)
+    {
+        var created = 0;
+        foreach (var candidate in candidates)
         {
-            var evt = new Event
-            {
-                Name = $"イベント {group.First().DateTaken:yyyy/MM/dd}",
-                Type = EventType.Event,
-                StartDate = group.Min(p => p.DateTaken),
-                EndDate = group.Max(p => p.DateTaken),
-                Location = group.First().LocationName,
-                PhotoCount = group.Count
-            };
-
-            var created = await _eventRepository.AddAsync(evt);
-
-            foreach (var photo in group)
-            {
-                await _eventRepository.AddPhotoToEventAsync(photo.Id, created.Id);
-            }
-
-            events.Add(created);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (await _eventRepository.ConfirmCandidateAsync(candidate, cancellationToken))
+                created++;
         }
-
-        return events;
+        return created;
     }
 
     // 手動イベント作成
@@ -123,5 +120,11 @@ public class EventManagementService
     private static double ToRadians(double degrees)
     {
         return degrees * Math.PI / 180.0;
+    }
+
+    private static string CreateGroupKey(IReadOnlyCollection<Photo> photos)
+    {
+        var ids = string.Join(',', photos.Select(photo => photo.Id).Order());
+        return Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(ids)));
     }
 }

@@ -15,7 +15,8 @@ public sealed record PhotoSearchQuery(
     DateTime? TakenToUtc = null,
     string? CameraModel = null,
     string? FileExtension = null,
-    bool IncludeMissing = false);
+    bool IncludeMissing = false,
+    bool MissingOnly = false);
 
 /// <summary>Provides only the data required to render and select a photo in a list.</summary>
 public sealed record PhotoSummary(

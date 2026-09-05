@@ -79,6 +79,88 @@ public sealed class RatingPersistenceTests : IDisposable
             all.OrderByDescending(photo => photo.DateTakenUtc).ThenByDescending(photo => photo.Id).Select(photo => photo.Id));
     }
 
+    [Fact]
+    public async Task TagsAreIdempotentSearchableAndCollectionsRemainHierarchical()
+    {
+        Directory.CreateDirectory(_testDirectory);
+        var options = new DbContextOptionsBuilder<PhotoDbContext>()
+            .UseSqlite($"Data Source={Path.Combine(_testDirectory, "organization.db")}")
+            .Options;
+        var factory = new TestDbContextFactory(options);
+        await using (var context = factory.CreateDbContext())
+            await context.Database.MigrateAsync();
+        var photos = new PhotoRepository(factory);
+        await photos.UpsertBatchAsync([CreateSearchPhoto(1), CreateSearchPhoto(2)]);
+        var organization = new LibraryOrganizationRepository(factory);
+
+        await organization.AddTagAsync("Landscape", [1, 2]);
+        await organization.AddTagAsync("landscape", [1, 2]);
+        var root = await organization.CreateCollectionAsync("Portfolio", null);
+        var child = await organization.CreateCollectionAsync("Print", root.Id);
+        await organization.AddToCollectionAsync(child.Id, [1, 2]);
+        await organization.AddToCollectionAsync(child.Id, [1, 2]);
+
+        (await photos.SearchAsync(new PhotoSearchQuery("landscape"), null, 256)).TotalCount.Should().Be(2);
+        await using var verification = factory.CreateDbContext();
+        (await verification.PhotoTags.CountAsync()).Should().Be(1);
+        (await verification.PhotoTagMappings.CountAsync()).Should().Be(2);
+        (await verification.PhotoCollectionMappings.CountAsync()).Should().Be(2);
+        (await verification.PhotoCollections.SingleAsync(item => item.Id == child.Id)).ParentId.Should().Be(root.Id);
+    }
+
+    [Fact]
+    public async Task MissingOnlyFilterExcludesPresentPhotos()
+    {
+        Directory.CreateDirectory(_testDirectory);
+        var options = new DbContextOptionsBuilder<PhotoDbContext>()
+            .UseSqlite($"Data Source={Path.Combine(_testDirectory, "missing.db")}")
+            .Options;
+        var factory = new TestDbContextFactory(options);
+        await using (var context = factory.CreateDbContext())
+        {
+            await context.Database.MigrateAsync();
+            var present = CreateSearchPhoto(1);
+            var missing = CreateSearchPhoto(2);
+            missing.IsMissing = true;
+            context.Photos.AddRange(present, missing);
+            await context.SaveChangesAsync();
+        }
+
+        var result = await new PhotoRepository(factory).SearchAsync(
+            new PhotoSearchQuery(IncludeMissing: true, MissingOnly: true),
+            null,
+            256);
+
+        result.Items.Should().ContainSingle().Which.IsMissing.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task AutoEventPreviewDoesNotWriteAndConfirmationIsIdempotent()
+    {
+        Directory.CreateDirectory(_testDirectory);
+        var options = new DbContextOptionsBuilder<PhotoDbContext>()
+            .UseSqlite($"Data Source={Path.Combine(_testDirectory, "events.db")}")
+            .Options;
+        var factory = new TestDbContextFactory(options);
+        await using (var context = factory.CreateDbContext())
+        {
+            await context.Database.MigrateAsync();
+            context.Photos.AddRange(CreateSearchPhoto(1), CreateSearchPhoto(2));
+            await context.SaveChangesAsync();
+        }
+        var events = new EventRepository(factory);
+        var service = new PhotoFastRater.Infrastructure.Services.EventManagementService(events, new PhotoRepository(factory));
+        List<Photo> photos;
+        await using (var context = factory.CreateDbContext())
+            photos = await context.Photos.AsNoTracking().OrderBy(photo => photo.Id).ToListAsync();
+
+        var candidates = service.PreviewAutoGroups(photos, TimeSpan.FromHours(2));
+        (await events.GetAllAsync()).Should().BeEmpty();
+        (await service.ConfirmAutoGroupsAsync(candidates)).Should().Be(1);
+        (await service.ConfirmAutoGroupsAsync(candidates)).Should().Be(0);
+        (await events.GetAllAsync()).Should().ContainSingle();
+    }
+
     public void Dispose()
     {
         SqliteConnection.ClearAllPools();
