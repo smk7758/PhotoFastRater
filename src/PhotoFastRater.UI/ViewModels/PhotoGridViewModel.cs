@@ -9,10 +9,11 @@ using PhotoFastRater.Infrastructure.Export;
 using PhotoFastRater.Core.UI;
 using PhotoFastRater.UI.Services;
 using PhotoFastRater.UI.Views;
+using PhotoFastRater.UI.Collections;
 
 namespace PhotoFastRater.UI.ViewModels;
 
-public partial class PhotoGridViewModel : ViewModelBase
+public partial class PhotoGridViewModel : ViewModelBase, IDisposable
 {
     private readonly PhotoRepository _photoRepository;
     private readonly ImageLoader _imageLoader;
@@ -21,15 +22,21 @@ public partial class PhotoGridViewModel : ViewModelBase
     private readonly IUserInteractionService _interaction;
     private readonly IPlatformShell _platformShell;
     private readonly IRatingCoordinator _ratingCoordinator;
+    private readonly IPhotoCatalog _photoCatalog;
+    private PhotoSearchQuery _currentQuery = new();
 
-    [ObservableProperty]
-    private ObservableCollection<PhotoViewModel> _photos = new();
+    public AsyncVirtualizingCollection<PhotoViewModel> Photos { get; }
+
+    public long TotalPhotoCount => Photos.TotalCount;
 
     [ObservableProperty]
     private ObservableCollection<PhotoTreeNode> _photoTree = new();
 
     [ObservableProperty]
     private PhotoViewModel? _selectedPhoto;
+
+    [ObservableProperty]
+    private int? _selectedPhotoId;
 
     [ObservableProperty]
     private string _sortBy = "DateTaken";
@@ -78,7 +85,8 @@ public partial class PhotoGridViewModel : ViewModelBase
         UIConfiguration uiConfig,
         IUserInteractionService interaction,
         IPlatformShell platformShell,
-        IRatingCoordinator ratingCoordinator)
+        IRatingCoordinator ratingCoordinator,
+        IPhotoCatalog photoCatalog)
     {
         _photoRepository = photoRepository;
         _imageLoader = imageLoader;
@@ -87,29 +95,30 @@ public partial class PhotoGridViewModel : ViewModelBase
         _interaction = interaction;
         _platformShell = platformShell;
         _ratingCoordinator = ratingCoordinator;
+        _photoCatalog = photoCatalog;
+        Photos = new AsyncVirtualizingCollection<PhotoViewModel>(LoadPageAsync);
+        ((System.ComponentModel.INotifyPropertyChanged)Photos).PropertyChanged += (_, eventArgs) =>
+        {
+            if (eventArgs.PropertyName == nameof(Photos.TotalCount))
+                OnPropertyChanged(nameof(TotalPhotoCount));
+        };
     }
 
     public async Task LoadAllPhotosAsync()
     {
-        var photos = await _photoRepository.GetAllAsync();
-        Photos.Clear();
+        _currentQuery = new PhotoSearchQuery();
+        await Photos.ResetAsync();
+        await LoadVisiblePhotosAsync(0, Math.Min(Photos.Count, 50));
+    }
 
-        // まずViewModelを作成してUIに追加（即座に表示）
-        var viewModels = photos.Select(photo => new PhotoViewModel(photo)).ToList();
-        foreach (var vm in viewModels)
-        {
-            Photos.Add(vm);
-        }
-
-        // サムネイルを並列で読み込み（バックグラウンドスレッド）
-        var maxDegreeOfParallelism = Environment.ProcessorCount;
-        await Task.Run(() => Parallel.ForEach(viewModels,
-            new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
-            vm =>
-            {
-                // 並列タスクとして実行（await不要）
-                LoadThumbnailAsync(vm).Wait();
-            }));
+    /// <summary>Loads the next keyset page while retaining no more than 1,280 view models.</summary>
+    public async Task LoadNextPageAsync(CancellationToken cancellationToken = default)
+    {
+        var previousCount = Photos.Count;
+        await Photos.LoadNextAsync(cancellationToken);
+        var added = Math.Max(0, Photos.Count - previousCount);
+        if (added > 0)
+            await LoadVisiblePhotosAsync(Math.Max(0, Photos.Count - added), Math.Min(added, 50));
     }
 
     public async Task LoadVisiblePhotosAsync(int startIndex, int count)
@@ -203,6 +212,7 @@ public partial class PhotoGridViewModel : ViewModelBase
         if (photo != null)
         {
             photo.IsSelected = true;
+            SelectedPhotoId = photo.Id;
         }
     }
 
@@ -492,32 +502,11 @@ public partial class PhotoGridViewModel : ViewModelBase
 
     private async Task ApplyFiltersAsync()
     {
-        IEnumerable<Core.Models.Photo> photos;
-
-        if (!string.IsNullOrEmpty(FilterCamera))
-        {
-            photos = await _photoRepository.GetByCameraAsync(FilterCamera);
-        }
-        else if (FilterRating > 0)
-        {
-            photos = await _photoRepository.GetByRatingAsync(FilterRating);
-        }
-        else
-        {
-            photos = await _photoRepository.GetAllAsync();
-        }
-
-        Photos.Clear();
-        System.Diagnostics.Debug.WriteLine($"[PhotoGrid] 写真の読み込み開始: {photos.Count()}枚");
-        foreach (var photo in photos)
-        {
-            var vm = new PhotoViewModel(photo);
-            Photos.Add(vm);
-            System.Diagnostics.Debug.WriteLine($"[PhotoGrid] PhotosコレクションにViewModel追加: {Path.GetFileName(photo.FilePath)}");
-            // サムネイルをバックグラウンドで非同期読み込み（待機しない）
-            _ = LoadThumbnailAsync(vm);
-        }
-        System.Diagnostics.Debug.WriteLine($"[PhotoGrid] Photosコレクション準備完了: {Photos.Count}枚");
+        _currentQuery = new PhotoSearchQuery(
+            MinimumRating: FilterRating > 0 ? FilterRating : null,
+            CameraModel: string.IsNullOrWhiteSpace(FilterCamera) ? null : FilterCamera);
+        await Photos.ResetAsync();
+        await LoadVisiblePhotosAsync(0, Math.Min(Photos.Count, 50));
 
         // TreeViewモードの場合はツリーも更新（サムネイルは非同期で読み込まれる）
         if (IsTreeViewMode)
@@ -526,5 +515,34 @@ public partial class PhotoGridViewModel : ViewModelBase
             BuildPhotoTree();
             System.Diagnostics.Debug.WriteLine($"[PhotoGrid] BuildPhotoTree完了");
         }
+    }
+
+    private async Task<PagedResult<PhotoViewModel>> LoadPageAsync(
+        PageCursor? cursor,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
+        var page = await _photoCatalog.SearchAsync(_currentQuery, cursor, pageSize, cancellationToken);
+        var items = page.Items.Select(summary => new PhotoViewModel(new Core.Models.Photo
+        {
+            Id = summary.Id,
+            FilePath = summary.FilePath,
+            FileName = summary.FileName,
+            DateTaken = summary.DateTakenUtc,
+            Rating = summary.Rating.Stars,
+            IsFavorite = summary.Rating.IsFavorite,
+            IsRejected = summary.Rating.IsRejected,
+            IsMissing = summary.IsMissing,
+            PairId = summary.PairId,
+            MetadataSyncStatus = summary.SyncStatus
+        })).ToArray();
+        return new PagedResult<PhotoViewModel>(items, page.NextCursor, page.TotalCount);
+    }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        Photos.Dispose();
+        GC.SuppressFinalize(this);
     }
 }

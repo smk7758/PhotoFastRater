@@ -236,7 +236,8 @@
                           Visibility="{Binding IsTreeViewMode, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
                 <ItemsControl x:Name="PhotoGrid"
                               ItemsSource="{Binding DisplayPhotos}"
-                              VirtualizingPanel.IsVirtualizing="False">
+                              VirtualizingPanel.IsVirtualizing="True"
+                              VirtualizingPanel.VirtualizationMode="Recycling">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <WrapPanel/>

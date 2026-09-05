@@ -52,4 +52,12 @@ PhotoFastRater.Core   PhotoFastRater.Infrastructure
 
 ## 次の移行
 
-現行Repository APIは互換性のため具象型を残しています。次段階で`IPhotoCatalog`へ集約し、WAL、正規化パスupsert、FTS5、カーソルページングを実装します。旧FolderSession JSONはDB移行完了まで読み取り互換を維持し、自動削除しません。
+現行Repository APIは互換性のため具象型を残していますが、一覧と検索は`IPhotoCatalog`のFTS5・カーソルページングへ移行済みです。旧FolderSession JSONはDB移行完了まで読み取り互換を維持し、自動削除しません。
+
+## 仮想化とサムネイル
+
+ライブラリ一覧は`IAsyncVirtualizingCollection<T>`を通じて256件ずつ読み、最大5ページ（1,280件）だけをUIに保持します。深い位置でも`OFFSET`は使わず、`DateTaken + Id`の安定カーソルで次ページを取得します。選択の識別にはDBのPhoto IDを用います。
+
+サムネイル要求は可視、通常、先読みの3本の有界キューへ入り、6ワーカーが可視要求から処理します。同一キーの同時要求は1タスクへ統合します。キーは正規化パス、サイズ、更新UTC、寸法、JPEG品質、生成器バージョンのSHA-256です。ディスクはハッシュ先頭2文字ずつの2階層に分散し、SQLiteの最終アクセス時刻で既定10GB（設定1～100GB）のLRU削除を行います。
+
+メモリLRUは圧縮JPEGサイズだけでなく、サムネイルをRGBA展開した概算サイズも予算へ含めます。全件先読みは禁止し、可視領域と直後の範囲だけを要求します。

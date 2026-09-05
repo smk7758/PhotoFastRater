@@ -9,6 +9,7 @@ namespace PhotoFastRater.UI.Views;
 public partial class MainWindow : Window
 {
     private readonly WindowManager _windowManager;
+    private bool _isLoadingNextPage;
 
     public MainWindow(MainViewModel viewModel, WindowManager windowManager)
     {
@@ -40,6 +41,24 @@ public partial class MainWindow : Window
     private void OpenFolderMode_Click(object sender, System.Windows.RoutedEventArgs e)
     {
         _windowManager.ShowFolderWindow();
+    }
+
+    private async void PhotoGridScrollViewer_ScrollChanged(object sender, ScrollChangedEventArgs e)
+    {
+        if (_isLoadingNextPage || DataContext is not MainViewModel viewModel || !viewModel.PhotoGrid.Photos.HasMore)
+            return;
+        if (e.VerticalOffset < e.ExtentHeight - e.ViewportHeight * 3)
+            return;
+
+        _isLoadingNextPage = true;
+        try
+        {
+            await viewModel.PhotoGrid.LoadNextPageAsync();
+        }
+        finally
+        {
+            _isLoadingNextPage = false;
+        }
     }
 
     private async void RatingMenuItem_Click(object sender, RoutedEventArgs e)

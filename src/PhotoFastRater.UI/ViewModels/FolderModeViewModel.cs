@@ -242,7 +242,6 @@ public partial class FolderModeViewModel : ViewModelBase
                 var photoVm = new FolderSessionPhotoViewModel(photo, rawLoader);
                 Photos.Add(photoVm);
                 DisplayPhotos.Add(photoVm);
-                _ = LoadThumbnailIfMissingAsync(photoVm);
             });
 
             var countProgress = new Progress<int>(count => StatusText = $"写真を読み込み中: {count}枚");
@@ -287,8 +286,6 @@ public partial class FolderModeViewModel : ViewModelBase
             BuildPhotoTree();
             UpdateStatistics();
             StatusText = $"{TotalPhotos}枚の写真を読み込みました";
-            // スキャン完了後にバックグラウンドで残りのサムネイルを先読み
-            _ = StartBackgroundThumbnailLoadAsync();
         }
         catch (Exception ex)
         {
@@ -298,15 +295,6 @@ public partial class FolderModeViewModel : ViewModelBase
         finally
         {
             IsLoading = false;
-        }
-    }
-
-    private async Task StartBackgroundThumbnailLoadAsync()
-    {
-        foreach (var photo in Photos.ToList())
-        {
-            await Task.Yield();
-            _ = LoadThumbnailIfMissingAsync(photo);
         }
     }
 

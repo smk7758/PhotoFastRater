@@ -69,9 +69,11 @@
                     <!-- グリッド表示 -->
                     <ScrollViewer x:Name="PhotoGridScrollViewer"
                                   VerticalScrollBarVisibility="Auto"
+                                  ScrollChanged="PhotoGridScrollViewer_ScrollChanged"
                                   Visibility="{Binding PhotoGrid.IsTreeViewMode, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
                         <ItemsControl ItemsSource="{Binding PhotoGrid.Photos}"
-                                      VirtualizingPanel.IsVirtualizing="False">
+                                      VirtualizingPanel.IsVirtualizing="True"
+                                      VirtualizingPanel.VirtualizationMode="Recycling">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
                                     <WrapPanel/>

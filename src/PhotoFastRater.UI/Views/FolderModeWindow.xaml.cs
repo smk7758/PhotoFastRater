@@ -88,6 +88,7 @@ public partial class FolderModeWindow : Window
         Loaded += (_, _) =>
         {
             PhotoScrollViewer.ScrollChanged += OnPhotoScrollChanged;
+            _ = LoadVisibleThumbnailsAsync();
         };
     }
 

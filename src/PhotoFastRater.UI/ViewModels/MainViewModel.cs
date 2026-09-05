@@ -51,7 +51,7 @@ public partial class MainViewModel : ViewModelBase
     {
         StatusText = "写真を読み込み中...";
         await PhotoGrid.LoadAllPhotosAsync();
-        StatusText = $"{PhotoGrid.Photos.Count}枚の写真を読み込みました";
+        StatusText = $"{PhotoGrid.TotalPhotoCount:N0}枚中 {PhotoGrid.Photos.Count:N0}枚を表示";
     }
 
     [RelayCommand]

@@ -156,6 +156,7 @@ public partial class App : System.Windows.Application
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "PhotoFastRater", "Cache"),
             MaxMemoryCacheSizeMB = 500,
+            MaxDiskCacheSizeGB = 10,
             ThumbnailSize = 512,
             JpegQuality = 85,
             MaxParallelGenerations = 4,
@@ -185,6 +186,8 @@ public partial class App : System.Windows.Application
                         cacheConfig.CachePath = cachePath.GetString() ?? cacheConfig.CachePath;
                     if (cacheElement.TryGetProperty("MaxMemoryCacheSizeMB", out var maxMemory))
                         cacheConfig.MaxMemoryCacheSizeMB = maxMemory.GetInt32();
+                    if (cacheElement.TryGetProperty("MaxDiskCacheSizeGB", out var maxDisk))
+                        cacheConfig.MaxDiskCacheSizeGB = Math.Clamp(maxDisk.GetInt32(), 1, 100);
                     if (cacheElement.TryGetProperty("ThumbnailSize", out var thumbnailSize))
                         cacheConfig.ThumbnailSize = thumbnailSize.GetInt32();
                     if (cacheElement.TryGetProperty("JpegQuality", out var jpegQuality))
