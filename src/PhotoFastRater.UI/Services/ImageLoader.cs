@@ -1,6 +1,6 @@
 using System.Threading.Channels;
 using System.Windows.Media.Imaging;
-using PhotoFastRater.Core.Cache;
+using PhotoFastRater.Infrastructure.Cache;
 
 namespace PhotoFastRater.UI.Services;
 

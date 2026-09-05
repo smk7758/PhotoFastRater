@@ -3,24 +3,23 @@ using System.IO;
 using System.Windows.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.Extensions.DependencyInjection;
-using PhotoFastRater.Core.ImageProcessing;
+using PhotoFastRater.Core.Abstractions;
+using PhotoFastRater.Infrastructure.ImageProcessing;
 using PhotoFastRater.Core.Models;
-using PhotoFastRater.Core.Services;
+using PhotoFastRater.Infrastructure.Services;
 using PhotoFastRater.Core.UI;
-using PhotoFastRater.Core.Database.Repositories;
+using PhotoFastRater.Infrastructure.Database.Repositories;
 using PhotoFastRater.UI.Services;
-using MessageBox = System.Windows.MessageBox;
-using MessageBoxButton = System.Windows.MessageBoxButton;
-using MessageBoxImage = System.Windows.MessageBoxImage;
-using MessageBoxResult = System.Windows.MessageBoxResult;
 
 namespace PhotoFastRater.UI.ViewModels;
 
 public partial class FolderModeViewModel : ViewModelBase
 {
     private readonly FolderSessionService _sessionService;
-    private readonly IServiceProvider _serviceProvider;
+    private readonly WindowManager _windowManager;
+    private readonly PhotoRepository _photoRepository;
+    private readonly IUserInteractionService _interaction;
+    private readonly IPlatformShell _platformShell;
     private readonly ImageLoader _imageLoader;
     private readonly UIConfiguration _uiConfig;
     private readonly ExifService _exifService;
@@ -110,7 +109,10 @@ public partial class FolderModeViewModel : ViewModelBase
 
     public FolderModeViewModel(
         FolderSessionService sessionService,
-        IServiceProvider serviceProvider,
+        WindowManager windowManager,
+        PhotoRepository photoRepository,
+        IUserInteractionService interaction,
+        IPlatformShell platformShell,
         ImageLoader imageLoader,
         UIConfiguration uiConfig,
         ExifService exifService,
@@ -118,7 +120,10 @@ public partial class FolderModeViewModel : ViewModelBase
         RawThumbnailGenerator rawGenerator)
     {
         _sessionService = sessionService;
-        _serviceProvider = serviceProvider;
+        _windowManager = windowManager;
+        _photoRepository = photoRepository;
+        _interaction = interaction;
+        _platformShell = platformShell;
         _imageLoader = imageLoader;
         _uiConfig = uiConfig;
         _exifService = exifService;
@@ -286,7 +291,7 @@ public partial class FolderModeViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"エラー: {ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            await _interaction.NotifyAsync("エラー", $"エラー: {ex.Message}", UserNotificationKind.Error);
             StatusText = "エラーが発生しました";
         }
         finally
@@ -317,11 +322,12 @@ public partial class FolderModeViewModel : ViewModelBase
             _lastMemoryWarningTime = DateTime.Now;
             System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
             {
-                MessageBox.Show(
+                _ = _interaction.NotifyAsync(
+                    "メモリ不足",
                     $"メモリ使用量が上限（{_settings.MaxFullImageMemoryMB}MB）に達しました。\n" +
                     "フルイメージの読み込みをスキップします。\n" +
                     "設定からメモリ上限を変更するか、フォルダを再読み込みしてください。",
-                    "メモリ不足", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    UserNotificationKind.Warning);
             });
         }
         return false;
@@ -365,19 +371,13 @@ public partial class FolderModeViewModel : ViewModelBase
     [RelayCommand]
     private void OpenPhoto(FolderSessionPhotoViewModel photo)
     {
-        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(photo.FilePath)
-        {
-            UseShellExecute = true
-        });
+        _platformShell.OpenFile(photo.FilePath);
     }
 
     [RelayCommand]
     private void OpenTreePhoto(PhotoViewModel photo)
     {
-        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(photo.FilePath)
-        {
-            UseShellExecute = true
-        });
+        _platformShell.OpenFile(photo.FilePath);
     }
 
     [RelayCommand]
@@ -402,7 +402,7 @@ public partial class FolderModeViewModel : ViewModelBase
     {
         var target = photo ?? SelectedPhoto;
         if (target == null) return;
-        System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{target.FilePath}\"");
+        _platformShell.ShowInFileBrowser(target.FilePath);
     }
 
     [RelayCommand]
@@ -410,7 +410,7 @@ public partial class FolderModeViewModel : ViewModelBase
     {
         var target = photo ?? SelectedPhoto;
         if (target != null)
-            System.Windows.Clipboard.SetText(target.FileName);
+            _platformShell.SetClipboardText(target.FileName);
     }
 
     [RelayCommand]
@@ -418,17 +418,18 @@ public partial class FolderModeViewModel : ViewModelBase
     {
         var target = photo ?? SelectedPhoto;
         if (target != null)
-            System.Windows.Clipboard.SetText(target.FilePath);
+            _platformShell.SetClipboardText(target.FilePath);
     }
 
     [RelayCommand]
     private async Task ReloadFolderAsync()
     {
         if (string.IsNullOrEmpty(FolderPath)) return;
-        var result = MessageBox.Show(
+        var confirmed = await _interaction.ConfirmAsync(
+            "再読み込みの確認",
             $"フォルダを再読み込みします。\n現在のセッションは上書きされます。\n\n{FolderPath}",
-            "再読み込みの確認", MessageBoxButton.YesNo, MessageBoxImage.Question);
-        if (result != MessageBoxResult.Yes) return;
+            CancellationToken.None);
+        if (!confirmed) return;
         await LoadFolderAsync(FolderPath);
     }
 
@@ -446,15 +447,14 @@ public partial class FolderModeViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"再読み込みエラー: {ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            await _interaction.NotifyAsync("エラー", $"再読み込みエラー: {ex.Message}", UserNotificationKind.Error);
         }
     }
 
     [RelayCommand]
     private void OpenKeyboardShortcuts()
     {
-        var window = _serviceProvider.GetRequiredService<Views.KeyboardShortcutsWindow>();
-        if (window.ShowDialog() == true)
+        if (_windowManager.ShowKeyboardShortcutsDialog())
             ShortcutsUpdated?.Invoke();
     }
 
@@ -489,7 +489,7 @@ public partial class FolderModeViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"保存エラー: {ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            await _interaction.NotifyAsync("エラー", $"保存エラー: {ex.Message}", UserNotificationKind.Error);
         }
     }
 
@@ -498,23 +498,23 @@ public partial class FolderModeViewModel : ViewModelBase
     {
         if (CurrentSession == null) return;
 
-        var result = MessageBox.Show(
+        var confirmed = await _interaction.ConfirmAsync(
+            "確認",
             $"このセッションの写真をDBに追加しますか?\n合計: {TotalPhotos}枚",
-            "確認", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            CancellationToken.None);
 
-        if (result != MessageBoxResult.Yes) return;
+        if (!confirmed) return;
 
         IsLoading = true;
         StatusText = "DBにエクスポート中...";
 
         try
         {
-            var photoRepository = _serviceProvider.GetRequiredService<PhotoRepository>();
             int importedCount = 0, updatedCount = 0, skippedCount = 0;
 
             foreach (var sessionPhoto in CurrentSession.Photos)
             {
-                var existing = await photoRepository.GetByFilePathAsync(sessionPhoto.FilePath);
+                var existing = await _photoRepository.GetByFilePathAsync(sessionPhoto.FilePath);
                 if (existing != null)
                 {
                     if (sessionPhoto.Rating > existing.Rating)
@@ -522,7 +522,7 @@ public partial class FolderModeViewModel : ViewModelBase
                         existing.Rating = sessionPhoto.Rating;
                         existing.IsFavorite = sessionPhoto.IsFavorite;
                         existing.IsRejected = sessionPhoto.IsRejected;
-                        await photoRepository.UpdateAsync(existing);
+                        await _photoRepository.UpdateAsync(existing);
                         updatedCount++;
                     }
                     else skippedCount++;
@@ -547,19 +547,20 @@ public partial class FolderModeViewModel : ViewModelBase
                         ISO = sessionPhoto.ISO,
                         FocalLength = sessionPhoto.FocalLength
                     };
-                    await photoRepository.AddAsync(photo);
+                    await _photoRepository.AddAsync(photo);
                     importedCount++;
                 }
             }
 
-            MessageBox.Show(
+            await _interaction.NotifyAsync(
+                "完了",
                 $"エクスポート完了\n新規: {importedCount}枚\n更新: {updatedCount}枚\nスキップ: {skippedCount}枚",
-                "完了", MessageBoxButton.OK, MessageBoxImage.Information);
+                UserNotificationKind.Information);
             StatusText = "エクスポート完了";
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"エクスポートエラー: {ex.Message}", "エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            await _interaction.NotifyAsync("エラー", $"エクスポートエラー: {ex.Message}", UserNotificationKind.Error);
         }
         finally
         {
@@ -587,7 +588,7 @@ public partial class FolderModeViewModel : ViewModelBase
     [RelayCommand]
     private void OpenSettings()
     {
-        var settingsVm = _serviceProvider.GetRequiredService<FolderModeSettingsViewModel>();
+        var settingsVm = new FolderModeSettingsViewModel();
         settingsVm.DefaultThumbnailSize = ThumbnailSize;
         settingsVm.ShowExifInItem = ShowExifInItem;
         settingsVm.ExifShowLens = ExifItemShowLens;
@@ -598,11 +599,8 @@ public partial class FolderModeViewModel : ViewModelBase
         settingsVm.ShowMemoryWarning = _settings.ShowMemoryWarning;
         settingsVm.MaxFullImageMemoryMB = _settings.MaxFullImageMemoryMB;
 
-        var window = _serviceProvider.GetRequiredService<Views.FolderModeSettingsWindow>();
-        // DataContextをsettingsVmに差し替え
-        window.DataContext = settingsVm;
-
-        if (window.ShowDialog() == true)
+        var accepted = _windowManager.ShowFolderSettingsDialog(settingsVm);
+        if (accepted)
         {
             // 設定をViewModelに反映
             _settings = settingsVm;

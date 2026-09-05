@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using PhotoFastRater.Core.Export;
+using PhotoFastRater.Infrastructure.Export;
 using PhotoFastRater.Core.Models;
 
 namespace PhotoFastRater.UI.ViewModels;

@@ -5,7 +5,6 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.Extensions.DependencyInjection;
 using PhotoFastRater.UI.Models;
 using PhotoFastRater.UI.Services;
 using PhotoFastRater.UI.ViewModels;
@@ -16,18 +15,16 @@ public partial class FolderModeWindow : Window
 {
     private readonly FolderModeViewModel _vm;
     private readonly ShortcutService _shortcutService;
-    private readonly IServiceProvider _serviceProvider;
     private readonly Dictionary<string, ICommand> _commandMap;
     private List<ShortcutEntry> _activeShortcuts = new();
     private PhotoPreviewWindow? _previewWindow;
     private CancellationTokenSource? _fullImageScrollDebounce;
 
-    public FolderModeWindow(FolderModeViewModel viewModel, ShortcutService shortcutService, IServiceProvider serviceProvider)
+    public FolderModeWindow(FolderModeViewModel viewModel, ShortcutService shortcutService)
     {
         InitializeComponent();
         _vm = viewModel;
         _shortcutService = shortcutService;
-        _serviceProvider = serviceProvider;
         DataContext = viewModel;
 
         _commandMap = new Dictionary<string, ICommand>
@@ -271,7 +268,7 @@ public partial class FolderModeWindow : Window
             _previewWindow.Activate();
             return;
         }
-        _previewWindow = _serviceProvider.GetRequiredService<PhotoPreviewWindow>();
+        _previewWindow = new PhotoPreviewWindow(_vm);
         _previewWindow.Show();
     }
 

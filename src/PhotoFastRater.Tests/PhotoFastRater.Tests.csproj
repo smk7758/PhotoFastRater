@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\PhotoFastRater.Core\PhotoFastRater.Core.csproj" />
+    <ProjectReference Include="..\PhotoFastRater.Infrastructure\PhotoFastRater.Infrastructure.csproj" />
     <ProjectReference Include="..\PhotoFastRater.UI\PhotoFastRater.UI.csproj" />
   </ItemGroup>
 

@@ -1,20 +1,20 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using Microsoft.Extensions.DependencyInjection;
+using PhotoFastRater.UI.Services;
 using PhotoFastRater.UI.ViewModels;
 
 namespace PhotoFastRater.UI.Views;
 
 public partial class MainWindow : Window
 {
-    private readonly IServiceProvider _serviceProvider;
+    private readonly WindowManager _windowManager;
 
-    public MainWindow(MainViewModel viewModel, IServiceProvider serviceProvider)
+    public MainWindow(MainViewModel viewModel, WindowManager windowManager)
     {
         InitializeComponent();
         DataContext = viewModel;
-        _serviceProvider = serviceProvider;
+        _windowManager = windowManager;
 
         PreviewMouseWheel += (_, e) =>
         {
@@ -39,11 +39,10 @@ public partial class MainWindow : Window
 
     private void OpenFolderMode_Click(object sender, System.Windows.RoutedEventArgs e)
     {
-        var folderWindow = _serviceProvider.GetRequiredService<FolderModeWindow>();
-        folderWindow.Show();
+        _windowManager.ShowFolderWindow();
     }
 
-    private void RatingMenuItem_Click(object sender, RoutedEventArgs e)
+    private async void RatingMenuItem_Click(object sender, RoutedEventArgs e)
     {
         if (sender is System.Windows.Controls.MenuItem menuItem &&
             menuItem.Tag is string ratingStr &&
@@ -52,48 +51,48 @@ public partial class MainWindow : Window
             var photo = GetPhotoFromContextMenu(menuItem);
             if (photo != null && DataContext is MainViewModel mainViewModel)
             {
-                mainViewModel.PhotoGrid.SetRating(photo, rating);
+                await mainViewModel.PhotoGrid.SetRatingAsync(photo, rating);
             }
         }
     }
 
-    private void ToggleFavorite_Click(object sender, RoutedEventArgs e)
+    private async void ToggleFavorite_Click(object sender, RoutedEventArgs e)
     {
         if (sender is System.Windows.Controls.MenuItem menuItem)
         {
             var photo = GetPhotoFromContextMenu(menuItem);
             if (photo != null && DataContext is MainViewModel mainViewModel)
             {
-                mainViewModel.PhotoGrid.ToggleFavorite(photo);
+                await mainViewModel.PhotoGrid.ToggleFavoriteAsync(photo);
             }
         }
     }
 
-    private void ToggleReject_Click(object sender, RoutedEventArgs e)
+    private async void ToggleReject_Click(object sender, RoutedEventArgs e)
     {
         if (sender is System.Windows.Controls.MenuItem menuItem)
         {
             var photo = GetPhotoFromContextMenu(menuItem);
             if (photo != null && DataContext is MainViewModel mainViewModel)
             {
-                mainViewModel.PhotoGrid.ToggleReject(photo);
+                await mainViewModel.PhotoGrid.ToggleRejectAsync(photo);
             }
         }
     }
 
-    private void ExportToSocialMedia_Click(object sender, RoutedEventArgs e)
+    private async void ExportToSocialMedia_Click(object sender, RoutedEventArgs e)
     {
         if (sender is System.Windows.Controls.MenuItem menuItem)
         {
             var photo = GetPhotoFromContextMenu(menuItem);
             if (photo != null && DataContext is MainViewModel mainViewModel)
             {
-                mainViewModel.PhotoGrid.ExportToSocialMedia(photo);
+                await mainViewModel.PhotoGrid.ExportToSocialMediaAsync(photo);
             }
         }
     }
 
-    private void DeleteFromDatabase_Click(object sender, RoutedEventArgs e)
+    private async void DeleteFromDatabase_Click(object sender, RoutedEventArgs e)
     {
         if (sender is System.Windows.Controls.MenuItem menuItem)
         {
@@ -108,13 +107,13 @@ public partial class MainWindow : Window
 
                 if (result == MessageBoxResult.Yes)
                 {
-                    mainViewModel.PhotoGrid.DeleteFromDatabase(photo);
+                    await mainViewModel.PhotoGrid.DeleteFromDatabaseAsync(photo);
                 }
             }
         }
     }
 
-    private void DeleteFile_Click(object sender, RoutedEventArgs e)
+    private async void DeleteFile_Click(object sender, RoutedEventArgs e)
     {
         if (sender is System.Windows.Controls.MenuItem menuItem)
         {
@@ -122,14 +121,14 @@ public partial class MainWindow : Window
             if (photo != null && DataContext is MainViewModel mainViewModel)
             {
                 var result = System.Windows.MessageBox.Show(
-                    $"ファイルを完全に削除しますか?\n{photo.FilePath}\n\nこの操作は取り消せません！",
-                    "警告",
+                    $"ファイルをごみ箱へ移動しますか?\n{photo.FilePath}",
+                    "ごみ箱へ移動",
                     MessageBoxButton.YesNo,
-                    MessageBoxImage.Error);
+                    MessageBoxImage.Warning);
 
                 if (result == MessageBoxResult.Yes)
                 {
-                    mainViewModel.PhotoGrid.DeleteFile(photo);
+                    await mainViewModel.PhotoGrid.DeleteFileAsync(photo);
                 }
             }
         }

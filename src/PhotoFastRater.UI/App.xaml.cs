@@ -3,13 +3,15 @@ using System.Text.Json;
 using System.Windows;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using PhotoFastRater.Core.Cache;
-using PhotoFastRater.Core.Database;
-using PhotoFastRater.Core.Database.Repositories;
-using PhotoFastRater.Core.Export;
-using PhotoFastRater.Core.ImageProcessing;
-using PhotoFastRater.Core.Services;
+using Microsoft.Extensions.Logging;
+using PhotoFastRater.Core.Abstractions;
 using PhotoFastRater.Core.UI;
+using PhotoFastRater.Infrastructure.Cache;
+using PhotoFastRater.Infrastructure.Database;
+using PhotoFastRater.Infrastructure.Database.Repositories;
+using PhotoFastRater.Infrastructure.Export;
+using PhotoFastRater.Infrastructure.ImageProcessing;
+using PhotoFastRater.Infrastructure.Services;
 using PhotoFastRater.UI.Services;
 using PhotoFastRater.UI.ViewModels;
 using PhotoFastRater.UI.Views;
@@ -26,26 +28,29 @@ public partial class App : System.Windows.Application
 
         var services = new ServiceCollection();
         ConfigureServices(services);
-        _serviceProvider = services.BuildServiceProvider();
+        _serviceProvider = services.BuildServiceProvider(new ServiceProviderOptions
+        {
+            ValidateOnBuild = true,
+            ValidateScopes = true
+        });
+        _serviceProvider.GetRequiredService<DatabaseInitializer>()
+            .InitializeAsync()
+            .GetAwaiter()
+            .GetResult();
 
         var args = e.Args;
+        var windowManager = _serviceProvider.GetRequiredService<WindowManager>();
 
         if (args.Length >= 1 && args[0] == "--folder")
         {
             // フォルダモードで起動
             var folderPath = args.Length >= 2 ? args[1] : null;
-            var folderWindow = _serviceProvider.GetRequiredService<FolderModeWindow>();
-            folderWindow.Show();
-            if (!string.IsNullOrEmpty(folderPath))
-                folderWindow.LoadFolder(folderPath);
-            else
-                folderWindow.OpenFolderDialog();
+            windowManager.ShowFolderWindow(folderPath, openDialogWhenEmpty: true);
         }
         else
         {
             // DBモードで起動（通常）
-            var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
-            mainWindow.Show();
+            windowManager.ShowMainWindow();
         }
     }
 
@@ -63,21 +68,19 @@ public partial class App : System.Windows.Application
 
         Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
 
-        services.AddDbContext<PhotoDbContext>(options =>
+        services.AddPooledDbContextFactory<PhotoDbContext>(options =>
             options.UseSqlite($"Data Source={dbPath}"));
-
-        // Apply database migrations
-        using (var scope = services.BuildServiceProvider().CreateScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<PhotoDbContext>();
-            db.Database.Migrate();
-        }
+        services.AddSingleton<DatabaseInitializer>();
+        services.AddLogging(builder => builder.AddDebug());
 
         // Repositories
-        services.AddScoped<PhotoRepository>();
-        services.AddScoped<EventRepository>();
-        services.AddScoped<ManagedFolderRepository>();
-        services.AddScoped<FolderExclusionPatternRepository>();
+        services.AddSingleton<PhotoRepository>();
+        services.AddSingleton<EventRepository>();
+        services.AddSingleton<ManagedFolderRepository>();
+        services.AddSingleton<FolderExclusionPatternRepository>();
+        services.AddSingleton<IPhotoChangeNotifier, PhotoChangeNotifier>();
+        services.AddSingleton<IUserInteractionService, WpfUserInteractionService>();
+        services.AddSingleton<IPlatformShell, WindowsPlatformShell>();
 
         // Services
         services.AddSingleton<ExifService>();
@@ -123,6 +126,7 @@ public partial class App : System.Windows.Application
         services.AddSingleton<ShortcutService>();
         services.AddTransient<KeyboardShortcutsViewModel>();
         services.AddTransient<KeyboardShortcutsWindow>();
+        services.AddSingleton<WindowManager>();
 
         // Views
         services.AddTransient<MainWindow>();

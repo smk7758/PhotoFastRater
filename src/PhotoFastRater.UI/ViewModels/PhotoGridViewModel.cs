@@ -2,8 +2,9 @@ using System.Collections.ObjectModel;
 using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using PhotoFastRater.Core.Database.Repositories;
-using PhotoFastRater.Core.Export;
+using PhotoFastRater.Core.Abstractions;
+using PhotoFastRater.Infrastructure.Database.Repositories;
+using PhotoFastRater.Infrastructure.Export;
 using PhotoFastRater.Core.UI;
 using PhotoFastRater.UI.Services;
 using PhotoFastRater.UI.Views;
@@ -16,6 +17,8 @@ public partial class PhotoGridViewModel : ViewModelBase
     private readonly ImageLoader _imageLoader;
     private readonly SocialMediaExporter _socialMediaExporter;
     private readonly UIConfiguration _uiConfig;
+    private readonly IUserInteractionService _interaction;
+    private readonly IPlatformShell _platformShell;
 
     [ObservableProperty]
     private ObservableCollection<PhotoViewModel> _photos = new();
@@ -66,12 +69,20 @@ public partial class PhotoGridViewModel : ViewModelBase
     private void UpdateGridColumns() =>
         GridColumns = Math.Max(1, (int)(_gridWidth / (ThumbnailSize + 8)));
 
-    public PhotoGridViewModel(PhotoRepository photoRepository, ImageLoader imageLoader, SocialMediaExporter socialMediaExporter, UIConfiguration uiConfig)
+    public PhotoGridViewModel(
+        PhotoRepository photoRepository,
+        ImageLoader imageLoader,
+        SocialMediaExporter socialMediaExporter,
+        UIConfiguration uiConfig,
+        IUserInteractionService interaction,
+        IPlatformShell platformShell)
     {
         _photoRepository = photoRepository;
         _imageLoader = imageLoader;
         _socialMediaExporter = socialMediaExporter;
         _uiConfig = uiConfig;
+        _interaction = interaction;
+        _platformShell = platformShell;
     }
 
     public async Task LoadAllPhotosAsync()
@@ -269,7 +280,7 @@ public partial class PhotoGridViewModel : ViewModelBase
     }
 
     // Context menu public methods
-    public async void SetRating(PhotoViewModel photo, int rating)
+    public async Task SetRatingAsync(PhotoViewModel photo, int rating)
     {
         photo.Rating = rating;
         var model = photo.GetModel();
@@ -277,7 +288,7 @@ public partial class PhotoGridViewModel : ViewModelBase
         await _photoRepository.UpdateAsync(model);
     }
 
-    public async void ToggleFavorite(PhotoViewModel photo)
+    public async Task ToggleFavoriteAsync(PhotoViewModel photo)
     {
         photo.IsFavorite = !photo.IsFavorite;
         var model = photo.GetModel();
@@ -285,7 +296,7 @@ public partial class PhotoGridViewModel : ViewModelBase
         await _photoRepository.UpdateAsync(model);
     }
 
-    public async void ToggleReject(PhotoViewModel photo)
+    public async Task ToggleRejectAsync(PhotoViewModel photo)
     {
         photo.IsRejected = !photo.IsRejected;
         var model = photo.GetModel();
@@ -293,7 +304,7 @@ public partial class PhotoGridViewModel : ViewModelBase
         await _photoRepository.UpdateAsync(model);
     }
 
-    public async void ExportToSocialMedia(PhotoViewModel photo)
+    public async Task ExportToSocialMediaAsync(PhotoViewModel photo)
     {
         try
         {
@@ -321,17 +332,15 @@ public partial class PhotoGridViewModel : ViewModelBase
 
             await _socialMediaExporter.ExportAsync(model, template, outputPath);
 
-            System.Windows.MessageBox.Show($"エクスポートしました:\n{outputPath}", "完了",
-                System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+            await _interaction.NotifyAsync("完了", $"エクスポートしました:\n{outputPath}", UserNotificationKind.Information);
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show($"エクスポートエラー: {ex.Message}", "エラー",
-                System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            await _interaction.NotifyAsync("エラー", $"エクスポートエラー: {ex.Message}", UserNotificationKind.Error);
         }
     }
 
-    public async void DeleteFromDatabase(PhotoViewModel photo)
+    public async Task DeleteFromDatabaseAsync(PhotoViewModel photo)
     {
         try
         {
@@ -341,33 +350,28 @@ public partial class PhotoGridViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show($"削除エラー: {ex.Message}", "エラー",
-                System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            await _interaction.NotifyAsync("エラー", $"削除エラー: {ex.Message}", UserNotificationKind.Error);
         }
     }
 
-    public async void DeleteFile(PhotoViewModel photo)
+    public async Task DeleteFileAsync(PhotoViewModel photo)
     {
         try
         {
             var model = photo.GetModel();
 
-            // DBから削除
-            await _photoRepository.DeleteAsync(model.Id);
-
-            // ファイルを削除
+            // ごみ箱移動に成功するまでDB記録を残し、失敗時に写真を見失わない。
             if (File.Exists(photo.FilePath))
-            {
-                File.Delete(photo.FilePath);
-            }
+                await _platformShell.MoveToRecycleBinAsync(photo.FilePath);
+
+            await _photoRepository.DeleteAsync(model.Id);
 
             // UIから削除
             Photos.Remove(photo);
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show($"ファイル削除エラー: {ex.Message}", "エラー",
-                System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            await _interaction.NotifyAsync("エラー", $"ごみ箱への移動に失敗しました: {ex.Message}", UserNotificationKind.Error);
         }
     }
 

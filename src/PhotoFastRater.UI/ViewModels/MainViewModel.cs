@@ -1,8 +1,9 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using PhotoFastRater.Core.Database.Repositories;
-using PhotoFastRater.Core.Services;
+using PhotoFastRater.Core.Abstractions;
+using PhotoFastRater.Infrastructure.Database.Repositories;
+using PhotoFastRater.Infrastructure.Services;
 
 namespace PhotoFastRater.UI.ViewModels;
 
@@ -10,6 +11,7 @@ public partial class MainViewModel : ViewModelBase
 {
     private readonly PhotoRepository _photoRepository;
     private readonly ImportService _importService;
+    private readonly IUserInteractionService _interaction;
 
     [ObservableProperty]
     private PhotoGridViewModel _photoGrid;
@@ -32,7 +34,8 @@ public partial class MainViewModel : ViewModelBase
         PhotoGridViewModel photoGrid,
         EventViewModel events,
         ExportViewModel export,
-        SettingsViewModel settings)
+        SettingsViewModel settings,
+        IUserInteractionService interaction)
     {
         _photoRepository = photoRepository;
         _importService = importService;
@@ -40,6 +43,7 @@ public partial class MainViewModel : ViewModelBase
         _events = events;
         _export = export;
         _settings = settings;
+        _interaction = interaction;
     }
 
     [RelayCommand]
@@ -53,12 +57,8 @@ public partial class MainViewModel : ViewModelBase
     [RelayCommand]
     private async Task ImportFolderAsync()
     {
-        var dialog = new System.Windows.Forms.FolderBrowserDialog
-        {
-            Description = "写真フォルダを選択してください"
-        };
-
-        if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+        var selectedPath = await _interaction.SelectFolderAsync("写真フォルダを選択してください");
+        if (!string.IsNullOrWhiteSpace(selectedPath))
         {
             StatusText = "インポート中...";
 
@@ -67,7 +67,7 @@ public partial class MainViewModel : ViewModelBase
                 StatusText = $"インポート中: {p.ProcessedCount}/{p.TotalCount} - {p.Status}";
             });
 
-            await _importService.ImportFromFolderAsync(dialog.SelectedPath, true, null, progress);
+            await _importService.ImportFromFolderAsync(selectedPath, true, null, progress);
             await LoadPhotosAsync();
         }
     }

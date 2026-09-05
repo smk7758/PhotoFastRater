@@ -1,6 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using PhotoFastRater.Core.Cache;
+using PhotoFastRater.Infrastructure.Cache;
 using PhotoFastRater.Core.UI;
 
 namespace PhotoFastRater.UI.ViewModels;

@@ -3,7 +3,7 @@ using Xunit;
 using FluentAssertions;
 using Moq;
 using PhotoFastRater.Core.Models;
-using PhotoFastRater.Core.Services;
+using PhotoFastRater.Infrastructure.Services;
 
 namespace PhotoFastRater.Tests.Services;
 

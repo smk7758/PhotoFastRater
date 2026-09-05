@@ -3,7 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using Microsoft.Win32;
-using PhotoFastRater.Core.Export;
+using PhotoFastRater.Infrastructure.Export;
 using PhotoFastRater.Core.Models;
 using PhotoFastRater.UI.ViewModels;
 

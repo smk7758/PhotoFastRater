@@ -1,14 +1,10 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.Win32;
+using PhotoFastRater.Core.Abstractions;
 using PhotoFastRater.Core.Models;
-using PhotoFastRater.Core.Services;
-using PhotoFastRater.Core.Database.Repositories;
-using MessageBox = System.Windows.MessageBox;
-using MessageBoxButton = System.Windows.MessageBoxButton;
-using MessageBoxImage = System.Windows.MessageBoxImage;
-using MessageBoxResult = System.Windows.MessageBoxResult;
+using PhotoFastRater.Infrastructure.Services;
+using PhotoFastRater.Infrastructure.Database.Repositories;
 
 namespace PhotoFastRater.UI.ViewModels;
 
@@ -19,6 +15,7 @@ public partial class ManagedFoldersViewModel : ViewModelBase
 {
     private readonly ManagedFolderService _folderService;
     private readonly FolderExclusionPatternRepository _patternRepository;
+    private readonly IUserInteractionService _interaction;
 
     [ObservableProperty]
     private ObservableCollection<ManagedFolderItemViewModel> _folders = new();
@@ -40,10 +37,12 @@ public partial class ManagedFoldersViewModel : ViewModelBase
 
     public ManagedFoldersViewModel(
         ManagedFolderService folderService,
-        FolderExclusionPatternRepository patternRepository)
+        FolderExclusionPatternRepository patternRepository,
+        IUserInteractionService interaction)
     {
         _folderService = folderService;
         _patternRepository = patternRepository;
+        _interaction = interaction;
     }
 
     /// <summary>
@@ -81,25 +80,18 @@ public partial class ManagedFoldersViewModel : ViewModelBase
     [RelayCommand]
     private async Task AddFolderAsync()
     {
-        var dialog = new System.Windows.Forms.FolderBrowserDialog
-        {
-            Description = "管理するフォルダを選択してください",
-            ShowNewFolderButton = false
-        };
-
-        if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+        var selectedPath = await _interaction.SelectFolderAsync("管理するフォルダを選択してください");
+        if (!string.IsNullOrWhiteSpace(selectedPath))
         {
             try
             {
-                var folder = await _folderService.AddFolderAsync(dialog.SelectedPath, isRecursive: true);
+                var folder = await _folderService.AddFolderAsync(selectedPath, isRecursive: true);
                 Folders.Add(new ManagedFolderItemViewModel(folder));
-                MessageBox.Show($"フォルダを追加しました: {dialog.SelectedPath}", "成功",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
+                await _interaction.NotifyAsync("成功", $"フォルダを追加しました: {selectedPath}", UserNotificationKind.Information);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"エラー: {ex.Message}", "エラー",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
+                await _interaction.NotifyAsync("エラー", $"エラー: {ex.Message}", UserNotificationKind.Error);
             }
         }
     }
@@ -112,13 +104,12 @@ public partial class ManagedFoldersViewModel : ViewModelBase
     {
         if (SelectedFolder == null) return;
 
-        var result = MessageBox.Show(
-            $"フォルダを削除しますか?\n{SelectedFolder.FolderPath}",
+        var confirmed = await _interaction.ConfirmAsync(
             "確認",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Question);
+            $"フォルダを削除しますか?\n{SelectedFolder.FolderPath}",
+            CancellationToken.None);
 
-        if (result == MessageBoxResult.Yes)
+        if (confirmed)
         {
             await _folderService.RemoveFolderAsync(SelectedFolder.Id);
             Folders.Remove(SelectedFolder);
@@ -147,20 +138,18 @@ public partial class ManagedFoldersViewModel : ViewModelBase
 
             await LoadFoldersAsync();
 
-            MessageBox.Show(
+            await _interaction.NotifyAsync(
+                "スキャン完了",
                 $"スキャン完了\n" +
                 $"合計: {result.TotalFiles}ファイル\n" +
                 $"新規: {result.NewFiles}ファイル\n" +
                 $"既存: {result.ExistingFiles}ファイル\n" +
                 $"除外: {result.ExcludedFiles}ファイル",
-                "スキャン完了",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
+                UserNotificationKind.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"エラー: {ex.Message}", "エラー",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+            await _interaction.NotifyAsync("エラー", $"エラー: {ex.Message}", UserNotificationKind.Error);
         }
         finally
         {
@@ -192,19 +181,17 @@ public partial class ManagedFoldersViewModel : ViewModelBase
             var totalNew = results.Values.Sum(r => r.NewFiles);
             var totalExisting = results.Values.Sum(r => r.ExistingFiles);
 
-            MessageBox.Show(
+            await _interaction.NotifyAsync(
+                "一括スキャン完了",
                 $"一括スキャン完了\n" +
                 $"スキャンフォルダ数: {results.Count}\n" +
                 $"新規: {totalNew}ファイル\n" +
                 $"既存: {totalExisting}ファイル",
-                "一括スキャン完了",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
+                UserNotificationKind.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"エラー: {ex.Message}", "エラー",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+            await _interaction.NotifyAsync("エラー", $"エラー: {ex.Message}", UserNotificationKind.Error);
         }
         finally
         {
@@ -220,10 +207,9 @@ public partial class ManagedFoldersViewModel : ViewModelBase
     private async Task AddPatternAsync()
     {
         // 簡易的な入力ダイアログ（後でカスタムダイアログに置き換え可能）
-        var pattern = Microsoft.VisualBasic.Interaction.InputBox(
-            "除外パターンを入力してください\n例: */temp/*, */backup/*",
+        var pattern = await _interaction.PromptTextAsync(
             "除外パターン追加",
-            "");
+            "除外パターンを入力してください\n例: */temp/*, */backup/*");
 
         if (string.IsNullOrWhiteSpace(pattern)) return;
 
@@ -240,13 +226,11 @@ public partial class ManagedFoldersViewModel : ViewModelBase
             var added = await _patternRepository.AddAsync(newPattern);
             ExclusionPatterns.Add(new ExclusionPatternViewModel(added));
 
-            MessageBox.Show("除外パターンを追加しました", "成功",
-                MessageBoxButton.OK, MessageBoxImage.Information);
+            await _interaction.NotifyAsync("成功", "除外パターンを追加しました", UserNotificationKind.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"エラー: {ex.Message}", "エラー",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+            await _interaction.NotifyAsync("エラー", $"エラー: {ex.Message}", UserNotificationKind.Error);
         }
     }
 
@@ -258,13 +242,12 @@ public partial class ManagedFoldersViewModel : ViewModelBase
     {
         if (SelectedPattern == null) return;
 
-        var result = MessageBox.Show(
-            $"除外パターンを削除しますか?\n{SelectedPattern.PatternString}",
+        var confirmed = await _interaction.ConfirmAsync(
             "確認",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Question);
+            $"除外パターンを削除しますか?\n{SelectedPattern.PatternString}",
+            CancellationToken.None);
 
-        if (result == MessageBoxResult.Yes)
+        if (confirmed)
         {
             await _patternRepository.DeleteAsync(SelectedPattern.Id);
             ExclusionPatterns.Remove(SelectedPattern);
