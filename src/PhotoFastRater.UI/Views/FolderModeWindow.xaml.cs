@@ -32,22 +32,22 @@ public partial class FolderModeWindow : Window
 
         _commandMap = new Dictionary<string, ICommand>
         {
-            ["NavigateUp"]     = viewModel.NavigateUpCommand,
-            ["NavigateDown"]   = viewModel.NavigateDownCommand,
-            ["NavigateLeft"]   = viewModel.NavigateLeftCommand,
-            ["NavigateRight"]  = viewModel.NavigateRightCommand,
-            ["OpenFolder"]     = viewModel.OpenFolderCommand,
-            ["SetRating0"]     = new RelayCommand(() => viewModel.SetRatingCommand.Execute("0")),
-            ["SetRating1"]     = new RelayCommand(() => viewModel.SetRatingCommand.Execute("1")),
-            ["SetRating2"]     = new RelayCommand(() => viewModel.SetRatingCommand.Execute("2")),
-            ["SetRating3"]     = new RelayCommand(() => viewModel.SetRatingCommand.Execute("3")),
-            ["SetRating4"]     = new RelayCommand(() => viewModel.SetRatingCommand.Execute("4")),
-            ["SetRating5"]     = new RelayCommand(() => viewModel.SetRatingCommand.Execute("5")),
+            ["NavigateUp"] = viewModel.NavigateUpCommand,
+            ["NavigateDown"] = viewModel.NavigateDownCommand,
+            ["NavigateLeft"] = viewModel.NavigateLeftCommand,
+            ["NavigateRight"] = viewModel.NavigateRightCommand,
+            ["OpenFolder"] = viewModel.OpenFolderCommand,
+            ["SetRating0"] = new RelayCommand(() => viewModel.SetRatingCommand.Execute("0")),
+            ["SetRating1"] = new RelayCommand(() => viewModel.SetRatingCommand.Execute("1")),
+            ["SetRating2"] = new RelayCommand(() => viewModel.SetRatingCommand.Execute("2")),
+            ["SetRating3"] = new RelayCommand(() => viewModel.SetRatingCommand.Execute("3")),
+            ["SetRating4"] = new RelayCommand(() => viewModel.SetRatingCommand.Execute("4")),
+            ["SetRating5"] = new RelayCommand(() => viewModel.SetRatingCommand.Execute("5")),
             ["ToggleFavorite"] = viewModel.ToggleFavoriteCommand,
-            ["ToggleReject"]   = viewModel.ToggleRejectCommand,
-            ["ReloadFolder"]   = viewModel.ReloadFolderCommand,
-            ["NavigateHome"]   = viewModel.NavigateHomeCommand,
-            ["NavigateEnd"]    = viewModel.NavigateEndCommand,
+            ["ToggleReject"] = viewModel.ToggleRejectCommand,
+            ["ReloadFolder"] = viewModel.ReloadFolderCommand,
+            ["NavigateHome"] = viewModel.NavigateHomeCommand,
+            ["NavigateEnd"] = viewModel.NavigateEndCommand,
         };
 
         viewModel.PropertyChanged += (s, e) =>

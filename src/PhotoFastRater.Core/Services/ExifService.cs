@@ -174,8 +174,8 @@ public class ExifService
         >= 75 => 4,
         >= 50 => 3,
         >= 25 => 2,
-        >= 1  => 1,
-        _     => 0
+        >= 1 => 1,
+        _ => 0
     };
 
     private GeoLocation? GetGeoLocation(GpsDirectory gpsDir)
