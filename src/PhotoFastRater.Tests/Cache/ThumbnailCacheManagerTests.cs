@@ -46,6 +46,35 @@ public sealed class ThumbnailCacheManagerTests : IDisposable
         Directory.GetFiles(cachePath, "*.jpg", SearchOption.AllDirectories).Should().HaveCount(2);
     }
 
+    [Fact]
+    public async Task ClearMovesOnlyGeneratedThumbnailsToRecoverableGarbage()
+    {
+        Directory.CreateDirectory(_testDirectory);
+        var sourcePath = Path.Combine(_testDirectory, "source.bmp");
+        using (var image = new Image<Rgba32>(16, 16, Color.CornflowerBlue))
+            await image.SaveAsBmpAsync(sourcePath);
+        var cachePath = Path.Combine(_testDirectory, "cache");
+        using var cache = new ThumbnailCacheManager(
+            new CacheConfiguration
+            {
+                CachePath = cachePath,
+                ThumbnailSize = 8,
+                JpegQuality = 80,
+                MaxMemoryCacheSizeMB = 64,
+                MaxDiskCacheSizeGB = 1
+            },
+            new JpegThumbnailGenerator(80),
+            new RawThumbnailGenerator(80));
+        await cache.GetThumbnailAsync(sourcePath);
+
+        (await cache.ClearAsync()).Should().Be(1);
+
+        Directory.GetFiles(cachePath, "*.jpg", SearchOption.AllDirectories).Should().BeEmpty();
+        Directory.GetFiles(Path.Combine(_testDirectory, "_GARBAGE"), "*.jpg", SearchOption.AllDirectories)
+            .Should().ContainSingle();
+        File.Exists(sourcePath).Should().BeTrue();
+    }
+
     public void Dispose()
     {
         Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();

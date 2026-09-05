@@ -4,12 +4,13 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+        xmlns:models="clr-namespace:PhotoFastRater.Core.Models;assembly=PhotoFastRater.Core"
         xmlns:sys="clr-namespace:System;assembly=mscorlib"
         mc:Ignorable="d"
         Title="Photo Fast Rater"
         Height="800"
         Width="1400"
-        Background="{DynamicResource MaterialDesignPaper}">
+        Background="{DynamicResource DarkroomInkBrush}">
 
     <Window.InputBindings>
         <KeyBinding Key="Up"
@@ -37,7 +38,12 @@
                  Padding="8">
             <Button Content="インポート"
                     Command="{Binding ImportFolderCommand}"
-                    Style="{StaticResource MaterialDesignRaisedButton}"/>
+                    Style="{StaticResource DarkroomActionButton}"
+                    ToolTip="フォルダを選び、走査済み写真から順に登録"/>
+            <Button Content="キャンセル"
+                    Command="{Binding CancelImportCommand}"
+                    IsEnabled="{Binding IsImporting}"
+                    Margin="8,0,0,0"/>
             <Button Content="読み込み"
                     Command="{Binding LoadPhotosCommand}"
                     Margin="8,0,0,0"/>
@@ -58,7 +64,9 @@
                        VerticalAlignment="Center"
                        Margin="8,0"/>
             <TextBox Width="200"
-                     Margin="4,0"/>
+                     Margin="4,0"
+                     Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="ファイル名・パス・タグを検索（入力後200msで実行）"/>
         </ToolBar>
 
         <!-- メインコンテンツ -->
@@ -259,6 +267,7 @@
                                  Text="{Binding Events.NewEventName, UpdateSourceTrigger=PropertyChanged}"
                                  materialDesign:HintAssist.Hint="イベント名"/>
                         <Button Content="イベント作成"
+                                Command="{Binding CreateEventFromSelectionCommand}"
                                 Margin="8,0,0,0"/>
                         <Button Content="自動グルーピング"
                                 Command="{Binding Events.AutoGroupPhotosCommand}"
@@ -310,18 +319,20 @@
                                   HorizontalAlignment="Left"
                                   Margin="0,8,0,0"
                                   materialDesign:HintAssist.Hint="SNSプラットフォーム"
+                                  SelectedValuePath="Tag"
                                   SelectedValue="{Binding Export.TargetPlatform}">
-                            <ComboBoxItem Content="Instagram"/>
-                            <ComboBoxItem Content="Twitter"/>
-                            <ComboBoxItem Content="Facebook"/>
+                            <ComboBoxItem Content="Instagram" Tag="{x:Static models:SocialMediaPlatform.Instagram}"/>
+                            <ComboBoxItem Content="X / Twitter" Tag="{x:Static models:SocialMediaPlatform.Twitter}"/>
+                            <ComboBoxItem Content="Facebook" Tag="{x:Static models:SocialMediaPlatform.Facebook}"/>
                         </ComboBox>
                     </StackPanel>
 
                     <Button Grid.Row="3"
-                            Content="エクスポート"
+                            Content="選択写真をエクスポート"
+                            Command="{Binding ExportSelectedPhotoCommand}"
                             HorizontalAlignment="Left"
                             VerticalAlignment="Bottom"
-                            Style="{StaticResource MaterialDesignRaisedButton}"/>
+                            Style="{StaticResource DarkroomActionButton}"/>
                 </Grid>
             </TabItem>
 
@@ -399,6 +410,10 @@
                                            Margin="0,16,0,0"
                                            FontSize="12"
                                            Foreground="Gray"/>
+                                <TextBlock Text="{Binding Settings.SaveStatus}"
+                                           Margin="0,8,0,0"
+                                           Foreground="{DynamicResource RatingAmberBrush}"
+                                           TextWrapping="Wrap"/>
                             </StackPanel>
                         </ScrollViewer>
                     </TabItem>
@@ -525,6 +540,14 @@
         <StatusBar Grid.Row="2">
             <StatusBarItem>
                 <TextBlock Text="{Binding StatusText}"/>
+            </StatusBarItem>
+            <Separator/>
+            <StatusBarItem>
+                <TextBlock Text="{Binding PhotoGrid.SelectedPhoto.FileName, TargetNullValue='写真未選択'}"/>
+            </StatusBarItem>
+            <StatusBarItem HorizontalAlignment="Right">
+                <TextBlock Text="{Binding ImportErrorCount, StringFormat='エラー {0:N0}件'}"
+                           Foreground="{DynamicResource RejectRedBrush}"/>
             </StatusBarItem>
         </StatusBar>
     </Grid>

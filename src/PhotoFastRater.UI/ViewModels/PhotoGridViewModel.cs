@@ -104,11 +104,21 @@ public partial class PhotoGridViewModel : ViewModelBase, IDisposable
         };
     }
 
-    public async Task LoadAllPhotosAsync()
+    public async Task LoadAllPhotosAsync(CancellationToken cancellationToken = default)
     {
         _currentQuery = new PhotoSearchQuery();
-        await Photos.ResetAsync();
-        await LoadVisiblePhotosAsync(0, Math.Min(Photos.Count, 50));
+        await Photos.ResetAsync(cancellationToken);
+        await LoadVisiblePhotosAsync(0, Math.Min(Photos.Count, 50), cancellationToken);
+    }
+
+    /// <summary>Applies indexed text search and cancels stale page and thumbnail work.</summary>
+    public async Task SearchAsync(string? text, CancellationToken cancellationToken = default)
+    {
+        _currentQuery = _currentQuery with { Text = string.IsNullOrWhiteSpace(text) ? null : text.Trim() };
+        await Photos.ResetAsync(cancellationToken);
+        await LoadVisiblePhotosAsync(0, Math.Min(Photos.Count, 50), cancellationToken);
+        if (IsTreeViewMode)
+            BuildPhotoTree();
     }
 
     /// <summary>Loads the next keyset page while retaining no more than 1,280 view models.</summary>
@@ -118,16 +128,22 @@ public partial class PhotoGridViewModel : ViewModelBase, IDisposable
         await Photos.LoadNextAsync(cancellationToken);
         var added = Math.Max(0, Photos.Count - previousCount);
         if (added > 0)
-            await LoadVisiblePhotosAsync(Math.Max(0, Photos.Count - added), Math.Min(added, 50));
+            await LoadVisiblePhotosAsync(
+                Math.Max(0, Photos.Count - added),
+                Math.Min(added, 50),
+                cancellationToken);
     }
 
-    public async Task LoadVisiblePhotosAsync(int startIndex, int count)
+    public async Task LoadVisiblePhotosAsync(
+        int startIndex,
+        int count,
+        CancellationToken cancellationToken = default)
     {
         // 表示範囲の画像を並列読み込み
         var visiblePhotos = Photos.Skip(startIndex).Take(count).ToList();
         var loadTasks = visiblePhotos
             .Where(p => p.Thumbnail == null)
-            .Select(p => LoadThumbnailAsync(p, priority: 10));
+            .Select(p => LoadThumbnailAsync(p, priority: 10, cancellationToken));
 
         await Task.WhenAll(loadTasks);
 
@@ -136,13 +152,16 @@ public partial class PhotoGridViewModel : ViewModelBase, IDisposable
         _imageLoader.PrefetchRange(nextPhotos.Select(p => p.FilePath));
     }
 
-    private async Task LoadThumbnailAsync(PhotoViewModel photo, int priority = 0)
+    private async Task LoadThumbnailAsync(
+        PhotoViewModel photo,
+        int priority = 0,
+        CancellationToken cancellationToken = default)
     {
         try
         {
             System.Diagnostics.Debug.WriteLine($"[PhotoGrid] LoadThumbnailAsync 開始: {Path.GetFileName(photo.FilePath)}, Priority={priority}");
 
-            var thumbnail = await _imageLoader.LoadAsync(photo.FilePath, priority);
+            var thumbnail = await _imageLoader.LoadAsync(photo.FilePath, priority, cancellationToken);
 
             System.Diagnostics.Debug.WriteLine($"[PhotoGrid] サムネイル取得完了: {Path.GetFileName(photo.FilePath)}, IsNull={thumbnail == null}");
 
@@ -153,6 +172,10 @@ public partial class PhotoGridViewModel : ViewModelBase, IDisposable
                 photo.Thumbnail = thumbnail;
                 System.Diagnostics.Debug.WriteLine($"[PhotoGrid] Thumbnail設定完了: {Path.GetFileName(photo.FilePath)}, photo.Thumbnail IsNull={photo.Thumbnail == null}");
             });
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // A newer query owns the visible range now.
         }
         catch (Exception ex)
         {
@@ -503,6 +526,7 @@ public partial class PhotoGridViewModel : ViewModelBase, IDisposable
     private async Task ApplyFiltersAsync()
     {
         _currentQuery = new PhotoSearchQuery(
+            Text: _currentQuery.Text,
             MinimumRating: FilterRating > 0 ? FilterRating : null,
             CameraModel: string.IsNullOrWhiteSpace(FilterCamera) ? null : FilterCamera);
         await Photos.ResetAsync();

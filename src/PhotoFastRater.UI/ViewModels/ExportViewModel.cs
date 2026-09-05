@@ -38,6 +38,7 @@ public partial class ExportViewModel : ViewModelBase
     {
         _exporter = exporter;
         InitializeDefaultTemplates();
+        SelectedTemplate = Templates[0];
     }
 
     private void InitializeDefaultTemplates()
@@ -67,10 +68,10 @@ public partial class ExportViewModel : ViewModelBase
         });
     }
 
-    public async Task ExportPhotoAsync(Photo photo, string outputPath)
+    public async Task<string> ExportPhotoAsync(Photo photo, string outputPath)
     {
         if (SelectedTemplate == null)
-            return;
+            throw new InvalidOperationException("エクスポートテンプレートが選択されていません。");
 
         // テンプレート設定を更新
         SelectedTemplate.EnableFrame = EnableFrame;
@@ -80,7 +81,24 @@ public partial class ExportViewModel : ViewModelBase
         SelectedTemplate.Position = OverlayPosition;
         SelectedTemplate.TargetPlatform = TargetPlatform;
 
-        await _exporter.ExportAsync(photo, SelectedTemplate, outputPath);
+        return await _exporter.ExportAsync(photo, SelectedTemplate, GetAvailablePath(outputPath));
+    }
+
+    private static string GetAvailablePath(string requestedPath)
+    {
+        if (!File.Exists(requestedPath))
+            return requestedPath;
+
+        var directory = Path.GetDirectoryName(requestedPath)!;
+        var fileName = Path.GetFileNameWithoutExtension(requestedPath);
+        var extension = Path.GetExtension(requestedPath);
+        for (var suffix = 2; suffix <= 10_000; suffix++)
+        {
+            var candidate = Path.Combine(directory, $"{fileName}-{suffix}{extension}");
+            if (!File.Exists(candidate))
+                return candidate;
+        }
+        throw new IOException("同名の出力ファイルが多すぎるため、安全なファイル名を決定できません。");
     }
 
     [RelayCommand]

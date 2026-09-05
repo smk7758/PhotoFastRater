@@ -2,6 +2,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PhotoFastRater.Infrastructure.Cache;
 using PhotoFastRater.Core.UI;
+using PhotoFastRater.Core.Abstractions;
+using PhotoFastRater.UI.Services;
 
 namespace PhotoFastRater.UI.ViewModels;
 
@@ -9,6 +11,9 @@ public partial class SettingsViewModel : ViewModelBase
 {
     private readonly CacheConfiguration _cacheConfig;
     private readonly UIConfiguration _uiConfig;
+    private readonly UserSettingsStore _settingsStore;
+    private readonly ThumbnailCacheManager _cacheManager;
+    private readonly IUserInteractionService _interaction;
 
     [ObservableProperty]
     private ManagedFoldersViewModel? _managedFolders;
@@ -35,15 +40,24 @@ public partial class SettingsViewModel : ViewModelBase
     private long _currentCacheSize = 0;
 
     [ObservableProperty]
+    private string _saveStatus = string.Empty;
+
+    [ObservableProperty]
     private string _arrowKeyNavigationMode = "GridFocus";
 
     public SettingsViewModel(
         CacheConfiguration cacheConfig,
         UIConfiguration uiConfig,
-        ManagedFoldersViewModel managedFoldersViewModel)
+        ManagedFoldersViewModel managedFoldersViewModel,
+        UserSettingsStore settingsStore,
+        ThumbnailCacheManager cacheManager,
+        IUserInteractionService interaction)
     {
         _cacheConfig = cacheConfig;
         _uiConfig = uiConfig;
+        _settingsStore = settingsStore;
+        _cacheManager = cacheManager;
+        _interaction = interaction;
         ManagedFolders = managedFoldersViewModel;
         LoadSettings();
         _ = InitializeAsync();
@@ -69,22 +83,15 @@ public partial class SettingsViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private void SelectCachePath()
+    private async Task SelectCachePathAsync()
     {
-        var dialog = new System.Windows.Forms.FolderBrowserDialog
-        {
-            Description = "キャッシュフォルダ（SSD推奨）を選択してください",
-            SelectedPath = CachePath
-        };
-
-        if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-        {
-            CachePath = dialog.SelectedPath;
-        }
+        var selected = await _interaction.SelectFolderAsync("キャッシュフォルダ（SSD推奨）を選択してください");
+        if (!string.IsNullOrWhiteSpace(selected))
+            CachePath = selected;
     }
 
     [RelayCommand]
-    private void SaveSettings()
+    private async Task SaveSettingsAsync()
     {
         _cacheConfig.CachePath = CachePath;
         _cacheConfig.MaxMemoryCacheSizeMB = MaxMemoryCacheSizeMB;
@@ -94,27 +101,31 @@ public partial class SettingsViewModel : ViewModelBase
         _cacheConfig.EnableRAWSupport = EnableRAWSupport;
         _uiConfig.ArrowKeyNavigationMode = ArrowKeyNavigationMode;
 
-        // 設定を保存（後で実装）
-        SaveToFile();
+        try
+        {
+            await _settingsStore.SaveAsync(_cacheConfig, _uiConfig);
+            SaveStatus = "設定を保存しました。キャッシュ構成の変更は再起動後に反映されます。";
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            SaveStatus = "設定を保存できませんでした。";
+            await _interaction.NotifyAsync("設定保存エラー", exception.Message, UserNotificationKind.Error);
+        }
     }
 
     [RelayCommand]
     private async Task ClearCacheAsync()
     {
-        // キャッシュクリア処理
-        if (Directory.Exists(CachePath))
+        if (!await _interaction.ConfirmAsync(
+            "キャッシュをクリア",
+            "生成済みサムネイルを退避します。元の写真は変更しません。続行しますか？"))
         {
-            await Task.Run(() =>
-            {
-                var files = Directory.GetFiles(CachePath, "*.jpg");
-                foreach (var file in files)
-                {
-                    File.Delete(file);
-                }
-            });
+            return;
         }
 
+        await _cacheManager.ClearAsync();
         await UpdateCacheSizeAsync();
+        SaveStatus = "サムネイルキャッシュを退避しました。";
     }
 
     private async Task UpdateCacheSizeAsync()
@@ -127,13 +138,9 @@ public partial class SettingsViewModel : ViewModelBase
 
         CurrentCacheSize = await Task.Run(() =>
         {
-            var files = Directory.GetFiles(CachePath, "*.jpg");
+            var files = Directory.EnumerateFiles(CachePath, "*.jpg", SearchOption.AllDirectories)
+                .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}_GARBAGE{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase));
             return files.Sum(f => new FileInfo(f).Length);
         });
-    }
-
-    private void SaveToFile()
-    {
-        // JSON設定ファイルに保存（後で実装）
     }
 }

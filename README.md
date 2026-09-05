@@ -21,6 +21,7 @@
 - **イベント/場所別グルーピング**: 日付や GPS 情報で自動グルーピング
 - **カスタムイベント**: 手動で写真をイベントにまとめる
 - **カメラ・レンズ別表示**: 機材ごとに写真を整理
+- **横断検索**: ファイル名・パス・タグをFTS5索引から検索
 
 ### ⭐ レーティング機能
 
@@ -34,7 +35,9 @@
 - **枠の追加**: カスタマイズ可能な枠を画像に追加
 - **EXIF 情報オーバーレイ**: カメラ、レンズ、撮影設定を画像に表示
 - **SNS プリセット**: Instagram、Twitter、Facebook 用の最適サイズ
-- **バッチエクスポート**: 複数の写真を一括エクスポート
+- **安全な単体出力**: 選択写真を別名で出力し、同名ファイルを上書きしない
+
+> バッチエクスポートと非破壊クロップは開発中です。
 
 ### 📷 RAW 対応
 
@@ -99,17 +102,13 @@
 
 ```text
 PhotoFastRater/
-├── PhotoFastRater.Core/      # コアロジック
+├── src/PhotoFastRater.Core/  # I/O非依存のドメイン型・契約
 │   ├── Models/               # データモデル
-│   ├── Cache/                # キャッシュシステム
-│   ├── Database/             # データベース層
-│   ├── ImageProcessing/      # 画像処理
-│   ├── Export/               # エクスポート機能
-│   └── Services/             # ビジネスロジック
-├── PhotoFastRater.UI/        # WPF UI
+├── src/PhotoFastRater.Infrastructure/ # DB、走査、XMP、キャッシュ、出力
+├── src/PhotoFastRater.UI/    # WPF UI
 │   ├── ViewModels/           # MVVM ViewModels
 │   └── Views/                # XAML Views
-└── PhotoFastRater.Tests/     # テスト
+└── src/PhotoFastRater.Tests/ # テスト
 ```
 
 ### 使用技術
@@ -159,9 +158,8 @@ dotnet publish src/PhotoFastRater.UI -c Release -r win-x64 --self-contained
 ### データベースマイグレーション
 
 ```bash
-cd src/PhotoFastRater.Core
-dotnet ef migrations add MigrationName
-dotnet ef database update
+dotnet ef migrations add MigrationName --project src/PhotoFastRater.Infrastructure --startup-project src/PhotoFastRater.UI
+dotnet ef database update --project src/PhotoFastRater.Infrastructure --startup-project src/PhotoFastRater.UI
 ```
 
 ## パフォーマンス最適化

@@ -63,8 +63,11 @@ public partial class App : System.Windows.Application
     {
         // Load configuration from appsettings.json
         var (cacheConfig, uiConfig) = LoadConfiguration();
+        var settingsStore = new UserSettingsStore();
+        settingsStore.TryLoad(cacheConfig, uiConfig);
         services.AddSingleton(cacheConfig);
         services.AddSingleton(uiConfig);
+        services.AddSingleton(settingsStore);
 
         // Database
         var dbPath = Path.Combine(
@@ -126,7 +129,7 @@ public partial class App : System.Windows.Application
         services.AddTransient<ExportViewModel>();
         services.AddTransient<ManagedFoldersViewModel>();
         services.AddTransient<FolderModeViewModel>();
-        services.AddSingleton<SettingsViewModel>();
+        services.AddTransient<SettingsViewModel>();
         services.AddTransient<FolderModeSettingsViewModel>();
 
         // Metadata write-back

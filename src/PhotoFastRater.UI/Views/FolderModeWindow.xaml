@@ -8,7 +8,7 @@
         Title="Photo Fast Rater - フォルダモード"
         Height="800"
         Width="1400"
-        Background="{DynamicResource MaterialDesignPaper}"
+        Background="{DynamicResource DarkroomInkBrush}"
         AllowDrop="True"
         DragOver="Window_DragOver"
         Drop="Window_Drop"
@@ -27,7 +27,7 @@
                  Padding="8">
             <Button Content="フォルダを開く"
                     Command="{Binding OpenFolderCommand}"
-                    Style="{StaticResource MaterialDesignRaisedButton}"
+                    Style="{StaticResource DarkroomActionButton}"
                     ToolBar.OverflowMode="Never"/>
             <Separator Margin="8,0" ToolBar.OverflowMode="Never"/>
             <StackPanel Orientation="Horizontal" ToolBar.OverflowMode="AsNeeded">
@@ -62,7 +62,7 @@
             <Button Content="保存" Command="{Binding SaveSessionCommand}" Margin="4,0" ToolBar.OverflowMode="AsNeeded"/>
             <Button Content="DBに追加"
                     Command="{Binding ExportToDbCommand}"
-                    Style="{StaticResource MaterialDesignRaisedButton}"
+                    Style="{StaticResource DarkroomActionButton}"
                     Margin="4,0"
                     ToolBar.OverflowMode="AsNeeded"/>
             <Separator Margin="8,0" ToolBar.OverflowMode="AsNeeded"/>

@@ -40,12 +40,14 @@ public partial class EventViewModel : ViewModelBase
     }
 
     [RelayCommand]
-    private async Task CreateEventAsync(List<int> photoIds)
+    public async Task CreateEventAsync(IReadOnlyCollection<int> photoIds)
     {
         if (string.IsNullOrWhiteSpace(NewEventName))
             return;
+        if (photoIds.Count == 0)
+            return;
 
-        await _eventService.CreateEventAsync(NewEventName, photoIds);
+        await _eventService.CreateEventAsync(NewEventName, photoIds.ToList());
         await LoadEventsAsync();
         NewEventName = string.Empty;
     }

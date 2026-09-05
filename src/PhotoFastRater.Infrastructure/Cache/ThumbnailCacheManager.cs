@@ -71,6 +71,53 @@ public sealed class ThumbnailCacheManager : IDisposable
         }
     }
 
+    /// <summary>
+    /// Clears generated thumbnails without touching source photos. Files are moved to a dated
+    /// <c>_GARBAGE</c> directory so an accidental clear remains recoverable.
+    /// </summary>
+    public async Task<int> ClearAsync(CancellationToken cancellationToken = default)
+    {
+        await _diskGate.WaitAsync(cancellationToken);
+        try
+        {
+            var garbageRoot = Path.Combine(
+                Path.GetDirectoryName(_cachePath) ?? _cachePath,
+                "_GARBAGE",
+                $"thumbnail-cache-{DateTime.UtcNow:yyyyMMdd-HHmmss}-{Guid.NewGuid():N}");
+            var movedCount = 0;
+            foreach (var sourcePath in Directory.EnumerateFiles(_cachePath, "*.jpg", SearchOption.AllDirectories))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (sourcePath.StartsWith(garbageRoot, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                var relativePath = Path.GetRelativePath(_cachePath, sourcePath);
+                var destinationPath = Path.Combine(garbageRoot, relativePath);
+                Directory.CreateDirectory(Path.GetDirectoryName(destinationPath)!);
+                File.Move(sourcePath, destinationPath);
+                movedCount++;
+            }
+
+            await using var connection = new SqliteConnection(_indexConnectionString);
+            await connection.OpenAsync(cancellationToken);
+            await using var command = connection.CreateCommand();
+            command.CommandText = "DELETE FROM CacheEntries;";
+            await command.ExecuteNonQueryAsync(cancellationToken);
+
+            lock (_memoryLock)
+            {
+                _memoryLru.Clear();
+                _memoryIndex.Clear();
+                _memoryBytes = 0;
+            }
+            return movedCount;
+        }
+        finally
+        {
+            _diskGate.Release();
+        }
+    }
+
     private async Task<byte[]> GetOrCreateAsync(string filePath, string key, CancellationToken cancellationToken)
     {
         var diskPath = GetDiskCachePath(key);
