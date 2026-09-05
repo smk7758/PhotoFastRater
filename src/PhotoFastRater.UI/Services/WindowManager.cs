@@ -15,6 +15,37 @@ public sealed class WindowManager
     /// <summary>Shows the library window and disposes its scope when it closes.</summary>
     public MainWindow ShowMainWindow() => ShowScopedWindow<MainWindow>();
 
+    /// <summary>Shows a comparison workspace whose decode lifetime ends with the window scope.</summary>
+    public async Task<CompareWindow?> ShowCompareWindowAsync(
+        IReadOnlyList<PhotoViewModel> loadedPhotos,
+        int selectedIndex,
+        int paneCount)
+    {
+        ArgumentNullException.ThrowIfNull(loadedPhotos);
+        if (paneCount is < 2 or > 4 || selectedIndex < 0 || loadedPhotos.Count < paneCount)
+            return null;
+
+        var scope = _scopeFactory.CreateScope();
+        CompareWindow? window = null;
+        try
+        {
+            var viewModel = scope.ServiceProvider.GetRequiredService<CompareWorkspaceViewModel>();
+            window = scope.ServiceProvider.GetRequiredService<CompareWindow>();
+            window.Closed += (_, _) => scope.Dispose();
+            window.Show();
+            await viewModel.InitializeAsync(loadedPhotos, selectedIndex, paneCount);
+            return window;
+        }
+        catch
+        {
+            if (window?.IsVisible == true)
+                window.Close();
+            else
+                scope.Dispose();
+            throw;
+        }
+    }
+
     /// <summary>Shows an independent folder workspace and optionally starts loading a path.</summary>
     public FolderModeWindow ShowFolderWindow(string? folderPath = null, bool openDialogWhenEmpty = false)
     {

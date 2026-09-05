@@ -40,7 +40,33 @@ public sealed record ExportRecipe(
     bool PreserveMetadata);
 
 /// <summary>Stores the durable user choices for a two-to-four-pane comparison.</summary>
-public sealed record CompareWorkspaceState(
-    IReadOnlyList<int> PhotoIds,
-    bool SynchronizeViewport = true,
-    bool AutoAdvance = false);
+public sealed record CompareWorkspaceState
+{
+    /// <summary>Creates a comparison state containing two to four distinct stable photo IDs.</summary>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when fewer than two or more than four photos are supplied.</exception>
+    /// <exception cref="ArgumentException">Thrown when IDs are duplicated or non-positive.</exception>
+    public CompareWorkspaceState(
+        IReadOnlyList<int> photoIds,
+        bool synchronizeViewport = true,
+        bool autoAdvance = false)
+    {
+        ArgumentNullException.ThrowIfNull(photoIds);
+        if (photoIds.Count is < 2 or > 4)
+            throw new ArgumentOutOfRangeException(nameof(photoIds), "Comparison requires two to four photos.");
+        if (photoIds.Any(id => id <= 0) || photoIds.Distinct().Count() != photoIds.Count)
+            throw new ArgumentException("Comparison photo IDs must be positive and distinct.", nameof(photoIds));
+
+        PhotoIds = photoIds.ToArray();
+        SynchronizeViewport = synchronizeViewport;
+        AutoAdvance = autoAdvance;
+    }
+
+    /// <summary>Gets the stable photo IDs in pane order.</summary>
+    public IReadOnlyList<int> PhotoIds { get; }
+
+    /// <summary>Gets whether zoom and pan are shared by all panes.</summary>
+    public bool SynchronizeViewport { get; }
+
+    /// <summary>Gets whether post-rating navigation is enabled; defaults to false.</summary>
+    public bool AutoAdvance { get; }
+}

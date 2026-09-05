@@ -45,4 +45,17 @@ public sealed class CoreBoundaryTests
         var action = () => new CropRect(x, y, width, height);
         action.Should().Throw<ArgumentOutOfRangeException>();
     }
+
+    [Fact]
+    public void CompareWorkspaceStateRequiresTwoToFourDistinctPhotos()
+    {
+        Action tooFew = () => _ = new CompareWorkspaceState([1]);
+        Action tooMany = () => _ = new CompareWorkspaceState([1, 2, 3, 4, 5]);
+        Action duplicate = () => _ = new CompareWorkspaceState([1, 1]);
+
+        tooFew.Should().Throw<ArgumentOutOfRangeException>();
+        tooMany.Should().Throw<ArgumentOutOfRangeException>();
+        duplicate.Should().Throw<ArgumentException>();
+        new CompareWorkspaceState([1, 2]).AutoAdvance.Should().BeFalse();
+    }
 }

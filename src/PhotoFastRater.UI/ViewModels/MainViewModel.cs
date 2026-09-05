@@ -124,6 +124,12 @@ public partial class MainViewModel : ViewModelBase, IDisposable
 
     private bool CanCancelImport() => IsImporting;
 
+    /// <summary>Explains the compare precondition without coupling the window to MessageBox.</summary>
+    public Task ShowCompareRequirementAsync() => _interaction.NotifyAsync(
+        "写真を比較",
+        "比較するには、一覧に2枚以上を読み込み、基準にする写真を選択してください。",
+        UserNotificationKind.Warning);
+
     [RelayCommand]
     private async Task CreateEventFromSelectionAsync()
     {

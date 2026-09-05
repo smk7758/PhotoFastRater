@@ -118,6 +118,7 @@ public partial class App : System.Windows.Application
             return new ThumbnailCacheManager(config, jpegGenerator, rawGenerator);
         });
         services.AddSingleton<ImageLoader>();
+        services.AddSingleton<IImageDecodeService, ImageDecodeService>();
 
         // Export
         services.AddSingleton<SocialMediaExporter>();
@@ -131,6 +132,7 @@ public partial class App : System.Windows.Application
         services.AddTransient<FolderModeViewModel>();
         services.AddTransient<SettingsViewModel>();
         services.AddTransient<FolderModeSettingsViewModel>();
+        services.AddScoped<CompareWorkspaceViewModel>();
 
         // Metadata write-back
         services.AddSingleton<IEmbeddedMetadataWriter, EmbeddedMetadataWriter>();
@@ -146,6 +148,7 @@ public partial class App : System.Windows.Application
         services.AddTransient<FolderModeWindow>();
         services.AddTransient<FolderModeSettingsWindow>();
         services.AddTransient<PhotoPreviewWindow>();
+        services.AddTransient<CompareWindow>();
     }
 
     private (CacheConfiguration, UIConfiguration) LoadConfiguration()

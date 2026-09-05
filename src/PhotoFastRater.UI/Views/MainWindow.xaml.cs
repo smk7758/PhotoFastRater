@@ -43,6 +43,25 @@ public partial class MainWindow : Window
         _windowManager.ShowFolderWindow();
     }
 
+    private async void OpenCompare_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is not MainViewModel viewModel)
+            return;
+        var paneCount = sender is System.Windows.Controls.Button { Tag: string tag } && int.TryParse(tag, out var parsed)
+            ? parsed
+            : 2;
+        var loadedPhotos = viewModel.PhotoGrid.GetLoadedPhotosSnapshot();
+        if (loadedPhotos.Count < paneCount || viewModel.PhotoGrid.SelectedLoadedIndex < 0)
+        {
+            await viewModel.ShowCompareRequirementAsync();
+            return;
+        }
+        await _windowManager.ShowCompareWindowAsync(
+            loadedPhotos,
+            viewModel.PhotoGrid.SelectedLoadedIndex,
+            paneCount);
+    }
+
     private async void PhotoGridScrollViewer_ScrollChanged(object sender, ScrollChangedEventArgs e)
     {
         if (_isLoadingNextPage || DataContext is not MainViewModel viewModel || !viewModel.PhotoGrid.Photos.HasMore)

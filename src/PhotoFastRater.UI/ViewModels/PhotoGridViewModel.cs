@@ -134,6 +134,27 @@ public partial class PhotoGridViewModel : ViewModelBase, IDisposable
                 cancellationToken);
     }
 
+    /// <summary>Returns the selected photo followed by nearby loaded photos, without fetching an unbounded range.</summary>
+    public IReadOnlyList<PhotoViewModel> GetCompareCandidates(int count)
+    {
+        if (count is < 2 or > 4)
+            throw new ArgumentOutOfRangeException(nameof(count));
+        if (SelectedPhoto is null)
+            return [];
+
+        var selectedIndex = Photos.IndexOf(SelectedPhoto);
+        if (selectedIndex < 0)
+            return [];
+        var start = Math.Min(selectedIndex, Math.Max(0, Photos.Count - count));
+        return Photos.Skip(start).Take(count).ToArray();
+    }
+
+    /// <summary>Returns only the bounded pages already resident in the UI for compare navigation.</summary>
+    public IReadOnlyList<PhotoViewModel> GetLoadedPhotosSnapshot() => Photos.ToArray();
+
+    /// <summary>Gets the selected position within the bounded resident pages.</summary>
+    public int SelectedLoadedIndex => SelectedPhoto is null ? -1 : Photos.IndexOf(SelectedPhoto);
+
     public async Task LoadVisiblePhotosAsync(
         int startIndex,
         int count,
