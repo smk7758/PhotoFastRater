@@ -1,240 +1,163 @@
-using PhotoFastRater.Infrastructure.Database.Repositories;
+using PhotoFastRater.Core.Abstractions;
 using PhotoFastRater.Core.Models;
+using PhotoFastRater.Infrastructure.Database.Repositories;
 
 namespace PhotoFastRater.Infrastructure.Services;
 
-/// <summary>
-/// 管理フォルダサービス
-/// </summary>
-public class ManagedFolderService
+/// <summary>Maintains watched roots without loading an entire catalog or directory listing.</summary>
+public sealed class ManagedFolderService
 {
+    private const int LookupBatchSize = 500;
     private readonly ManagedFolderRepository _folderRepository;
     private readonly FolderExclusionPatternRepository _patternRepository;
     private readonly PhotoRepository _photoRepository;
+    private readonly IFolderScanner _folderScanner;
 
+    /// <summary>Creates the managed-folder use case.</summary>
     public ManagedFolderService(
         ManagedFolderRepository folderRepository,
         FolderExclusionPatternRepository patternRepository,
-        PhotoRepository photoRepository)
+        PhotoRepository photoRepository,
+        IFolderScanner folderScanner)
     {
         _folderRepository = folderRepository;
         _patternRepository = patternRepository;
         _photoRepository = photoRepository;
+        _folderScanner = folderScanner;
     }
 
-    /// <summary>
-    /// フォルダを追加
-    /// </summary>
+    /// <summary>Adds one existing root. Duplicate roots are rejected.</summary>
     public async Task<ManagedFolder> AddFolderAsync(string folderPath, bool isRecursive = true)
     {
         if (!Directory.Exists(folderPath))
-        {
-            throw new DirectoryNotFoundException($"フォルダが見つかりません: {folderPath}");
-        }
-
+            throw new DirectoryNotFoundException($"フォルダーが見つかりません: {folderPath}");
         if (await _folderRepository.ExistsAsync(folderPath))
-        {
-            throw new InvalidOperationException($"フォルダは既に登録されています: {folderPath}");
-        }
+            throw new InvalidOperationException($"フォルダーは既に登録されています: {folderPath}");
 
-        var folder = new ManagedFolder
+        return await _folderRepository.AddAsync(new ManagedFolder
         {
-            FolderPath = folderPath,
+            FolderPath = Path.GetFullPath(folderPath),
             IsRecursive = isRecursive,
             AddedDate = DateTime.Now,
-            IsActive = true,
-            PhotoCount = 0
-        };
-
-        return await _folderRepository.AddAsync(folder);
+            IsActive = true
+        });
     }
 
-    /// <summary>
-    /// フォルダを削除
-    /// </summary>
-    public async Task RemoveFolderAsync(int folderId)
-    {
-        await _folderRepository.DeleteAsync(folderId);
-    }
+    /// <summary>Removes only the managed-root record; source photos are not deleted.</summary>
+    public Task RemoveFolderAsync(int folderId) => _folderRepository.DeleteAsync(folderId);
 
-    /// <summary>
-    /// すべてのフォルダを取得
-    /// </summary>
-    public async Task<List<ManagedFolder>> GetAllFoldersAsync()
-    {
-        return await _folderRepository.GetAllAsync();
-    }
+    /// <summary>Gets all configured roots.</summary>
+    public Task<List<ManagedFolder>> GetAllFoldersAsync() => _folderRepository.GetAllAsync();
 
-    /// <summary>
-    /// 有効なフォルダのみを取得
-    /// </summary>
-    public async Task<List<ManagedFolder>> GetActiveFoldersAsync()
-    {
-        return await _folderRepository.GetActiveAsync();
-    }
+    /// <summary>Gets enabled roots.</summary>
+    public Task<List<ManagedFolder>> GetActiveFoldersAsync() => _folderRepository.GetActiveAsync();
 
-    /// <summary>
-    /// フォルダの有効/無効を切り替え
-    /// </summary>
+    /// <summary>Toggles whether a root participates in bulk scans.</summary>
     public async Task ToggleFolderActiveAsync(int folderId)
     {
         var folder = await _folderRepository.GetByIdAsync(folderId);
-        if (folder != null)
-        {
-            folder.IsActive = !folder.IsActive;
-            await _folderRepository.UpdateAsync(folder);
-        }
+        if (folder is null)
+            return;
+        folder.IsActive = !folder.IsActive;
+        await _folderRepository.UpdateAsync(folder);
     }
 
-    /// <summary>
-    /// フォルダの写真数を更新
-    /// </summary>
-    public async Task UpdatePhotoCountAsync(int folderId)
+    /// <summary>Updates a root count with one SQL aggregate.</summary>
+    public async Task UpdatePhotoCountAsync(int folderId, CancellationToken cancellationToken = default)
     {
         var folder = await _folderRepository.GetByIdAsync(folderId);
-        if (folder == null) return;
-
-        // このフォルダに含まれる写真の数をカウント
-        var photos = await _photoRepository.GetAllAsync();
-        var count = photos.Count(p =>
-            p.FilePath.StartsWith(folder.FolderPath, StringComparison.OrdinalIgnoreCase));
-
+        if (folder is null)
+            return;
+        var count = await _photoRepository.CountUnderPathAsync(folder.FolderPath, cancellationToken);
         await _folderRepository.UpdatePhotoCountAsync(folderId, count);
     }
 
-    /// <summary>
-    /// フォルダをスキャン（写真数のカウントと最終スキャン日時の更新）
-    /// </summary>
+    /// <summary>Scans incrementally and checks existence in bounded SQL batches.</summary>
     public async Task<ScanResult> ScanFolderAsync(
         int folderId,
         IProgress<ScanProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
-        var folder = await _folderRepository.GetByIdAsync(folderId);
-        if (folder == null)
-        {
-            throw new InvalidOperationException($"フォルダが見つかりません: ID={folderId}");
-        }
-
+        var folder = await _folderRepository.GetByIdAsync(folderId)
+            ?? throw new InvalidOperationException($"フォルダーが見つかりません: ID={folderId}");
         if (!Directory.Exists(folder.FolderPath))
+            throw new DirectoryNotFoundException($"フォルダーが存在しません: {folder.FolderPath}");
+
+        var exclusions = await _patternRepository.GetEnabledAsync();
+        var result = new ScanResult();
+        var pendingPaths = new List<string>(LookupBatchSize);
+
+        await foreach (var item in _folderScanner.ScanAsync(
+            folder.FolderPath,
+            new ScanOptions(folder.IsRecursive),
+            cancellationToken))
         {
-            throw new DirectoryNotFoundException($"フォルダが存在しません: {folder.FolderPath}");
-        }
-
-        // 除外パターンを取得
-        var exclusionPatterns = await _patternRepository.GetEnabledAsync();
-
-        // サポートする画像形式
-        var supportedExtensions = new[]
-        {
-            ".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff",
-            ".raw", ".cr2", ".cr3", ".nef", ".arw", ".dng", ".orf", ".raf", ".rw2"
-        };
-
-        // ファイルを取得
-        var searchOption = folder.IsRecursive
-            ? SearchOption.AllDirectories
-            : SearchOption.TopDirectoryOnly;
-
-        var allFiles = Directory.GetFiles(folder.FolderPath, "*.*", searchOption);
-
-        var imageFiles = allFiles
-            .Where(f => supportedExtensions.Contains(
-                Path.GetExtension(f).ToLowerInvariant()))
-            .Where(f => !PatternMatcher.IsMatchAny(f, exclusionPatterns))
-            .ToList();
-
-        var result = new ScanResult
-        {
-            TotalFiles = imageFiles.Count,
-            NewFiles = 0,
-            ExistingFiles = 0,
-            ExcludedFiles = allFiles.Length - imageFiles.Count
-        };
-
-        // 新規ファイルと既存ファイルをカウント
-        for (int i = 0; i < imageFiles.Count; i++)
-        {
-            if (cancellationToken.IsCancellationRequested)
+            if (item.Error is not null && item.Photo is null)
             {
-                break;
+                result.ErrorCount++;
+                result.Error ??= item.Error.Message;
+                continue;
+            }
+            if (PatternMatcher.IsMatchAny(item.Path, exclusions))
+            {
+                result.ExcludedFiles++;
+                continue;
             }
 
-            var filePath = imageFiles[i];
-            var exists = await _photoRepository.ExistsAsync(filePath);
-
-            if (exists)
-            {
-                result.ExistingFiles++;
-            }
-            else
-            {
-                result.NewFiles++;
-            }
+            pendingPaths.Add(item.Path);
+            result.TotalFiles++;
+            if (pendingPaths.Count == LookupBatchSize)
+                await CountBatchAsync(pendingPaths, result, cancellationToken);
 
             progress?.Report(new ScanProgress
             {
-                CurrentFile = filePath,
-                ProcessedCount = i + 1,
-                TotalCount = imageFiles.Count,
-                Status = $"スキャン中: {i + 1}/{imageFiles.Count}"
+                CurrentFile = item.Path,
+                ProcessedCount = result.TotalFiles,
+                TotalCount = 0,
+                Status = "走査中（総数を逐次検出）"
             });
         }
 
-        // フォルダ情報を更新
-        await UpdatePhotoCountAsync(folderId);
-
+        await CountBatchAsync(pendingPaths, result, cancellationToken);
+        await UpdatePhotoCountAsync(folderId, cancellationToken);
         return result;
     }
 
-    /// <summary>
-    /// すべての有効なフォルダを一括スキャン
-    /// </summary>
+    /// <summary>Scans every active root sequentially so SQLite keeps one logical writer.</summary>
     public async Task<Dictionary<int, ScanResult>> ScanAllActiveFoldersAsync(
         IProgress<ScanProgress>? progress = null,
         CancellationToken cancellationToken = default)
     {
         var folders = await GetActiveFoldersAsync();
         var results = new Dictionary<int, ScanResult>();
-
-        for (int i = 0; i < folders.Count; i++)
+        foreach (var folder in folders)
         {
-            if (cancellationToken.IsCancellationRequested)
-            {
-                break;
-            }
-
-            var folder = folders[i];
-            progress?.Report(new ScanProgress
-            {
-                CurrentFile = folder.FolderPath,
-                ProcessedCount = i,
-                TotalCount = folders.Count,
-                Status = $"フォルダスキャン中: {i + 1}/{folders.Count}"
-            });
-
+            cancellationToken.ThrowIfCancellationRequested();
             try
             {
-                var result = await ScanFolderAsync(folder.Id, progress, cancellationToken);
-                results[folder.Id] = result;
+                results[folder.Id] = await ScanFolderAsync(folder.Id, progress, cancellationToken);
             }
-            catch (Exception ex)
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or InvalidOperationException)
             {
-                results[folder.Id] = new ScanResult
-                {
-                    Error = ex.Message
-                };
+                results[folder.Id] = new ScanResult { Error = exception.Message, ErrorCount = 1 };
             }
         }
-
         return results;
+    }
+
+    private async Task CountBatchAsync(List<string> paths, ScanResult result, CancellationToken cancellationToken)
+    {
+        if (paths.Count == 0)
+            return;
+        var existing = await _photoRepository.GetExistingNormalizedPathsAsync(paths, cancellationToken);
+        result.ExistingFiles += existing.Count;
+        result.NewFiles += paths.Count - existing.Count;
+        paths.Clear();
     }
 }
 
-/// <summary>
-/// スキャン進捗情報
-/// </summary>
-public class ScanProgress
+/// <summary>Reports streaming scan progress; zero total means enumeration is incomplete.</summary>
+public sealed class ScanProgress
 {
     public string CurrentFile { get; set; } = string.Empty;
     public int ProcessedCount { get; set; }
@@ -242,14 +165,13 @@ public class ScanProgress
     public string Status { get; set; } = string.Empty;
 }
 
-/// <summary>
-/// スキャン結果
-/// </summary>
-public class ScanResult
+/// <summary>Summarizes one scan including recoverable per-path failures.</summary>
+public sealed class ScanResult
 {
     public int TotalFiles { get; set; }
     public int NewFiles { get; set; }
     public int ExistingFiles { get; set; }
     public int ExcludedFiles { get; set; }
+    public int ErrorCount { get; set; }
     public string? Error { get; set; }
 }

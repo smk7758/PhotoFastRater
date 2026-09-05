@@ -74,12 +74,13 @@ public partial class App : System.Windows.Application
         Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
 
         services.AddPooledDbContextFactory<PhotoDbContext>(options =>
-            options.UseSqlite($"Data Source={dbPath}"));
+            options.UseSqlite($"Data Source={dbPath};Cache=Shared;Default Timeout=5"));
         services.AddSingleton<DatabaseInitializer>();
         services.AddLogging(builder => builder.AddDebug());
 
         // Repositories
         services.AddSingleton<PhotoRepository>();
+        services.AddSingleton<IPhotoCatalog>(serviceProvider => serviceProvider.GetRequiredService<PhotoRepository>());
         services.AddSingleton<EventRepository>();
         services.AddSingleton<ManagedFolderRepository>();
         services.AddSingleton<FolderExclusionPatternRepository>();
@@ -92,6 +93,7 @@ public partial class App : System.Windows.Application
 
         // Services
         services.AddSingleton<ExifService>();
+        services.AddSingleton<IFolderScanner, FolderScanner>();
         services.AddScoped<ImportService>();
         services.AddScoped<EventManagementService>();
         services.AddScoped<ManagedFolderService>();

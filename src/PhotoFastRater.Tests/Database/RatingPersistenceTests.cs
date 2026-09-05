@@ -49,6 +49,36 @@ public sealed class RatingPersistenceTests : IDisposable
             photo.MetadataSyncStatus == MetadataSyncStatus.Pending);
     }
 
+    [Fact]
+    public async Task CatalogUsesFtsAndStableCursorWithoutOffset()
+    {
+        Directory.CreateDirectory(_testDirectory);
+        var options = new DbContextOptionsBuilder<PhotoDbContext>()
+            .UseSqlite($"Data Source={Path.Combine(_testDirectory, "search.db")}")
+            .Options;
+        var factory = new TestDbContextFactory(options);
+        await using (var context = factory.CreateDbContext())
+            await context.Database.MigrateAsync();
+
+        var repository = new PhotoRepository(factory);
+        var photos = Enumerable.Range(0, 300)
+            .Select(index => CreateSearchPhoto(index))
+            .ToArray();
+        await repository.UpsertBatchAsync(photos[..150]);
+        await repository.UpsertBatchAsync(photos[150..]);
+
+        var first = await repository.SearchAsync(new PhotoSearchQuery("mountain"), null, 256);
+        var second = await repository.SearchAsync(new PhotoSearchQuery("mountain"), first.NextCursor, 256);
+
+        first.TotalCount.Should().Be(300);
+        first.Items.Should().HaveCount(256);
+        second.Items.Should().HaveCount(44);
+        first.Items.Select(photo => photo.Id).Should().NotIntersectWith(second.Items.Select(photo => photo.Id));
+        var all = first.Items.Concat(second.Items).ToArray();
+        all.Select(photo => photo.Id).Should().Equal(
+            all.OrderByDescending(photo => photo.DateTakenUtc).ThenByDescending(photo => photo.Id).Select(photo => photo.Id));
+    }
+
     public void Dispose()
     {
         SqliteConnection.ClearAllPools();
@@ -68,6 +98,20 @@ public sealed class RatingPersistenceTests : IDisposable
         PairId = pairId,
         PairLinkMode = PairLinkMode.Linked
     };
+
+    private Photo CreateSearchPhoto(int index)
+    {
+        var path = Path.Combine(_testDirectory, $"mountain-{index:D4}.jpg");
+        return new Photo
+        {
+            FilePath = path,
+            FileName = Path.GetFileName(path),
+            FolderPath = _testDirectory,
+            FolderName = Path.GetFileName(_testDirectory),
+            DateTaken = DateTime.UtcNow.AddSeconds(-index / 2),
+            ImportDate = DateTime.UtcNow
+        };
+    }
 
     private sealed class TestDbContextFactory(DbContextOptions<PhotoDbContext> options)
         : IDbContextFactory<PhotoDbContext>

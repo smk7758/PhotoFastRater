@@ -70,19 +70,18 @@ public class FolderSessionService
     {
         return await Task.Run(() =>
         {
-            var allFiles = Directory.GetFiles(folderPath, "*.*", SearchOption.AllDirectories);
+            var allFiles = Directory.EnumerateFiles(folderPath, "*.*", SearchOption.AllDirectories);
 
             var imageFiles = allFiles
-                .Where(f => _supportedExtensions.Contains(Path.GetExtension(f).ToLowerInvariant()))
-                .ToList();
+                .Where(f => _supportedExtensions.Contains(Path.GetExtension(f).ToLowerInvariant()));
 
             var photos = new List<FolderSessionPhoto>();
 
-            for (int i = 0; i < imageFiles.Count; i++)
+            var processed = 0;
+            foreach (var filePath in imageFiles)
             {
                 try
                 {
-                    var filePath = imageFiles[i];
                     var fileInfo = new FileInfo(filePath);
 
                     var photo = new FolderSessionPhoto
@@ -117,7 +116,7 @@ public class FolderSessionService
 
                     photos.Add(photo);
                     progressPhoto?.Report(photo);
-                    progress?.Report(i + 1);
+                    progress?.Report(++processed);
                 }
                 catch
                 {

@@ -1,10 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using PhotoFastRater.Core.Models;
 using PhotoFastRater.Core.Domain;
+using PhotoFastRater.Core.Abstractions;
 
 namespace PhotoFastRater.Infrastructure.Database.Repositories;
 
-public class PhotoRepository
+public class PhotoRepository : IPhotoCatalog
 {
     private readonly IDbContextFactory<PhotoDbContext> _contextFactory;
 
@@ -116,6 +117,129 @@ public class PhotoRepository
             .FirstOrDefaultAsync(p => p.NormalizedPath == normalizedPath || (p.NormalizedPath == null && p.FilePath == filePath));
     }
 
+    /// <summary>Returns normalized paths already present for one bounded scan batch.</summary>
+    public async Task<IReadOnlySet<string>> GetExistingNormalizedPathsAsync(
+        IReadOnlyCollection<string> filePaths,
+        CancellationToken cancellationToken = default)
+    {
+        if (filePaths.Count > 500)
+            throw new ArgumentOutOfRangeException(nameof(filePaths));
+        var normalized = filePaths.Select(NormalizePath).Distinct(StringComparer.Ordinal).ToArray();
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        var existing = await context.Photos.AsNoTracking()
+            .Where(photo => photo.NormalizedPath != null && normalized.Contains(photo.NormalizedPath))
+            .Select(photo => photo.NormalizedPath!)
+            .ToListAsync(cancellationToken);
+        return existing.ToHashSet(StringComparer.Ordinal);
+    }
+
+    /// <summary>Counts a folder in SQL so catalog size does not determine UI memory usage.</summary>
+    public async Task<int> CountUnderPathAsync(string folderPath, CancellationToken cancellationToken = default)
+    {
+        var normalizedRoot = NormalizePath(folderPath).TrimEnd('\\') + "\\";
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        return await context.Photos.CountAsync(
+            photo => photo.NormalizedPath != null && photo.NormalizedPath.StartsWith(normalizedRoot),
+            cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<PagedResult<PhotoSummary>> SearchAsync(
+        PhotoSearchQuery query,
+        PageCursor? after,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(query);
+        if (pageSize is < 1 or > 256)
+            throw new ArgumentOutOfRangeException(nameof(pageSize), "Page size must be between 1 and 256.");
+
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        IQueryable<Photo> photos = context.Photos.AsNoTracking();
+        if (!string.IsNullOrWhiteSpace(query.Text))
+        {
+            var phrase = $"\"{query.Text.Trim().Replace("\"", "\"\"", StringComparison.Ordinal)}\"";
+            photos = context.Photos.FromSqlInterpolated(
+                $"SELECT p.* FROM Photos AS p INNER JOIN PhotoSearch ON PhotoSearch.rowid = p.Id WHERE PhotoSearch MATCH {phrase}")
+                .AsNoTracking();
+        }
+
+        photos = ApplyFilters(photos, query);
+        var totalCount = await photos.LongCountAsync(cancellationToken);
+        if (after is not null)
+        {
+            photos = photos.Where(photo =>
+                photo.DateTaken < after.DateTakenUtc ||
+                (photo.DateTaken == after.DateTakenUtc && photo.Id < after.PhotoId));
+        }
+
+        var page = await photos
+            .OrderByDescending(photo => photo.DateTaken)
+            .ThenByDescending(photo => photo.Id)
+            .Take(pageSize)
+            .Select(photo => new
+            {
+                photo.Id,
+                photo.FilePath,
+                photo.FileName,
+                photo.DateTaken,
+                photo.Rating,
+                photo.IsFavorite,
+                photo.IsRejected,
+                photo.IsMissing,
+                photo.PairId,
+                photo.MetadataSyncStatus
+            })
+            .ToListAsync(cancellationToken);
+        var summaries = page.Select(photo => new PhotoSummary(
+            photo.Id,
+            photo.FilePath,
+            photo.FileName,
+            photo.DateTaken,
+            new RatingState(photo.Rating, photo.IsFavorite, photo.IsRejected),
+            photo.IsMissing,
+            photo.PairId,
+            photo.MetadataSyncStatus)).ToArray();
+        var last = page.LastOrDefault();
+        var next = page.Count == pageSize && last is not null
+            ? new PageCursor(last.DateTaken, last.Id)
+            : null;
+        return new PagedResult<PhotoSummary>(summaries, next, totalCount);
+    }
+
+    /// <inheritdoc />
+    public async Task UpsertBatchAsync(IReadOnlyCollection<Photo> photos, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(photos);
+        if (photos.Count == 0)
+            return;
+        if (photos.Count > 500)
+            throw new ArgumentOutOfRangeException(nameof(photos), "A catalog batch cannot exceed 500 photos.");
+
+        var incoming = photos
+            .Select(photo => { PrepareForPersistence(photo); return photo; })
+            .Where(photo => photo.NormalizedPath is not null)
+            .DistinctBy(photo => photo.NormalizedPath, StringComparer.Ordinal)
+            .ToArray();
+        var paths = incoming.Select(photo => photo.NormalizedPath!).ToArray();
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+        var existing = await context.Photos
+            .Where(photo => paths.Contains(photo.NormalizedPath!))
+            .ToDictionaryAsync(photo => photo.NormalizedPath!, StringComparer.Ordinal, cancellationToken);
+
+        foreach (var source in incoming)
+        {
+            if (existing.TryGetValue(source.NormalizedPath!, out var target))
+                CopyScanMetadata(source, target);
+            else
+                context.Photos.Add(source);
+        }
+
+        await context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+    }
+
     /// <summary>Commits one rating change and its linked pair in a single transaction.</summary>
     public async Task<IReadOnlyList<int>> CommitRatingAsync(int photoId, RatingState state, CancellationToken cancellationToken = default)
     {
@@ -190,4 +314,52 @@ public class PhotoRepository
 
     private static string NormalizePath(string filePath) =>
         Path.GetFullPath(filePath).Replace('/', '\\').ToLowerInvariant();
+
+    private static IQueryable<Photo> ApplyFilters(IQueryable<Photo> photos, PhotoSearchQuery query)
+    {
+        if (!query.IncludeMissing)
+            photos = photos.Where(photo => !photo.IsMissing);
+        if (query.MinimumRating.HasValue)
+            photos = photos.Where(photo => photo.Rating >= query.MinimumRating.Value);
+        if (query.MaximumRating.HasValue)
+            photos = photos.Where(photo => photo.Rating <= query.MaximumRating.Value);
+        if (query.TakenFromUtc.HasValue)
+            photos = photos.Where(photo => photo.DateTaken >= query.TakenFromUtc.Value);
+        if (query.TakenToUtc.HasValue)
+            photos = photos.Where(photo => photo.DateTaken <= query.TakenToUtc.Value);
+        if (!string.IsNullOrWhiteSpace(query.CameraModel))
+            photos = photos.Where(photo => photo.CameraModel == query.CameraModel);
+        if (!string.IsNullOrWhiteSpace(query.FileExtension))
+            photos = photos.Where(photo => photo.FileName.EndsWith(query.FileExtension));
+        return photos;
+    }
+
+    private static void CopyScanMetadata(Photo source, Photo target)
+    {
+        // Ratings stay DB-owned; rescanning refreshes only filesystem and decoded technical metadata.
+        target.FilePath = source.FilePath;
+        target.FileName = source.FileName;
+        target.FolderPath = source.FolderPath;
+        target.FolderName = source.FolderName;
+        target.FileSize = source.FileSize;
+        target.FileModifiedUtc = source.FileModifiedUtc;
+        target.DateTaken = source.DateTaken;
+        target.ModifiedDate = source.ModifiedDate;
+        target.CameraModel = source.CameraModel;
+        target.CameraMake = source.CameraMake;
+        target.LensModel = source.LensModel;
+        target.Width = source.Width;
+        target.Height = source.Height;
+        target.Aperture = source.Aperture;
+        target.ShutterSpeed = source.ShutterSpeed;
+        target.ISO = source.ISO;
+        target.FocalLength = source.FocalLength;
+        target.ExposureCompensation = source.ExposureCompensation;
+        target.Latitude = source.Latitude;
+        target.Longitude = source.Longitude;
+        target.LocationName = source.LocationName;
+        target.NormalizedDirectory = source.NormalizedDirectory;
+        target.NormalizedBaseName = source.NormalizedBaseName;
+        target.IsMissing = false;
+    }
 }

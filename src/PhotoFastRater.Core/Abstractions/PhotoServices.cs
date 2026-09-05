@@ -17,8 +17,8 @@ public sealed record ScanOptions(bool RecurseSubdirectories = true, int Metadata
 /// <summary>Represents either one discovered photo or one recoverable per-path error.</summary>
 public sealed record FolderScanItem(Photo? Photo, string Path, Exception? Error)
 {
-    /// <summary>Gets whether this item represents a successfully discovered photo.</summary>
-    public bool IsSuccess => Photo is not null && Error is null;
+    /// <summary>Gets whether a catalogable photo was produced; <see cref="Error"/> may still describe partial metadata failure.</summary>
+    public bool IsSuccess => Photo is not null;
 }
 
 /// <summary>Provides indexed, transactional access to the photo catalog.</summary>

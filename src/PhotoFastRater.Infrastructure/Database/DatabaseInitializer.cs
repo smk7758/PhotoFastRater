@@ -31,6 +31,9 @@ public sealed class DatabaseInitializer
             await BackupExistingDatabaseAsync(context, cancellationToken);
 
         await context.Database.MigrateAsync(cancellationToken);
+        await context.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;", cancellationToken);
+        await context.Database.ExecuteSqlRawAsync("PRAGMA synchronous=NORMAL;", cancellationToken);
+        await context.Database.ExecuteSqlRawAsync("PRAGMA busy_timeout=5000;", cancellationToken);
         _logger.LogInformation("Photo catalog database is ready");
     }
 
