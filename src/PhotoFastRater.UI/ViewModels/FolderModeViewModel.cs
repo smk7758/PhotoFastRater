@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.Input;
 using PhotoFastRater.Core.Abstractions;
 using PhotoFastRater.Infrastructure.ImageProcessing;
 using PhotoFastRater.Core.Models;
+using PhotoFastRater.Core.Domain;
 using PhotoFastRater.Infrastructure.Services;
 using PhotoFastRater.Core.UI;
 using PhotoFastRater.Infrastructure.Database.Repositories;
@@ -23,8 +24,8 @@ public partial class FolderModeViewModel : ViewModelBase
     private readonly ImageLoader _imageLoader;
     private readonly UIConfiguration _uiConfig;
     private readonly ExifService _exifService;
-    private readonly Services.ExifWriteService _exifWriteService;
     private readonly RawThumbnailGenerator _rawGenerator;
+    private readonly IEmbeddedMetadataWriter _embeddedMetadataWriter;
 
     public event Action? ShortcutsUpdated;
     public event Action<bool>? BoundaryReached;
@@ -116,8 +117,8 @@ public partial class FolderModeViewModel : ViewModelBase
         ImageLoader imageLoader,
         UIConfiguration uiConfig,
         ExifService exifService,
-        Services.ExifWriteService exifWriteService,
-        RawThumbnailGenerator rawGenerator)
+        RawThumbnailGenerator rawGenerator,
+        IEmbeddedMetadataWriter embeddedMetadataWriter)
     {
         _sessionService = sessionService;
         _windowManager = windowManager;
@@ -127,8 +128,8 @@ public partial class FolderModeViewModel : ViewModelBase
         _imageLoader = imageLoader;
         _uiConfig = uiConfig;
         _exifService = exifService;
-        _exifWriteService = exifWriteService;
         _rawGenerator = rawGenerator;
+        _embeddedMetadataWriter = embeddedMetadataWriter;
 
         _settings.Load();
         ApplySettingsToViewModel();
@@ -389,10 +390,6 @@ public partial class FolderModeViewModel : ViewModelBase
         SelectedPhoto.Rating = rating;
         SelectedPhoto.UpdateModel();
 
-        // JPEGファイルのEXIF/XMPにレーティングを書き戻し（エクスプローラーに反映）
-        var filePath = SelectedPhoto.FilePath;
-        _ = _exifWriteService.WriteRatingAsync(filePath, rating);
-
         UpdateStatistics();
         await SaveSessionAsync();
     }
@@ -474,6 +471,39 @@ public partial class FolderModeViewModel : ViewModelBase
         SelectedPhoto.IsRejected = !SelectedPhoto.IsRejected;
         SelectedPhoto.UpdateModel();
         await SaveSessionAsync();
+    }
+
+    [RelayCommand]
+    private async Task WriteRatingToJpegAsync()
+    {
+        if (SelectedPhoto is null)
+            return;
+
+        if (!JpegExtensions.Contains(Path.GetExtension(SelectedPhoto.FilePath), StringComparer.OrdinalIgnoreCase))
+        {
+            await _interaction.NotifyAsync("JPEGメタデータ", "JPEGファイルだけが対象です。", UserNotificationKind.Warning);
+            return;
+        }
+
+        var confirmed = await _interaction.ConfirmAsync(
+            "JPEGメタデータへ書き込み",
+            "現在の評価をJPEG内部へ明示的に書き込みます。画素の再圧縮は行いません。続行しますか？",
+            CancellationToken.None);
+        if (!confirmed)
+            return;
+
+        var state = new RatingState(SelectedPhoto.Rating, SelectedPhoto.IsFavorite, SelectedPhoto.IsRejected);
+        var result = await _embeddedMetadataWriter.WriteRatingAsync(SelectedPhoto.FilePath, state);
+        if (result.Succeeded)
+        {
+            StatusText = "JPEGメタデータを更新しました（画素は再圧縮していません）";
+            return;
+        }
+
+        await _interaction.NotifyAsync(
+            "JPEGメタデータを書き込めませんでした",
+            result.ErrorMessage ?? "このJPEGは安全なインプレース更新に対応していません。元画像は変更していません。",
+            UserNotificationKind.Warning);
     }
 
     [RelayCommand]

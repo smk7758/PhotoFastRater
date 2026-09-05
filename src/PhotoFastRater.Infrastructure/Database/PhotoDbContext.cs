@@ -29,6 +29,13 @@ public class PhotoDbContext : DbContext
             entity.HasIndex(e => e.Rating);
             entity.HasIndex(e => e.FileHash);
             entity.HasIndex(e => e.FolderPath);
+            entity.HasIndex(e => e.NormalizedPath)
+                .IsUnique()
+                .HasFilter("NormalizedPath IS NOT NULL");
+            entity.HasIndex(e => new { e.DateTaken, e.Id });
+            entity.HasIndex(e => new { e.NormalizedDirectory, e.NormalizedBaseName });
+            entity.HasIndex(e => e.PairId);
+            entity.HasIndex(e => e.IsMissing);
         });
 
         // Event エンティティ

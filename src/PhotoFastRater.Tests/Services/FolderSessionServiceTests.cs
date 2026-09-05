@@ -7,17 +7,20 @@ using PhotoFastRater.Infrastructure.Services;
 
 namespace PhotoFastRater.Tests.Services;
 
-public class FolderSessionServiceTests
+public class FolderSessionServiceTests : IDisposable
 {
     private readonly Mock<ExifService> _mockExifService;
     private readonly FolderSessionService _service;
     private readonly string _testFolderPath;
+    private readonly string _sessionRoot;
 
     public FolderSessionServiceTests()
     {
         _mockExifService = new Mock<ExifService>();
-        _service = new FolderSessionService(_mockExifService.Object);
-        _testFolderPath = Path.Combine(Path.GetTempPath(), "TestPhotos");
+        var testId = Guid.NewGuid().ToString("N");
+        _sessionRoot = Path.Combine(Path.GetTempPath(), "PhotoFastRater.Tests", testId, "Sessions");
+        _service = new FolderSessionService(_mockExifService.Object, _sessionRoot);
+        _testFolderPath = Path.Combine(Path.GetTempPath(), "PhotoFastRater.Tests", testId, "Photos");
 
         // テストフォルダを作成
         if (!Directory.Exists(_testFolderPath))
@@ -130,5 +133,13 @@ public class FolderSessionServiceTests
         photo.Rating.Should().Be(5);
         photo.IsFavorite.Should().BeTrue();
         photo.IsRejected.Should().BeFalse();
+    }
+
+    public void Dispose()
+    {
+        var testRoot = Directory.GetParent(_sessionRoot)?.FullName;
+        if (testRoot is not null && Directory.Exists(testRoot))
+            Directory.Delete(testRoot, recursive: true);
+        GC.SuppressFinalize(this);
     }
 }

@@ -1,4 +1,6 @@
 using System.Text.Json;
+using System.Security.Cryptography;
+using System.Text;
 using PhotoFastRater.Core.Models;
 
 namespace PhotoFastRater.Infrastructure.Services;
@@ -8,7 +10,9 @@ namespace PhotoFastRater.Infrastructure.Services;
 /// </summary>
 public class FolderSessionService
 {
+    private static readonly JsonSerializerOptions SessionJsonOptions = new() { WriteIndented = true };
     private readonly ExifService _exifService;
+    private readonly string _sessionRoot;
     private readonly string[] _supportedExtensions = new[]
     {
         ".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff",
@@ -20,9 +24,13 @@ public class FolderSessionService
         ".raw", ".cr2", ".cr3", ".nef", ".arw", ".dng", ".orf", ".raf", ".rw2"
     };
 
-    public FolderSessionService(ExifService exifService)
+    /// <summary>Creates the legacy session adapter. A custom root is intended for isolated tests and migrations.</summary>
+    public FolderSessionService(ExifService exifService, string? sessionRoot = null)
     {
         _exifService = exifService;
+        _sessionRoot = sessionRoot ?? Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "PhotoFastRater", "Sessions");
     }
 
     /// <summary>
@@ -163,7 +171,7 @@ public class FolderSessionService
     /// <summary>
     /// セッションを保存
     /// </summary>
-    public async Task SaveSessionAsync(FolderSession session)
+    public async Task SaveSessionAsync(FolderSession session, CancellationToken cancellationToken = default)
     {
         session.LastModifiedDate = DateTime.Now;
 
@@ -175,32 +183,59 @@ public class FolderSessionService
             Directory.CreateDirectory(sessionDir);
         }
 
-        var json = JsonSerializer.Serialize(session, new JsonSerializerOptions
+        var json = JsonSerializer.Serialize(session, SessionJsonOptions);
+        var temporaryPath = sessionPath + $".{Guid.NewGuid():N}.tmp";
+        try
         {
-            WriteIndented = true
-        });
-
-        await File.WriteAllTextAsync(sessionPath, json);
+            await File.WriteAllTextAsync(temporaryPath, json, cancellationToken);
+            File.Move(temporaryPath, sessionPath, overwrite: true);
+        }
+        finally
+        {
+            if (File.Exists(temporaryPath))
+                File.Delete(temporaryPath);
+        }
     }
 
     /// <summary>
     /// セッションを読み込み
     /// </summary>
-    public async Task<FolderSession?> LoadSessionAsync(string folderPath)
+    public async Task<FolderSession?> LoadSessionAsync(string folderPath, CancellationToken cancellationToken = default)
     {
         var sessionPath = GetSessionPath(folderPath);
-
+        var isLegacySession = false;
         if (!File.Exists(sessionPath))
         {
-            return null;
+            sessionPath = GetLegacySessionPath(folderPath);
+            isLegacySession = true;
         }
+        if (!File.Exists(sessionPath))
+            return null;
 
         try
         {
-            var json = await File.ReadAllTextAsync(sessionPath);
-            return JsonSerializer.Deserialize<FolderSession>(json);
+            var json = await File.ReadAllTextAsync(sessionPath, cancellationToken);
+            var session = JsonSerializer.Deserialize<FolderSession>(json, SessionJsonOptions);
+            if (session is not null && isLegacySession)
+            {
+                // Import is idempotent and intentionally leaves the legacy file untouched for recovery.
+                await SaveSessionAsync(session, cancellationToken);
+            }
+            return session;
         }
-        catch
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+        catch (IOException)
+        {
+            return null;
+        }
+        catch (UnauthorizedAccessException)
         {
             return null;
         }
@@ -211,21 +246,27 @@ public class FolderSessionService
     /// </summary>
     private string GetSessionPath(string folderPath)
     {
-        // フォルダパスのハッシュを使用してセッションファイル名を生成
         var folderHash = GetFolderHash(folderPath);
-        var tempPath = Path.GetTempPath();
-        var sessionDir = Path.Combine(tempPath, "PhotoFastRater", "Sessions", folderHash);
+        var sessionDir = Path.Combine(_sessionRoot, folderHash);
         return Path.Combine(sessionDir, "session.json");
     }
 
     /// <summary>
     /// フォルダパスのハッシュを生成
     /// </summary>
-    private string GetFolderHash(string folderPath)
+    private static string GetFolderHash(string folderPath)
     {
-        using var md5 = System.Security.Cryptography.MD5.Create();
-        var hash = md5.ComputeHash(System.Text.Encoding.UTF8.GetBytes(folderPath.ToLowerInvariant()));
-        return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant().Substring(0, 16);
+        var hash = SHA256.HashData(Encoding.UTF8.GetBytes(Path.GetFullPath(folderPath).ToLowerInvariant()));
+        return Convert.ToHexStringLower(hash)[..24];
+    }
+
+    private static string GetLegacySessionPath(string folderPath)
+    {
+#pragma warning disable CA5351 // MD5 is required only to locate files written by previous releases.
+        var hash = MD5.HashData(Encoding.UTF8.GetBytes(folderPath.ToLowerInvariant()));
+#pragma warning restore CA5351
+        var folderHash = Convert.ToHexStringLower(hash)[..16];
+        return Path.Combine(Path.GetTempPath(), "PhotoFastRater", "Sessions", folderHash, "session.json");
     }
 
     /// <summary>

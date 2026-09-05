@@ -11,6 +11,7 @@ using PhotoFastRater.Infrastructure.Database;
 using PhotoFastRater.Infrastructure.Database.Repositories;
 using PhotoFastRater.Infrastructure.Export;
 using PhotoFastRater.Infrastructure.ImageProcessing;
+using PhotoFastRater.Infrastructure.Metadata;
 using PhotoFastRater.Infrastructure.Services;
 using PhotoFastRater.UI.Services;
 using PhotoFastRater.UI.ViewModels;
@@ -35,6 +36,10 @@ public partial class App : System.Windows.Application
         });
         _serviceProvider.GetRequiredService<DatabaseInitializer>()
             .InitializeAsync()
+            .GetAwaiter()
+            .GetResult();
+        _serviceProvider.GetRequiredService<XmpSyncQueue>()
+            .RestorePendingAsync()
             .GetAwaiter()
             .GetResult();
 
@@ -79,6 +84,9 @@ public partial class App : System.Windows.Application
         services.AddSingleton<ManagedFolderRepository>();
         services.AddSingleton<FolderExclusionPatternRepository>();
         services.AddSingleton<IPhotoChangeNotifier, PhotoChangeNotifier>();
+        services.AddSingleton<IXmpSidecarStore, XmpSidecarStore>();
+        services.AddSingleton<XmpSyncQueue>();
+        services.AddSingleton<IRatingCoordinator, RatingCoordinator>();
         services.AddSingleton<IUserInteractionService, WpfUserInteractionService>();
         services.AddSingleton<IPlatformShell, WindowsPlatformShell>();
 
@@ -120,7 +128,7 @@ public partial class App : System.Windows.Application
         services.AddTransient<FolderModeSettingsViewModel>();
 
         // Metadata write-back
-        services.AddSingleton<ExifWriteService>();
+        services.AddSingleton<IEmbeddedMetadataWriter, EmbeddedMetadataWriter>();
 
         // Keyboard Shortcuts
         services.AddSingleton<ShortcutService>();

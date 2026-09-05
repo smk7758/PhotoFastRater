@@ -3,6 +3,7 @@ using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PhotoFastRater.Core.Abstractions;
+using PhotoFastRater.Core.Domain;
 using PhotoFastRater.Infrastructure.Database.Repositories;
 using PhotoFastRater.Infrastructure.Export;
 using PhotoFastRater.Core.UI;
@@ -19,6 +20,7 @@ public partial class PhotoGridViewModel : ViewModelBase
     private readonly UIConfiguration _uiConfig;
     private readonly IUserInteractionService _interaction;
     private readonly IPlatformShell _platformShell;
+    private readonly IRatingCoordinator _ratingCoordinator;
 
     [ObservableProperty]
     private ObservableCollection<PhotoViewModel> _photos = new();
@@ -75,7 +77,8 @@ public partial class PhotoGridViewModel : ViewModelBase
         SocialMediaExporter socialMediaExporter,
         UIConfiguration uiConfig,
         IUserInteractionService interaction,
-        IPlatformShell platformShell)
+        IPlatformShell platformShell,
+        IRatingCoordinator ratingCoordinator)
     {
         _photoRepository = photoRepository;
         _imageLoader = imageLoader;
@@ -83,6 +86,7 @@ public partial class PhotoGridViewModel : ViewModelBase
         _uiConfig = uiConfig;
         _interaction = interaction;
         _platformShell = platformShell;
+        _ratingCoordinator = ratingCoordinator;
     }
 
     public async Task LoadAllPhotosAsync()
@@ -155,9 +159,9 @@ public partial class PhotoGridViewModel : ViewModelBase
         if (SelectedPhoto == null) return;
 
         SelectedPhoto.Rating = rating;
-        var photo = SelectedPhoto.GetModel();
-        photo.Rating = rating;
-        await _photoRepository.UpdateAsync(photo);
+        await _ratingCoordinator.SetRatingAsync(
+            SelectedPhoto.Id,
+            new RatingState(rating, SelectedPhoto.IsFavorite, SelectedPhoto.IsRejected));
     }
 
     [RelayCommand]
@@ -166,9 +170,9 @@ public partial class PhotoGridViewModel : ViewModelBase
         if (SelectedPhoto == null) return;
 
         SelectedPhoto.IsFavorite = !SelectedPhoto.IsFavorite;
-        var photo = SelectedPhoto.GetModel();
-        photo.IsFavorite = SelectedPhoto.IsFavorite;
-        await _photoRepository.UpdateAsync(photo);
+        await _ratingCoordinator.SetRatingAsync(
+            SelectedPhoto.Id,
+            new RatingState(SelectedPhoto.Rating, SelectedPhoto.IsFavorite, SelectedPhoto.IsRejected));
     }
 
     [RelayCommand]
@@ -283,25 +287,25 @@ public partial class PhotoGridViewModel : ViewModelBase
     public async Task SetRatingAsync(PhotoViewModel photo, int rating)
     {
         photo.Rating = rating;
-        var model = photo.GetModel();
-        model.Rating = rating;
-        await _photoRepository.UpdateAsync(model);
+        await _ratingCoordinator.SetRatingAsync(
+            photo.Id,
+            new RatingState(rating, photo.IsFavorite, photo.IsRejected));
     }
 
     public async Task ToggleFavoriteAsync(PhotoViewModel photo)
     {
         photo.IsFavorite = !photo.IsFavorite;
-        var model = photo.GetModel();
-        model.IsFavorite = photo.IsFavorite;
-        await _photoRepository.UpdateAsync(model);
+        await _ratingCoordinator.SetRatingAsync(
+            photo.Id,
+            new RatingState(photo.Rating, photo.IsFavorite, photo.IsRejected));
     }
 
     public async Task ToggleRejectAsync(PhotoViewModel photo)
     {
         photo.IsRejected = !photo.IsRejected;
-        var model = photo.GetModel();
-        model.IsRejected = photo.IsRejected;
-        await _photoRepository.UpdateAsync(model);
+        await _ratingCoordinator.SetRatingAsync(
+            photo.Id,
+            new RatingState(photo.Rating, photo.IsFavorite, photo.IsRejected));
     }
 
     public async Task ExportToSocialMediaAsync(PhotoViewModel photo)

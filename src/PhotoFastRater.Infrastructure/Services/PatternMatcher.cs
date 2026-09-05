@@ -8,6 +8,7 @@ namespace PhotoFastRater.Infrastructure.Services;
 /// </summary>
 public static class PatternMatcher
 {
+    private static readonly TimeSpan MatchTimeout = TimeSpan.FromMilliseconds(250);
     /// <summary>
     /// ファイルパスが除外パターンに一致するかチェック
     /// </summary>
@@ -51,7 +52,7 @@ public static class PatternMatcher
         {
             // ワイルドカードを正規表現に変換
             var regexPattern = WildcardToRegex(pattern);
-            return Regex.IsMatch(filePath, regexPattern, RegexOptions.IgnoreCase);
+            return Regex.IsMatch(filePath, regexPattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, MatchTimeout);
         }
         catch
         {
@@ -67,7 +68,7 @@ public static class PatternMatcher
     {
         try
         {
-            return Regex.IsMatch(filePath, pattern, RegexOptions.IgnoreCase);
+            return Regex.IsMatch(filePath, pattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant, MatchTimeout);
         }
         catch
         {

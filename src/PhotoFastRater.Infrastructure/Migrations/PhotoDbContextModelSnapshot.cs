@@ -281,6 +281,9 @@ namespace PhotoFastRater.Infrastructure.Migrations
                     b.Property<long>("FileSize")
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTime>("FileModifiedUtc")
+                        .HasColumnType("TEXT");
+
                     b.Property<double?>("FocalLength")
                         .HasColumnType("REAL");
 
@@ -307,6 +310,9 @@ namespace PhotoFastRater.Infrastructure.Migrations
                     b.Property<bool>("IsRejected")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("IsMissing")
+                        .HasColumnType("INTEGER");
+
                     b.Property<double?>("Latitude")
                         .HasColumnType("REAL");
 
@@ -322,8 +328,39 @@ namespace PhotoFastRater.Infrastructure.Migrations
                     b.Property<DateTime?>("ModifiedDate")
                         .HasColumnType("TEXT");
 
+                    b.Property<int>("MetadataSyncStatus")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("NormalizedBaseName")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("NormalizedDirectory")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("NormalizedPath")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("PairId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("PairLinkMode")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("Rating")
                         .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("RatingModifiedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("RatingRevision")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("RatingSource")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("SidecarModifiedUtc")
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("ShutterSpeed")
                         .HasColumnType("TEXT");
@@ -343,9 +380,21 @@ namespace PhotoFastRater.Infrastructure.Migrations
 
                     b.HasIndex("DateTaken");
 
+                    b.HasIndex("DateTaken", "Id");
+
                     b.HasIndex("FileHash");
 
                     b.HasIndex("FolderPath");
+
+                    b.HasIndex("IsMissing");
+
+                    b.HasIndex("NormalizedDirectory", "NormalizedBaseName");
+
+                    b.HasIndex("NormalizedPath")
+                        .IsUnique()
+                        .HasFilter("NormalizedPath IS NOT NULL");
+
+                    b.HasIndex("PairId");
 
                     b.HasIndex("Rating");
 

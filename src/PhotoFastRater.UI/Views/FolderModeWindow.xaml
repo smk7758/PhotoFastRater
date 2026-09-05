@@ -1025,6 +1025,10 @@
                                 Margin="0,4"/>
                         <Button Content="リジェクト"
                                 Command="{Binding ToggleRejectCommand}"
+                                Margin="0,4"/>
+                        <Button Content="JPEGへ評価を書き込む"
+                                Command="{Binding WriteRatingToJpegCommand}"
+                                ToolTip="選択中JPEGへ明示的に書き込み（再圧縮なし）"
                                 Margin="0,4,0,16"/>
 
                         <!-- ペア情報 -->
