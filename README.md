@@ -67,7 +67,7 @@
 現時点では署名済みインストーラーを提供していません。開発用配布物は次で作成できます。
 
 ```powershell
-dotnet publish src/PhotoFastRater.UI -p:PublishProfile=win-x64 --locked-mode
+dotnet publish src/PhotoFastRater.UI -p:PublishProfile=win-x64 -p:RestoreLockedMode=true
 ```
 
 生成されたpublishディレクトリをWindows 11 x64環境へコピーして起動します。公開配布前にはコード署名と更新・ロールバック検証が必要です。

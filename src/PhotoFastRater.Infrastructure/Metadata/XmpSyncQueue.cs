@@ -20,7 +20,7 @@ public sealed class XmpSyncQueue : IDisposable
     private readonly CancellationTokenSource _shutdown = new();
     private readonly Task _worker;
 
-    /// <summary>Initializes one single-writer sidecar worker.</summary>
+    /// <summary>Initializes one single-writer sidecar worker independent of the caller's UI context.</summary>
     public XmpSyncQueue(
         PhotoRepository photoRepository,
         IXmpSidecarStore sidecarStore,
@@ -35,7 +35,9 @@ public sealed class XmpSyncQueue : IDisposable
             SingleReader = true,
             SingleWriter = false
         });
-        _worker = ProcessAsync(_shutdown.Token);
+        // Window shutdown waits synchronously for this worker, so its continuations must
+        // never depend on the UI dispatcher that is performing that shutdown.
+        _worker = Task.Run(() => ProcessAsync(_shutdown.Token));
     }
 
     /// <summary>Restores the in-memory queue from durable pending rows after startup.</summary>

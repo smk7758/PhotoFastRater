@@ -39,4 +39,5 @@ jobs:
         run: dotnet list PhotoFastRater.sln package --vulnerable --include-transitive
 
       - name: Verify win-x64 package
-        run: dotnet publish src/PhotoFastRater.UI/PhotoFastRater.UI.csproj -p:PublishProfile=win-x64 --no-restore
+        # ReadyToRun requires runtime/compiler packs absent from the ordinary solution restore.
+        run: dotnet publish src/PhotoFastRater.UI/PhotoFastRater.UI.csproj -p:PublishProfile=win-x64 -p:RestoreLockedMode=true
