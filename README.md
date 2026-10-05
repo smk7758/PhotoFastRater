@@ -2,6 +2,11 @@
 
 高速表示を最重要とした写真レーティング・管理ソフトウェア
 
+> [!IMPORTANT]
+> 現在は常用ベータに向けた段階的な再構築中です。実装済み機能と制約は
+> [実装状況](docs/ja/IMPLEMENTATION_STATUS.md)を参照してください。
+> カタログ層は合成10万件で測定済みですが、フォルダモードと実画像10万枚の総合受入は未完了です。
+
 ## 主な機能
 
 ### 📸 高速表示
@@ -17,6 +22,9 @@
 - **イベント/場所別グルーピング**: 日付や GPS 情報で自動グルーピング
 - **カスタムイベント**: 手動で写真をイベントにまとめる
 - **カメラ・レンズ別表示**: 機材ごとに写真を整理
+- **横断検索**: ファイル名・パス・タグをFTS5索引から検索
+- **タグと階層コレクション**: 最大1,280件の選択へ一括付与・追加
+- **欠損管理**: 元ファイルが見つからないDB記録だけを抽出
 
 ### ⭐ レーティング機能
 
@@ -25,12 +33,23 @@
 - リジェクト機能
 - レーティングでのフィルタリング
 
-### 🎨 SNS 用エクスポート
+### 🔍 2～4枚比較
+
+- 選択写真と隣接写真を最大4ペインで比較
+- 同期ズーム・パンをON/OFF可能
+- ペイン固定、入替、任意の評価後自動送り
+
+### 🎨 非破壊エクスポート
 
 - **枠の追加**: カスタマイズ可能な枠を画像に追加
 - **EXIF 情報オーバーレイ**: カメラ、レンズ、撮影設定を画像に表示
 - **SNS プリセット**: Instagram、Twitter、Facebook 用の最適サイズ
-- **バッチエクスポート**: 複数の写真を一括エクスポート
+- **安全な単体出力**: 選択写真を別名で出力し、同名ファイルを上書きしない
+- **バッチ出力**: チェックした最大1,280枚をJPEG／PNG／TIFFへ書き出し
+- **非破壊クロップ**: 正規化座標と縦横比プリセット、回転、最大寸法を指定
+- **部分成功**: 欠損・破損・未対応RAWを個別表示し、失敗項目だけ再試行
+
+> RAWファイルは埋め込みJPEGの表示のみです。RAWフル現像を伴う書き出しは未対応です。
 
 ### 📷 RAW 対応
 
@@ -45,9 +64,13 @@
 
 ## インストール
 
-1. リリースページから最新版をダウンロード
-2. インストーラーを実行
-3. アプリケーションを起動
+現時点では署名済みインストーラーを提供していません。開発用配布物は次で作成できます。
+
+```powershell
+dotnet publish src/PhotoFastRater.UI -p:PublishProfile=win-x64 -p:RestoreLockedMode=true
+```
+
+生成されたpublishディレクトリをWindows 11 x64環境へコピーして起動します。公開配布前にはコード署名と更新・ロールバック検証が必要です。
 
 ## 使い方
 
@@ -79,8 +102,9 @@
 
 #### 自動グルーピング
 
-1. **イベント**タブで**自動グルーピング**をクリック
-2. 日付と GPS 情報で近い写真が自動的にグループ化されます
+1. **イベント**タブで**自動候補を確認**をクリック
+2. 日付と GPS 情報で近い候補の名前と件数を確認
+3. **候補を確定**をクリック（同じ候補を再確定しても重複しません）
 
 ### SNS 用エクスポート
 
@@ -89,23 +113,26 @@
 3. SNS プラットフォームを選択
 4. **エクスポート**をクリック
 
+### バッチエクスポート
+
+1. 写真カード左上のチェックで対象を選択
+2. **エクスポート**タブで形式、命名規則、クロップ、回転、最大寸法を設定
+3. **チェック写真を書き出す**をクリックして出力先を選択
+4. 個別の結果を確認し、必要なら**失敗だけ再試行**をクリック
+
 ## アーキテクチャ
 
 ### プロジェクト構成
 
 ```text
 PhotoFastRater/
-├── PhotoFastRater.Core/      # コアロジック
+├── src/PhotoFastRater.Core/  # I/O非依存のドメイン型・契約
 │   ├── Models/               # データモデル
-│   ├── Cache/                # キャッシュシステム
-│   ├── Database/             # データベース層
-│   ├── ImageProcessing/      # 画像処理
-│   ├── Export/               # エクスポート機能
-│   └── Services/             # ビジネスロジック
-├── PhotoFastRater.UI/        # WPF UI
+├── src/PhotoFastRater.Infrastructure/ # DB、走査、XMP、キャッシュ、出力
+├── src/PhotoFastRater.UI/    # WPF UI
 │   ├── ViewModels/           # MVVM ViewModels
 │   └── Views/                # XAML Views
-└── PhotoFastRater.Tests/     # テスト
+└── src/PhotoFastRater.Tests/ # テスト
 ```
 
 ### 使用技術
@@ -139,17 +166,24 @@ cd photo-fast-rater
 
 # ビルド
 dotnet build
+dotnet build src/PhotoFastRater.UI
 
 # 実行
 dotnet run --project src/PhotoFastRater.UI
+
+# フォルダモードで起動
+dotnet run --project src/PhotoFastRater.UI --folder
+dotnet run --project src/PhotoFastRater.UI --folder "C:\path\to\photos"
+
+# リリースビルド
+dotnet publish src/PhotoFastRater.UI -c Release -r win-x64 --self-contained
 ```
 
 ### データベースマイグレーション
 
 ```bash
-cd src/PhotoFastRater.Core
-dotnet ef migrations add MigrationName
-dotnet ef database update
+dotnet ef migrations add MigrationName --project src/PhotoFastRater.Infrastructure --startup-project src/PhotoFastRater.UI
+dotnet ef database update --project src/PhotoFastRater.Infrastructure --startup-project src/PhotoFastRater.UI
 ```
 
 ## パフォーマンス最適化
@@ -179,8 +213,9 @@ MIT License
 
 ## 既知の問題
 
-- [ ] RAW 対応は今後実装予定（現在は JPEG/PNG 対応）
-- [ ] GPS 情報からの地名取得機能は未実装
+- [ ] RAWは埋め込みJPEG表示のみで、フル現像と色管理は未実装
+- [ ] フォルダモードの実画像10万枚データ仮想化は未完了
+- [ ] GPS情報からの地名取得機能は未実装
 
 ## ロードマップ
 
@@ -189,3 +224,5 @@ MIT License
 - [ ] AI 自動タグ付け
 - [ ] クラウド同期
 - [ ] モバイルアプリ連携
+
+詳細は[ユーザーガイド](docs/ja/USER_GUIDE.md)、[データ保護](docs/ja/DATA_SAFETY.md)、[性能計測](docs/ja/PERFORMANCE.md)、[ロードマップ](docs/ja/ROADMAP.md)、[変更履歴](CHANGELOG.md)を参照してください。

@@ -1,128 +1,148 @@
 using System.Threading.Channels;
 using System.Windows.Media.Imaging;
-using PhotoFastRater.Core.Cache;
+using PhotoFastRater.Infrastructure.Cache;
 
 namespace PhotoFastRater.UI.Services;
 
-public class ImageLoader
+/// <summary>Loads thumbnails through bounded queues that always prefer visible work.</summary>
+public sealed class ImageLoader : IDisposable
 {
+    private const int QueueCapacity = 256;
+    private const int WorkerCount = 6;
     private readonly ThumbnailCacheManager _cacheManager;
-    private readonly Channel<LoadRequest> _loadQueue;
-    private readonly int _maxParallelLoads = 6;
+    private readonly Channel<LoadRequest> _visibleQueue = CreateQueue();
+    private readonly Channel<LoadRequest> _normalQueue = CreateQueue();
+    private readonly Channel<LoadRequest> _prefetchQueue = CreateQueue();
+    private readonly CancellationTokenSource _shutdown = new();
+    private readonly Task[] _workers;
 
+    /// <summary>Starts a fixed number of workers; queue memory stays independent of library size.</summary>
     public ImageLoader(ThumbnailCacheManager cacheManager)
     {
         _cacheManager = cacheManager;
-        _loadQueue = Channel.CreateUnbounded<LoadRequest>(new UnboundedChannelOptions
-        {
-            SingleReader = false,
-            SingleWriter = false
-        });
-
-        // 並列ワーカー起動
-        for (int i = 0; i < _maxParallelLoads; i++)
-        {
-            _ = Task.Run(ProcessLoadQueueAsync);
-        }
+        _workers = Enumerable.Range(0, WorkerCount)
+            .Select(_ => Task.Run(() => ProcessQueueAsync(_shutdown.Token)))
+            .ToArray();
     }
 
-    public Task<BitmapImage?> LoadAsync(string filePath, int priority = 0)
+    /// <summary>Queues an image. Positive priority is visible, zero is normal, and negative is prefetch.</summary>
+    public async Task<BitmapImage?> LoadAsync(
+        string filePath,
+        int priority = 0,
+        CancellationToken cancellationToken = default)
     {
-        var tcs = new TaskCompletionSource<BitmapImage?>();
-        var request = new LoadRequest
-        {
-            FilePath = filePath,
-            Priority = priority,
-            CompletionSource = tcs
-        };
-
-        _loadQueue.Writer.TryWrite(request);
-        return tcs.Task;
+        ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
+        var completion = new TaskCompletionSource<BitmapImage?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var request = new LoadRequest(filePath, completion, cancellationToken);
+        await SelectWriter(priority).WriteAsync(request, cancellationToken);
+        return await completion.Task.WaitAsync(cancellationToken);
     }
 
-    // プリフェッチ: 次に表示される可能性の高い画像を先読み
+    /// <summary>Schedules only a bounded amount of low-priority look-ahead work.</summary>
     public void PrefetchRange(IEnumerable<string> filePaths)
     {
-        foreach (var path in filePaths)
+        foreach (var path in filePaths.Take(QueueCapacity))
         {
-            _ = LoadAsync(path, priority: -1);  // 低優先度
+            var completion = new TaskCompletionSource<BitmapImage?>(TaskCreationOptions.RunContinuationsAsynchronously);
+            _prefetchQueue.Writer.TryWrite(new LoadRequest(path, completion, CancellationToken.None));
         }
     }
 
-    private async Task ProcessLoadQueueAsync()
+    /// <inheritdoc />
+    public void Dispose()
     {
-        await foreach (var request in _loadQueue.Reader.ReadAllAsync())
+        _visibleQueue.Writer.TryComplete();
+        _normalQueue.Writer.TryComplete();
+        _prefetchQueue.Writer.TryComplete();
+        _shutdown.Cancel();
+        try
         {
+            Task.WaitAll(_workers, TimeSpan.FromSeconds(2));
+        }
+        catch (AggregateException exception) when (exception.InnerExceptions.All(inner => inner is OperationCanceledException))
+        {
+        }
+        _shutdown.Dispose();
+        GC.SuppressFinalize(this);
+    }
+
+    private static Channel<LoadRequest> CreateQueue() => Channel.CreateBounded<LoadRequest>(new BoundedChannelOptions(QueueCapacity)
+    {
+        FullMode = BoundedChannelFullMode.Wait,
+        SingleReader = false,
+        SingleWriter = false
+    });
+
+    private ChannelWriter<LoadRequest> SelectWriter(int priority) => priority switch
+    {
+        > 0 => _visibleQueue.Writer,
+        < 0 => _prefetchQueue.Writer,
+        _ => _normalQueue.Writer
+    };
+
+    private async Task ProcessQueueAsync(CancellationToken cancellationToken)
+    {
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            var request = await ReadNextAsync(cancellationToken);
+            if (request.CancellationToken.IsCancellationRequested)
+            {
+                request.Completion.TrySetCanceled(request.CancellationToken);
+                continue;
+            }
+
             try
             {
-                var thumbnail = await _cacheManager.GetThumbnailAsync(request.FilePath);
-                if (thumbnail != null && thumbnail.Length > 0)
-                {
-                    var imageSource = ConvertToImageSource(thumbnail);
-                    request.CompletionSource.SetResult(imageSource);
-                }
-                else
-                {
-                    request.CompletionSource.SetResult(null);
-                }
+                var bytes = await _cacheManager.GetThumbnailAsync(request.FilePath, request.CancellationToken);
+                request.Completion.TrySetResult(bytes.Length == 0 ? null : ConvertToImageSource(bytes));
             }
-            catch (ArgumentException ex)
+            catch (OperationCanceledException) when (request.CancellationToken.IsCancellationRequested)
             {
-                // Image data is null or empty
-                System.Diagnostics.Debug.WriteLine($"サムネイル読み込みエラー (空データ): {request.FilePath}");
-                request.CompletionSource.SetException(new InvalidOperationException($"サムネイル読み込みエラー: {request.FilePath}", ex));
+                request.Completion.TrySetCanceled(request.CancellationToken);
             }
-            catch (NotSupportedException ex)
+            catch (Exception exception) when (exception is IOException or ArgumentException or NotSupportedException)
             {
-                // WPF BitmapImage cannot decode the image format
-                System.Diagnostics.Debug.WriteLine($"サムネイル読み込みエラー (未対応形式): {request.FilePath}");
-                request.CompletionSource.SetException(new InvalidOperationException($"サムネイル読み込みエラー (未対応形式): {request.FilePath}", ex));
+                request.Completion.TrySetException(new InvalidOperationException(
+                    $"サムネイルを読み込めませんでした: {request.FilePath}", exception));
             }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"サムネイル読み込みエラー: {request.FilePath} - {ex.Message}");
-                request.CompletionSource.SetException(new InvalidOperationException($"サムネイル読み込みエラー: {request.FilePath}", ex));
-            }
+        }
+    }
+
+    private async ValueTask<LoadRequest> ReadNextAsync(CancellationToken cancellationToken)
+    {
+        while (true)
+        {
+            if (_visibleQueue.Reader.TryRead(out var visible))
+                return visible;
+            if (_normalQueue.Reader.TryRead(out var normal))
+                return normal;
+            if (_prefetchQueue.Reader.TryRead(out var prefetch))
+                return prefetch;
+
+            var visibleReady = _visibleQueue.Reader.WaitToReadAsync(cancellationToken).AsTask();
+            var normalReady = _normalQueue.Reader.WaitToReadAsync(cancellationToken).AsTask();
+            var prefetchReady = _prefetchQueue.Reader.WaitToReadAsync(cancellationToken).AsTask();
+            await Task.WhenAny(visibleReady, normalReady, prefetchReady);
+            cancellationToken.ThrowIfCancellationRequested();
         }
     }
 
     private static BitmapImage ConvertToImageSource(byte[] imageData)
     {
-        if (imageData == null || imageData.Length == 0)
-        {
-            throw new ArgumentException("Image data is null or empty", nameof(imageData));
-        }
-
-        try
-        {
-            var bitmap = new BitmapImage();
-            using (var ms = new MemoryStream(imageData))
-            {
-                ms.Position = 0;
-                bitmap.BeginInit();
-                bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                bitmap.StreamSource = ms;
-                bitmap.EndInit();
-            }
-            bitmap.Freeze(); // UI スレッド以外で使用可能にする
-            return bitmap;
-        }
-        catch (NotSupportedException ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"BitmapImage作成エラー (NotSupportedException): データサイズ={imageData.Length}bytes, エラー={ex.Message}");
-            throw;
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"BitmapImage作成エラー: データサイズ={imageData.Length}bytes, エラー={ex.GetType().Name}: {ex.Message}");
-            throw;
-        }
+        if (imageData.Length == 0)
+            throw new ArgumentException("Image data cannot be empty.", nameof(imageData));
+        var bitmap = new BitmapImage();
+        using var stream = new MemoryStream(imageData, writable: false);
+        bitmap.BeginInit();
+        bitmap.CacheOption = BitmapCacheOption.OnLoad;
+        bitmap.StreamSource = stream;
+        bitmap.EndInit();
+        bitmap.Freeze();
+        return bitmap;
     }
 
-    private class LoadRequest
-    {
-        public string FilePath { get; set; } = string.Empty;
-        public int Priority { get; set; }
-        public TaskCompletionSource<BitmapImage?> CompletionSource { get; set; } = null!;
-    }
+    private sealed record LoadRequest(
+        string FilePath,
+        TaskCompletionSource<BitmapImage?> Completion,
+        CancellationToken CancellationToken);
 }

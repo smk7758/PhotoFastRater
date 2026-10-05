@@ -1,573 +1,89 @@
-# アーキテクチャドキュメント
+# アーキテクチャ
 
-## 目次
+更新日: 2026-09-05
 
-1. [システム概要](#システム概要)
-2. [アーキテクチャパターン](#アーキテクチャパターン)
-3. [プロジェクト構成](#プロジェクト構成)
-4. [レイヤー構成](#レイヤー構成)
-5. [データフロー](#データフロー)
-6. [主要コンポーネント](#主要コンポーネント)
-7. [データベース設計](#データベース設計)
-8. [UI/UX 設計](#uiux-設計)
+## 目的
 
----
+PhotoFastRaterは、単一フォルダおよびライブラリ各10万枚でも、写真数に比例してUIオブジェクトや画像を保持しない構造を目指します。評価を失わないこと、元画像を暗黙に変更しないこと、I/Oを伴わない単体テストを可能にすることを境界設計の優先事項とします。
 
-## システム概要
+## 変更前と変更理由
 
-Photo Fast Rater は、写真家やフォトグラファー向けの高速写真レーティングアプリケーションです。
-大量の写真を効率的に評価・分類し、ベストショットを素早く選別することを目的としています。
+変更前はCoreアセンブリにEF Core、SQLite、EXIF、画像デコード、キャッシュ、書き出しが同居し、ViewModelが`IServiceProvider`、`MessageBox`、`Process`、`Clipboard`へ直接アクセスしていました。また、1つのscoped `PhotoDbContext`を画面の存続期間中保持するため、追跡エンティティが増え続け、別ウィンドウとの更新競合も起きやすい構造でした。
 
-### 主要機能
+そこで、ドメイン規則とユースケース契約をCoreへ、外部I/Oの実装をInfrastructureへ、表示とWindows固有の対話をUIへ分離しました。CoreはEF Core、ImageSharp、MetadataExtractorを参照しません。この不変条件は`CoreBoundaryTests`で検証します。
 
-- **写真一覧表示**: グリッド表示とツリー表示（年 → 月 → 日 → フォルダ階層）の切り替え
-- **高速レーティング**: キーボードショートカット（1-5 キー）による瞬時の評価
-- **写真ナビゲーション**: 矢印キーによる素早い写真間移動
-- **フォルダモード**: DB 登録前の一時的なフォルダ単位でのレーティングセッション
-- **EXIF 情報抽出**: カメラモデル、レンズモデル、撮影日時、撮影設定などのメタデータ自動抽出
-- **RAW+JPEG 対応**: RAW ファイルと JPEG ファイルのペアリング機能
-- **サムネイルキャッシュ**: 高速表示のためのサムネイル自動生成・キャッシュ
-- **SNS エクスポート**: Instagram、Twitter、Facebook 向けの最適化エクスポート機能
-  - プラットフォーム別の最適サイズ調整
-  - 枠（フレーム）の追加とカスタマイズ
-  - EXIF 情報のオーバーレイ表示（位置・内容のカスタマイズ可能）
-  - リアルタイムプレビュー
-  - 元画像のメタデータ保持
-
----
-
-## アーキテクチャパターン
-
-### MVVM (Model-View-ViewModel)
-
-Photo Fast Rater は WPF の標準パターンである MVVM アーキテクチャを採用しています。
+## 変更後の構造
 
 ```text
-┌─────────────────────────────────────────────────────────┐
-│                        View (XAML)                       │
-│  - MainWindow.xaml                                      │
-│  - FolderModeWindow.xaml                                │
-│  - PhotoViewerWindow.xaml                               │
-└────────────────┬────────────────────────────────────────┘
-                 │ DataBinding
-                 │ Commands
-                 ▼
-┌─────────────────────────────────────────────────────────┐
-│                  ViewModel (C#)                          │
-│  - PhotoGridViewModel                                    │
-│  - FolderModeViewModel                                   │
-│  - PhotoViewerViewModel                                  │
-└────────────────┬────────────────────────────────────────┘
-                 │ Business Logic
-                 │ Data Access
-                 ▼
-┌─────────────────────────────────────────────────────────┐
-│                    Model & Services                      │
-│  - Photo, Event, Camera (Models)                        │
-│  - PhotoRepository, EventRepository (Data Access)        │
-│  - ExifService, ImportService (Business Logic)           │
-└─────────────────────────────────────────────────────────┘
-```
-
-### 主要ライブラリ
-
-- **CommunityToolkit.Mvvm**: `[ObservableProperty]`、`[RelayCommand]`などのソースジェネレーター
-- **Entity Framework Core**: SQLite データベースへの ORM アクセス
-- **MetadataExtractor**: EXIF 情報読み取り
-- **ImageSharp**: 画像処理・サムネイル生成
-- **MaterialDesignThemes**: マテリアルデザイン UI
-
----
-
-## プロジェクト構成
-
-```text
-photo-fast-rater/
-├── src/
-│   ├── PhotoFastRater.Core/         # コアビジネスロジック
-│   │   ├── Database/                # データベース関連
-│   │   │   ├── PhotoDbContext.cs    # EF Core コンテキスト
-│   │   │   └── Repositories/        # リポジトリパターン実装
-│   │   ├── Models/                  # ドメインモデル
-│   │   │   ├── Photo.cs
-│   │   │   ├── Event.cs
-│   │   │   ├── FolderSession.cs
-│   │   │   └── ExportTemplate.cs
-│   │   ├── Services/                # ビジネスロジック
-│   │   │   ├── ExifService.cs
-│   │   │   ├── ImportService.cs
-│   │   │   ├── FolderSessionService.cs
-│   │   │   └── DataMigrationService.cs
-│   │   ├── Export/                  # エクスポート機能
-│   │   │   ├── SocialMediaExporter.cs
-│   │   │   ├── ExifOverlayRenderer.cs
-│   │   │   └── FrameRenderer.cs
-│   │   └── UI/                      # UI設定
-│   │       ├── UIConfiguration.cs
-│   │       └── CacheConfiguration.cs
-│   │
-│   ├── PhotoFastRater.UI/           # ユーザーインターフェース
-│   │   ├── Views/                   # XAML Views
-│   │   │   ├── MainWindow.xaml
-│   │   │   ├── FolderModeWindow.xaml
-│   │   │   └── PhotoViewerWindow.xaml
-│   │   ├── ViewModels/              # ViewModels
-│   │   │   ├── PhotoGridViewModel.cs
-│   │   │   ├── FolderModeViewModel.cs
-│   │   │   └── PhotoTreeNode.cs
-│   │   ├── Services/                # UIサービス
-│   │   │   └── ImageLoader.cs
-│   │   └── App.xaml.cs              # アプリケーション起動
-│   │
-│   └── PhotoFastRater.Tests/        # ユニットテスト
-│
-├── docs/                            # ドキュメント
-│   └── ja/                          # 日本語ドキュメント
-│
-└── appsettings.json                 # アプリケーション設定
-```
-
----
-
-## レイヤー構成
-
-### 1. **Presentation Layer (UI 層)**
-
-- **責務**: ユーザーインターフェースの表示とユーザー入力の処理
-- **コンポーネント**: Views (XAML), ViewModels
-- **技術**: WPF, XAML, Data Binding
-
-### 2. **Business Logic Layer (ビジネスロジック層)**
-
-- **責務**: アプリケーションのコアロジック、データ変換、検証
-- **コンポーネント**: Services (ExifService, ImportService, etc.)
-- **技術**: C# classes
-
-### 3. **Data Access Layer (データアクセス層)**
-
-- **責務**: データベースアクセス、CRUD 操作
-- **コンポーネント**: Repositories, DbContext
-- **技術**: Entity Framework Core
-
-### 4. **Domain Layer (ドメイン層)**
-
-- **責務**: ドメインモデル、ビジネスエンティティ
-- **コンポーネント**: Models (Photo, Event, Camera, etc.)
-- **技術**: Plain C# classes (POCOs)
-
----
-
-## データフロー
-
-### 写真インポートフロー
-
-```text
-ユーザー操作
-    │
-    ▼
-[MainWindow] または [FolderModeWindow]
-    │
-    ▼
-[ImportService.ImportFromFolderAsync()]
-    │
-    ├─► [ExifService.ExtractExifData()]  ← EXIF情報抽出
-    │       │
-    │       └─► MetadataExtractor ライブラリ
-    │
-    ├─► [PhotoRepository.AddAsync()]     ← データベース保存
-    │       │
-    │       └─► Entity Framework Core → SQLite
-    │
-    └─► [ImageLoader.LoadAsync()]        ← サムネイル生成
+PhotoFastRater.UI
+  ├─ Views / ViewModels
+  ├─ Windows固有の対話・ごみ箱・Shell
+  └─ ウィンドウ単位のDIスコープ
             │
-            └─► ImageSharp → キャッシュ保存
+            ├──────────────┐
+            ▼              ▼
+PhotoFastRater.Core   PhotoFastRater.Infrastructure
+  ├─ Domain             ├─ Database / Repositories / Migrations
+  ├─ Models             ├─ EXIF / Scan / Session
+  └─ Abstractions       ├─ Cache / ImageProcessing
+                       └─ Export
 ```
 
-### 写真表示フロー
+依存方向はUI→Core、UI→Infrastructure、Infrastructure→Coreです。CoreからInfrastructureまたはUIへの参照は禁止します。
 
-```text
-[PhotoGridViewModel.LoadPhotosAsync()]
-    │
-    ▼
-[PhotoRepository.GetAllAsync()]
-    │
-    ▼
-Entity Framework Core (クエリ実行)
-    │
-    ▼
-SQLite Database (photos.db)
-    │
-    ▼
-List<Photo> → ObservableCollection<PhotoViewModel>
-    │
-    ▼
-[PhotoGridViewModel.BuildPhotoTree()] (ツリーモード時)
-    │
-    ▼
-階層構造構築: Year → Month → Day → Folder
-    │
-    ▼
-[MainWindow.xaml] DataBinding
-    │
-    ▼
-画面表示 (グリッド or ツリー)
-```
+## ライフタイム
 
----
+- `WindowManager`がMainWindowとFolderModeWindowごとにDIスコープを作り、閉じた時点で破棄します。
+- Repositoryは`IDbContextFactory<PhotoDbContext>`から操作単位の短命Contextを作ります。
+- 読み取りは原則`AsNoTracking`とし、ChangeTrackerのメモリを写真件数に比例させません。
+- `IPhotoChangeNotifier`はDB確定後の変更を独立ウィンドウへ通知する共有点です。
+- DB migrationは最終ServiceProvider構築後に一度だけ実行し、構成途中の一時ServiceProviderは作りません。
 
-## 主要コンポーネント
+## Coreの主要契約
 
-### 1. **PhotoDbContext**
+- `IFolderScanner`: 逐次列挙、キャンセル、個別エラー、O(n)・有界メモリ
+- `IPhotoCatalog`: 一括upsertとカーソルページング検索
+- `IRatingCoordinator`: DB先行確定とXMP同期予約
+- `IXmpSidecarStore`: 未知XMLを保持する原子的sidecar更新
+- `IEmbeddedMetadataWriter`: 再圧縮しない明示的な埋込更新
+- `IThumbnailService` / `IImageDecodeService`: 優先度、重複統合、キャンセル
+- `IExportService`: 元画像を変更しない部分成功型バッチ出力
+- `IUserInteractionService` / `IPlatformShell`: ViewModelからWPFとOS操作を隔離
 
-EF Core の DbContext クラス。データベーススキーマの定義とエンティティ設定を管理。
+## 次の移行
 
-**主要責務**:
+現行Repository APIは互換性のため具象型を残していますが、一覧と検索は`IPhotoCatalog`のFTS5・カーソルページングへ移行済みです。旧FolderSession JSONはDB移行完了まで読み取り互換を維持し、自動削除しません。
 
-- テーブル定義 (Photos, Events, Cameras, etc.)
-- インデックス設定 (DateTaken, Rating, CameraModel, FolderPath)
-- リレーションシップ定義 (PhotoEventMappings)
+## 仮想化とサムネイル
 
-### 2. **PhotoRepository**
+ライブラリ一覧は`IAsyncVirtualizingCollection<T>`を通じて256件ずつ読み、最大5ページ（1,280件）だけをUIに保持します。深い位置でも`OFFSET`は使わず、`DateTaken + Id`の安定カーソルで次ページを取得します。選択の識別にはDBのPhoto IDを用います。
 
-写真エンティティのデータアクセスを抽象化するリポジトリパターン実装。
+サムネイル要求は可視、通常、先読みの3本の有界キューへ入り、6ワーカーが可視要求から処理します。同一キーの同時要求は1タスクへ統合します。キーは正規化パス、サイズ、更新UTC、寸法、JPEG品質、生成器バージョンのSHA-256です。ディスクはハッシュ先頭2文字ずつの2階層に分散し、SQLiteの最終アクセス時刻で既定10GB（設定1～100GB）のLRU削除を行います。
 
-**主要メソッド**:
+メモリLRUは圧縮JPEGサイズだけでなく、サムネイルをRGBA展開した概算サイズも予算へ含めます。全件先読みは禁止し、可視領域と直後の範囲だけを要求します。
 
-- `GetAllAsync()`: 全写真取得
-- `GetByIdAsync(int id)`: ID 指定取得
-- `AddAsync(Photo photo)`: 新規追加
-- `UpdateAsync(Photo photo)`: 更新
-- `DeleteAsync(int id)`: 削除
-- `GetByFilePathAsync(string path)`: ファイルパス検索
-- `GetByCameraAsync(string make, string model)`: カメラ別取得
-- `GetByRatingAsync(int rating)`: レーティング別取得
+## UIと設定
 
-### 3. **ExifService**
+MainWindowの検索は入力から200ms後に`PhotoSearchQuery`へ変換し、新しい入力が来た場合は旧DBページ取得と可視サムネイル要求をキャンセルします。インポートは総数を事前列挙せず、確認済み件数、個別エラー件数、キャンセル結果をステータスラインへ表示します。これは10万件の事前カウントによる二重走査を避けるためです。
 
-写真ファイルから EXIF 情報を抽出するサービス。
-
-**主要メソッド**:
-
-- `ExtractExifData(string filePath)`: EXIF 情報抽出
-  - カメラメーカー/モデル
-  - 撮影日時
-  - 撮影設定 (ISO, 絞り, シャッタースピード, 焦点距離)
-  - GPS 位置情報
-  - 画像サイズ
-
-### 4. **ImportService**
-
-フォルダから写真をインポートするサービス。
-
-**主要メソッド**:
-
-- `ImportFromFolderAsync()`: フォルダ一括インポート
-  - サブフォルダ対応
-  - 除外パターン適用
-  - 重複チェック
-  - 進捗通知
-
-### 5. **DataMigrationService**
-
-データベーススキーマ変更時の既存データ移行サービス。
-
-**主要メソッド**:
-
-- `MigrateFolderPathsAsync()`: FolderPath/FolderName 移行
-- `RunAllMigrationsAsync()`: 全マイグレーション実行
-
-### 6. **PhotoGridViewModel**
-
-写真一覧画面の ViewModel。
-
-**主要機能**:
-
-- 写真一覧の表示管理 (`ObservableCollection<PhotoViewModel>`)
-- ツリービューの構築 (`BuildPhotoTree()`)
-- フィルタリング (カメラ、レーティング、日付)
-- ソート機能
-- 矢印キーナビゲーション
-- レーティング変更
-
-### 7. **FolderModeViewModel**
-
-フォルダモード画面の ViewModel。
-
-**主要機能**:
-
-- フォルダセッション管理
-- 一時的なレーティング
-- DB 未登録写真の処理
-- セッション保存/読み込み
-- DB へのエクスポート
-
-### 8. **ImageLoader**
-
-サムネイル画像の非同期読み込みサービス。
-
-**主要機能**:
-
-- 高速サムネイル生成
-- キャッシュ管理
-- バックグラウンド読み込み
-- メモリ最適化
-
----
-
-## データベース設計
-
-### テーブル構成
-
-#### **Photos** (写真テーブル)
-
-```sql
-CREATE TABLE Photos (
-    Id INTEGER PRIMARY KEY AUTOINCREMENT,
-    FilePath TEXT NOT NULL,
-    FileName TEXT NOT NULL,
-    FolderPath TEXT NOT NULL,           -- 追加 (2025-12-16)
-    FolderName TEXT NOT NULL,           -- 追加 (2025-12-16)
-    FileSize INTEGER NOT NULL,
-    DateTaken DATETIME NOT NULL,
-    ImportDate DATETIME NOT NULL,
-    ModifiedDate DATETIME,
-    Rating INTEGER NOT NULL,
-    IsFavorite BOOLEAN NOT NULL,
-    IsRejected BOOLEAN NOT NULL,
-    CameraModel TEXT,
-    CameraMake TEXT,
-    LensModel TEXT,
-    Width INTEGER NOT NULL,
-    Height INTEGER NOT NULL,
-    Aperture REAL,
-    ShutterSpeed TEXT,
-    ISO INTEGER,
-    FocalLength REAL,
-    ExposureCompensation REAL,
-    Latitude REAL,
-    Longitude REAL,
-    LocationName TEXT,
-    ThumbnailCachePath TEXT,
-    ThumbnailGeneratedDate DATETIME,
-    FileHash TEXT
-);
-
--- インデックス
-CREATE INDEX IX_Photos_DateTaken ON Photos(DateTaken);
-CREATE INDEX IX_Photos_Rating ON Photos(Rating);
-CREATE INDEX IX_Photos_CameraModel ON Photos(CameraModel);
-CREATE INDEX IX_Photos_FileHash ON Photos(FileHash);
-CREATE INDEX IX_Photos_FolderPath ON Photos(FolderPath);  -- 追加
-```
-
-#### **Events** (イベントテーブル)
-
-```sql
-CREATE TABLE Events (
-    Id INTEGER PRIMARY KEY AUTOINCREMENT,
-    Name TEXT NOT NULL,
-    Description TEXT,
-    Type INTEGER NOT NULL,
-    StartDate DATETIME,
-    EndDate DATETIME,
-    Location TEXT,
-    Latitude REAL,
-    Longitude REAL,
-    CoverPhotoPath TEXT,
-    PhotoCount INTEGER NOT NULL
-);
-
-CREATE INDEX IX_Events_StartDate ON Events(StartDate);
-CREATE INDEX IX_Events_EndDate ON Events(EndDate);
-```
-
-#### **Cameras** (カメラテーブル)
-
-```sql
-CREATE TABLE Cameras (
-    Id INTEGER PRIMARY KEY AUTOINCREMENT,
-    Make TEXT NOT NULL,
-    Model TEXT NOT NULL,
-    PhotoCount INTEGER NOT NULL,
-    UNIQUE(Make, Model)
-);
-```
-
-#### **PhotoEventMappings** (写真-イベント関連テーブル)
+配布物の`appsettings.json`は既定値としてのみ読み、変更可能な設定は`%LOCALAPPDATA%\PhotoFastRater\user-settings.json`へ一時ファイル経由で原子的に保存します。キャッシュ構成はキャッシュサービス生成時に固定されるため、保存後の変更は次回起動時に反映します。キャッシュクリアは元画像や任意フォルダのJPEGを削除せず、キャッシュ管理下の生成済みサムネイルだけを隣接する`_GARBAGE`へ移動します。
 
-```sql
-CREATE TABLE PhotoEventMappings (
-    PhotoId INTEGER NOT NULL,
-    EventId INTEGER NOT NULL,
-    AddedDate DATETIME NOT NULL,
-    PRIMARY KEY (PhotoId, EventId),
-    FOREIGN KEY (PhotoId) REFERENCES Photos(Id) ON DELETE CASCADE,
-    FOREIGN KEY (EventId) REFERENCES Events(Id) ON DELETE CASCADE
-);
-```
+画面テーマは「暗室の選別机」を基準に、写真面を広く、操作面を細く、処理状態を常時確認できる構造とします。評価Amber、リジェクトRedは意味を持つ箇所だけに使い、文言・枠も併用して色覚だけに依存しません。
 
-### マイグレーション履歴
+## 比較ワークスペース
 
-- **20251216163207_AddFolderPathAndName**: FolderPath/FolderName カラム追加
-- **20251219133912_AddCustomPositionToExportTemplate**: ExportTemplates テーブルに CustomX/CustomY カラム追加（EXIF オーバーレイのカスタム位置用）
+比較は2～4ペインに制限し、各画像を最大2,048pxへ段階デコードします。したがって画像メモリはライブラリ件数ではなく最大4枚の表示用画素に比例します。RAWは埋め込みJPEGを利用し、フル現像は行いません。ズームとパンは既定で同期し、OFF時は操作対象ペインだけを変更します。固定ペインは「次の組」および評価後の自動送りから除外し、自動送りは誤操作を避けるため既定OFFです。
 
----
+## タグ、コレクション、イベント
 
-## UI/UX 設計
+タグは表示名とは別に大文字化した正規化名を保持し、一意制約で大小文字違いの重複を防ぎます。写真との関係は中間テーブルで管理し、同じタグを再度付けても結果が変わらない冪等操作です。タグ名は`TagSearch` FTS5表とトリガーで同期し、写真のファイル名・パス索引との和集合をパラメーター化SQLで検索します。
 
-### ナビゲーションモード
+コレクションは自己参照の`ParentId`で階層化し、写真は複数コレクションへ所属できます。親を削除した際の意図しない連鎖削除を避けるため、親子関係は`Restrict`です。一括タグ付けと一括追加はUIが保持できる上限と同じ1,280件までに制限し、巨大なSQLパラメーター列や誤操作を防ぎます。
 
-ユーザーは 2 つの矢印キーナビゲーションモードから選択可能:
+イベント自動整理は候補作成とDB更新を分離します。候補キーは所属写真IDから決定的に生成し、確定時の一意制約とトランザクションにより再実行してもイベントや対応関係を重複させません。候補確認ではDBを変更しないため、ユーザーは件数と名前を確認してから一括確定できます。
 
-1. **GridFocus モード** (デフォルト)
+## 非破壊バッチ書き出し
 
-   - グリッドにフォーカスがあれば常に矢印キーで移動可能
-   - 写真が選択されていない場合は自動的に最初の写真を選択
+`ExportRecipe`は出力先、命名規則、形式、品質、正規化クロップ、回転、最大寸法、枠、EXIF表示、メタデータ保持を1つの反復可能な値として表します。処理順は向き補正→回転→クロップ→リサイズ→枠→EXIF表示→メタデータ復元→保存です。向き補正後は元のOrientationタグだけを除き、他アプリで二重回転されることを防ぎます。
 
-2. **SelectionOnly モード**
-   - 写真が明示的に選択されている場合のみ矢印キーで移動可能
-
-設定場所: `appsettings.json` → `UI.ArrowKeyNavigationMode`
-
-### 表示モード
-
-#### グリッド表示
-
-- WrapPanel によるグリッドレイアウト
-- サムネイルサイズ: 256x256 (設定可能)
-- 選択時の視覚的フィードバック: 青枠 + 水色背景
-
-#### ツリー表示
-
-- 階層構造: **年 → 月 → 日 → フォルダ → 写真**
-- 各ノードに写真枚数を表示
-- 展開/折りたたみ可能
-
-### キーボードショートカット
-
-- **矢印キー**: 写真間ナビゲーション
-- **1-5 キー**: レーティング設定
-- **0 キー**: レーティングクリア
-- **Enter キー**: 写真ビューアーを開く
-- **Escape/Q キー**: ウィンドウを閉じる
-
-### ウィンドウ構成
-
-#### MainWindow (メインウィンドウ)
-
-- 写真一覧表示 (グリッド/ツリー切り替え)
-- サイドパネル: フィルター、ソート、統計
-- ツールバー: インポート、エクスポート、設定
-
-#### FolderModeWindow (フォルダモード)
-
-- フォルダ単位の一時セッション
-- サイドパネル: 選択中の写真詳細
-- セッション保存/DB エクスポート
-
-#### PhotoViewerWindow (写真ビューアー)
-
-- 大画面表示
-- EXIF 情報パネル（カメラ、レンズ、撮影設定）
-- 前後の写真へのナビゲーション
-- エクスポート設定パネル
-  - プラットフォーム選択（Instagram、Twitter、Facebook）
-  - 枠の設定（表示/非表示、幅の調整）
-  - EXIF オーバーレイ設定
-    - 表示/非表示
-    - 位置選択（左上、右上、左下、右下、カスタム）
-    - カスタム位置の調整（スライダーまたはマウスドラッグ）
-  - リアルタイムプレビュー
-  - エクスポートボタン
-
----
-
-## 設計原則
-
-### 1. **関心の分離 (Separation of Concerns)**
-
-各レイヤーが明確な責務を持ち、他レイヤーへの依存を最小化。
-
-### 2. **依存性注入 (Dependency Injection)**
-
-`Microsoft.Extensions.DependencyInjection`によるサービス管理。
-
-### 3. **リポジトリパターン**
-
-データアクセスロジックの抽象化により、テスタビリティと保守性を向上。
-
-### 4. **非同期処理**
-
-UI スレッドのブロックを避けるため、すべての I/O 操作は`async/await`で実装。
-
-### 5. **SOLID 原則**
-
-- Single Responsibility: 各クラスは単一の責務
-- Open/Closed: 拡張に開いており、修正に閉じている
-- Liskov Substitution: 基底クラスと派生クラスの置換可能性
-- Interface Segregation: 必要最小限のインターフェース
-- Dependency Inversion: 抽象への依存
-
----
-
-## パフォーマンス最適化
-
-### 1. **サムネイルキャッシュ**
-
-- 初回生成後はキャッシュから読み込み
-- ディスクキャッシュ: `%LOCALAPPDATA%/PhotoFastRater/thumbnails`
-
-### 2. **バックグラウンド読み込み**
-
-- サムネイルは`Task`による非同期読み込み
-- UI スレッドをブロックしない
-
-### 3. **データベースインデックス**
-
-- 頻繁にクエリされるカラムにインデックス設定
-- DateTaken, Rating, CameraModel, FolderPath
-
-### 4. **遅延読み込み (Lazy Loading)**
-
-- 写真一覧の初回表示時は基本情報のみ
-- 詳細情報は必要時に読み込み
-
----
-
-## セキュリティ考慮事項
-
-### 1. **ファイルパスの検証**
-
-- パストラバーサル攻撃の防止
-- 不正なファイルパスの拒否
-
-### 2. **SQL インジェクション対策**
-
-- EF Core によるパラメータ化クエリ
-- 直接 SQL 実行は最小限に
-
-### 3. **データベースバックアップ**
-
-- 定期的な自動バックアップ推奨
-- `photos.db`ファイルの安全な保管
-
----
-
-## 今後の拡張性
-
-### 計画中の機能
-
-- クラウド同期 (OneDrive, Google Drive)
-- AI による自動タグ付け
-- 顔認識機能
-- RAW ファイルの直接プレビュー
-- プラグインシステム
-
----
-
-## 参考資料
-
-- [EF Core Documentation](https://docs.microsoft.com/ef/core/)
-- [WPF MVVM Pattern](https://docs.microsoft.com/dotnet/desktop/wpf/data/)
-- [CommunityToolkit.Mvvm](https://learn.microsoft.com/dotnet/communitytoolkit/mvvm/)
-- [MetadataExtractor](https://github.com/drewnoakes/metadata-extractor-dotnet)
+DBからの写真取得は最大1,280件を1クエリにまとめ、画像は逐次処理してフル画像メモリを1枚分に抑えます。各画像は出力先と同じディレクトリの一時ファイルへ書き、完成後に上書きなしの移動で確定します。同名競合時は連番を採用します。欠損、破損、権限不足、未対応RAWは他の成功を破棄せず写真単位の結果とし、UIは失敗IDだけを保持して明示的に再試行できます。キャンセル時も確定済み出力は保持し、処理中の一時ファイルだけを除去します。

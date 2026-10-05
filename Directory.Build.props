@@ -1,0 +1,10 @@
+<Project>
+  <PropertyGroup>
+    <Deterministic>true</Deterministic>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+  </PropertyGroup>
+</Project>

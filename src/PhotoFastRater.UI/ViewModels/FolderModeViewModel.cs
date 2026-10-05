@@ -1,91 +1,211 @@
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Windows.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.Extensions.DependencyInjection;
+using PhotoFastRater.Core.Abstractions;
+using PhotoFastRater.Infrastructure.ImageProcessing;
 using PhotoFastRater.Core.Models;
-using PhotoFastRater.Core.Services;
+using PhotoFastRater.Core.Domain;
+using PhotoFastRater.Infrastructure.Services;
 using PhotoFastRater.Core.UI;
-using PhotoFastRater.Core.Database.Repositories;
+using PhotoFastRater.Infrastructure.Database.Repositories;
 using PhotoFastRater.UI.Services;
-using PhotoFastRater.UI.Views;
-using MessageBox = System.Windows.MessageBox;
-using MessageBoxButton = System.Windows.MessageBoxButton;
-using MessageBoxImage = System.Windows.MessageBoxImage;
-using MessageBoxResult = System.Windows.MessageBoxResult;
 
 namespace PhotoFastRater.UI.ViewModels;
 
-/// <summary>
-/// フォルダモードのViewModel
-/// </summary>
 public partial class FolderModeViewModel : ViewModelBase
 {
     private readonly FolderSessionService _sessionService;
-    private readonly IServiceProvider _serviceProvider;
+    private readonly WindowManager _windowManager;
+    private readonly PhotoRepository _photoRepository;
+    private readonly IUserInteractionService _interaction;
+    private readonly IPlatformShell _platformShell;
     private readonly ImageLoader _imageLoader;
     private readonly UIConfiguration _uiConfig;
+    private readonly ExifService _exifService;
+    private readonly RawThumbnailGenerator _rawGenerator;
+    private readonly IEmbeddedMetadataWriter _embeddedMetadataWriter;
 
-    [ObservableProperty]
-    private FolderSession? _currentSession;
+    public event Action? ShortcutsUpdated;
+    public event Action<bool>? BoundaryReached;
 
-    [ObservableProperty]
-    private ObservableCollection<FolderSessionPhotoViewModel> _photos = new();
+    // フォルダモード設定
+    private FolderModeSettingsViewModel _settings = new();
 
-    [ObservableProperty]
-    private FolderSessionPhotoViewModel? _selectedPhoto;
+    private static readonly string[] RawExtensions = { ".raw", ".cr2", ".cr3", ".nef", ".arw", ".dng", ".orf", ".raf", ".rw2" };
+    private static readonly string[] JpegExtensions = { ".jpg", ".jpeg" };
 
-    [ObservableProperty]
-    private string _folderPath = string.Empty;
+    [ObservableProperty] private FolderSession? _currentSession;
+    [ObservableProperty] private ObservableCollection<FolderSessionPhotoViewModel> _photos = new();
+    [ObservableProperty] private FolderSessionPhotoViewModel? _selectedPhoto;
+    [ObservableProperty] private string _folderPath = string.Empty;
+    [ObservableProperty] private string _statusText = "フォルダを選択してください";
+    [ObservableProperty] private bool _isLoading = false;
+    [ObservableProperty] private int _totalPhotos;
+    [ObservableProperty] private int _ratedPhotos;
+    [ObservableProperty] private ObservableCollection<PhotoTreeNode> _photoTree = new();
+    [ObservableProperty] private bool _isTreeViewMode;
 
-    [ObservableProperty]
-    private string _statusText = "フォルダを選択してください";
+    // サムネイルサイズ
+    [ObservableProperty] private int _thumbnailSize = 200;
+    private double _gridWidth = 1200;
+    private int _gridColumns = 6;
+    public int GridColumns { get => _gridColumns; private set => SetProperty(ref _gridColumns, value); }
 
-    [ObservableProperty]
-    private bool _isLoading = false;
+    // フィルター
+    [ObservableProperty] private int _filterMinRating = 0;
+    [ObservableProperty] private bool _filterUnratedOnly = false;
+    [ObservableProperty] private string _filterNameSearch = string.Empty;
+    [ObservableProperty] private string _filterFileType = "all";
+    [ObservableProperty] private DateTime? _filterDateFrom = null;
+    [ObservableProperty] private DateTime? _filterDateTo = null;
+    [ObservableProperty] private bool _isFilterPanelOpen = false;
 
-    [ObservableProperty]
-    private int _totalPhotos;
+    // 写真アイテムのEXIF表示設定
+    [ObservableProperty] private bool _showExifInItem = false;
+    [ObservableProperty] private bool _exifItemShowLens = true;
+    [ObservableProperty] private bool _exifItemShowSettings = true;
+    [ObservableProperty] private bool _exifItemShowDate = false;
+    [ObservableProperty] private bool _exifItemShowCamera = false;
 
-    [ObservableProperty]
-    private int _ratedPhotos;
+    // 元画像表示切替
+    [ObservableProperty] private bool _showOriginalImages = false;
 
-    [ObservableProperty]
-    private ObservableCollection<PhotoTreeNode> _photoTree = new();
+    // 写真アイテム表示モード
+    [ObservableProperty] private bool _uniformPhotoSize = false;
+    [ObservableProperty] private bool _nameLabelBelow = false;
 
-    [ObservableProperty]
-    private bool _isTreeViewMode;
+    // インラインプレビュー
+    [ObservableProperty] private bool _isInlinePreviewMode = false;
 
-    /// <summary>
-    /// IsTreeViewMode が変更されたときの処理
-    /// </summary>
+    // フィルター適用済み表示コレクション
+    public ObservableCollection<FolderSessionPhotoViewModel> DisplayPhotos { get; } = new();
+
     partial void OnIsTreeViewModeChanged(bool value)
     {
-        if (value)
-        {
-            System.Diagnostics.Debug.WriteLine($"[FolderMode] IsTreeViewMode changed to true, calling BuildPhotoTree");
-            BuildPhotoTree();
-        }
+        if (value) BuildPhotoTree();
     }
 
-    // グリッドの列数（WrapPanelの列数）
-    private const int GridColumns = 6;
+    partial void OnThumbnailSizeChanged(int value) => UpdateGridColumns();
+    partial void OnFilterMinRatingChanged(int value) => RefreshDisplayPhotos();
+    partial void OnFilterUnratedOnlyChanged(bool value) => RefreshDisplayPhotos();
+    partial void OnFilterNameSearchChanged(string value) => RefreshDisplayPhotos();
+    partial void OnFilterFileTypeChanged(string value) => RefreshDisplayPhotos();
+    partial void OnFilterDateFromChanged(DateTime? value) => RefreshDisplayPhotos();
+    partial void OnFilterDateToChanged(DateTime? value) => RefreshDisplayPhotos();
+
+    partial void OnNameLabelBelowChanged(bool value) { _settings.NameLabelBelow = value; _settings.Save(); }
+    partial void OnUniformPhotoSizeChanged(bool value) { _settings.UniformPhotoSize = value; _settings.Save(); }
+    partial void OnShowOriginalImagesChanged(bool value) { _settings.ShowOriginalImages = value; _settings.Save(); }
+
+    public void NotifyGridWidth(double width)
+    {
+        _gridWidth = width;
+        UpdateGridColumns();
+    }
+
+    private void UpdateGridColumns() =>
+        GridColumns = Math.Max(1, (int)(_gridWidth / (ThumbnailSize + 8)));
 
     public FolderModeViewModel(
         FolderSessionService sessionService,
-        IServiceProvider serviceProvider,
+        WindowManager windowManager,
+        PhotoRepository photoRepository,
+        IUserInteractionService interaction,
+        IPlatformShell platformShell,
         ImageLoader imageLoader,
-        UIConfiguration uiConfig)
+        UIConfiguration uiConfig,
+        ExifService exifService,
+        RawThumbnailGenerator rawGenerator,
+        IEmbeddedMetadataWriter embeddedMetadataWriter)
     {
         _sessionService = sessionService;
-        _serviceProvider = serviceProvider;
+        _windowManager = windowManager;
+        _photoRepository = photoRepository;
+        _interaction = interaction;
+        _platformShell = platformShell;
         _imageLoader = imageLoader;
         _uiConfig = uiConfig;
+        _exifService = exifService;
+        _rawGenerator = rawGenerator;
+        _embeddedMetadataWriter = embeddedMetadataWriter;
+
+        _settings.Load();
+        ApplySettingsToViewModel();
     }
 
-    /// <summary>
-    /// フォルダを開く
-    /// </summary>
+    private void ApplySettingsToViewModel()
+    {
+        ThumbnailSize = _settings.DefaultThumbnailSize;
+        ShowExifInItem = _settings.ShowExifInItem;
+        ExifItemShowLens = _settings.ExifShowLens;
+        ExifItemShowSettings = _settings.ExifShowSettings;
+        ExifItemShowDate = _settings.ExifShowDate;
+        ExifItemShowCamera = _settings.ExifShowCamera;
+        NameLabelBelow = _settings.NameLabelBelow;
+        UniformPhotoSize = _settings.UniformPhotoSize;
+        ShowOriginalImages = _settings.ShowOriginalImages;
+    }
+
+    private void RefreshDisplayPhotos()
+    {
+        var filtered = Photos.AsEnumerable();
+
+        if (!string.IsNullOrEmpty(FilterNameSearch))
+            filtered = filtered.Where(p => p.FileName.Contains(FilterNameSearch, StringComparison.OrdinalIgnoreCase));
+
+        if (FilterMinRating > 0)
+            filtered = filtered.Where(p => p.Rating >= FilterMinRating);
+
+        if (FilterUnratedOnly)
+            filtered = filtered.Where(p => p.Rating == 0 && !p.IsRejected);
+
+        if (FilterFileType == "raw")
+            filtered = filtered.Where(p => RawExtensions.Contains(Path.GetExtension(p.FilePath).ToLowerInvariant()));
+        else if (FilterFileType == "jpeg")
+            filtered = filtered.Where(p => JpegExtensions.Contains(Path.GetExtension(p.FilePath).ToLowerInvariant()));
+
+        if (FilterDateFrom.HasValue)
+            filtered = filtered.Where(p => p.DateTaken >= FilterDateFrom.Value);
+
+        if (FilterDateTo.HasValue)
+            filtered = filtered.Where(p => p.DateTaken < FilterDateTo.Value.AddDays(1));
+
+        // RAW+JPEGグループ化: ペアのJPEGがフィルター済みにあるRAWはスキップ、JPEGのIsExpanded=TrueのときRAWを直後に挿入
+        var filteredList = filtered.ToList();
+        var filteredSet = new HashSet<string>(filteredList.Select(p => p.FilePath));
+        var result = new List<FolderSessionPhotoViewModel>();
+
+        foreach (var photo in filteredList)
+        {
+            if (_settings.GroupRawJpeg && photo.HasPair && photo.IsRawFile
+                && filteredSet.Contains(photo.PairedFilePath!))
+            {
+                photo.IsGroupedWithPair = false;
+                continue;
+            }
+
+            photo.IsGroupedWithPair = false;
+            result.Add(photo);
+
+            if (_settings.GroupRawJpeg && photo.HasPair && !photo.IsRawFile && photo.IsExpanded)
+            {
+                var raw = Photos.FirstOrDefault(p => p.FilePath == photo.PairedFilePath);
+                if (raw != null && filteredSet.Contains(raw.FilePath))
+                {
+                    raw.IsGroupedWithPair = true;
+                    photo.IsGroupedWithPair = true;
+                    result.Add(raw);
+                }
+            }
+        }
+
+        DisplayPhotos.Clear();
+        foreach (var p in result)
+            DisplayPhotos.Add(p);
+    }
+
     [RelayCommand]
     private async Task OpenFolderAsync()
     {
@@ -100,9 +220,6 @@ public partial class FolderModeViewModel : ViewModelBase
         }
     }
 
-    /// <summary>
-    /// フォルダを読み込み
-    /// </summary>
     public async Task LoadFolderAsync(string folderPath)
     {
         IsLoading = true;
@@ -112,46 +229,67 @@ public partial class FolderModeViewModel : ViewModelBase
         {
             FolderPath = folderPath;
 
-            // セッションを作成または読み込み
-            CurrentSession = await _sessionService.CreateSessionAsync(folderPath);
+            // キャッシュ済みセッションのレーティングを引継ぎ用に読む
+            var cachedSession = await _sessionService.LoadSessionAsync(folderPath);
 
-            if (CurrentSession.Photos.Count == 0)
-            {
-                // 新規セッション：写真を読み込み
-                var progress = new Progress<int>(count =>
-                {
-                    StatusText = $"写真を読み込み中: {count}枚";
-                });
-
-                var photos = await _sessionService.LoadPhotosAsync(folderPath, progress);
-                CurrentSession.Photos = photos;
-            }
-
-            // ViewModelに変換
+            // プログレッシブ表示: スキャン中に写真を逐次追加
             Photos.Clear();
-            System.Diagnostics.Debug.WriteLine($"[FolderMode] 写真の読み込み開始: {CurrentSession.Photos.Count}枚");
-            foreach (var photo in CurrentSession.Photos)
+            DisplayPhotos.Clear();
+
+            var uiProgress = new Progress<FolderSessionPhoto>(photo =>
             {
-                var photoVm = new FolderSessionPhotoViewModel(photo);
+                Func<string, Task<BitmapImage?>>? rawLoader = photo.IsRawFile ? LoadRawFullImageAsync : null;
+                var photoVm = new FolderSessionPhotoViewModel(photo, rawLoader);
                 Photos.Add(photoVm);
-                System.Diagnostics.Debug.WriteLine($"[FolderMode] PhotosコレクションにViewModel追加: {Path.GetFileName(photo.FilePath)}");
-                // サムネイルをバックグラウンドで非同期読み込み（待機しない）
-                _ = LoadThumbnailAsync(photoVm);
+                DisplayPhotos.Add(photoVm);
+            });
+
+            var countProgress = new Progress<int>(count => StatusText = $"写真を読み込み中: {count}枚");
+
+            // 常に新鮮なスキャンを実行
+            var photos = await _sessionService.LoadPhotosAsync(folderPath, countProgress, uiProgress);
+
+            // キャッシュされたレーティングを引き継ぐ
+            if (cachedSession != null)
+            {
+                var ratingMap = cachedSession.Photos.ToDictionary(p => p.FilePath);
+                foreach (var photo in photos)
+                {
+                    if (ratingMap.TryGetValue(photo.FilePath, out var cached))
+                    {
+                        photo.Rating = cached.Rating;
+                        photo.IsFavorite = cached.IsFavorite;
+                        photo.IsRejected = cached.IsRejected;
+                    }
+                }
+                // VM にも反映
+                foreach (var vm in Photos)
+                {
+                    if (ratingMap.TryGetValue(vm.FilePath, out var cached))
+                    {
+                        vm.Rating = cached.Rating;
+                        vm.IsFavorite = cached.IsFavorite;
+                        vm.IsRejected = cached.IsRejected;
+                    }
+                }
             }
-            System.Diagnostics.Debug.WriteLine($"[FolderMode] Photosコレクション準備完了: {Photos.Count}枚");
 
-            // ツリービューを構築（サムネイルは非同期で読み込まれる）
-            System.Diagnostics.Debug.WriteLine($"[FolderMode] BuildPhotoTree開始");
+            CurrentSession = new FolderSession
+            {
+                FolderPath = folderPath,
+                CreatedDate = DateTime.Now,
+                Photos = photos
+            };
+
+            // 全スキャン完了後にフィルター適用・統計更新
+            RefreshDisplayPhotos();
             BuildPhotoTree();
-            System.Diagnostics.Debug.WriteLine($"[FolderMode] BuildPhotoTree完了");
-
             UpdateStatistics();
             StatusText = $"{TotalPhotos}枚の写真を読み込みました";
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"エラー: {ex.Message}", "エラー",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+            await _interaction.NotifyAsync("エラー", $"エラー: {ex.Message}", UserNotificationKind.Error);
             StatusText = "エラーが発生しました";
         }
         finally
@@ -160,77 +298,82 @@ public partial class FolderModeViewModel : ViewModelBase
         }
     }
 
-    /// <summary>
-    /// 写真を選択
-    /// </summary>
+    private DateTime _lastMemoryWarningTime = DateTime.MinValue;
+
+    private bool CheckMemoryAndWarn()
+    {
+        long limitBytes = (long)_settings.MaxFullImageMemoryMB * 1024 * 1024;
+        long usedBytes = System.Diagnostics.Process.GetCurrentProcess().WorkingSet64;
+        if (usedBytes < limitBytes) return true;
+
+        if (_settings.ShowMemoryWarning && (DateTime.Now - _lastMemoryWarningTime).TotalSeconds > 60)
+        {
+            _lastMemoryWarningTime = DateTime.Now;
+            System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                _ = _interaction.NotifyAsync(
+                    "メモリ不足",
+                    $"メモリ使用量が上限（{_settings.MaxFullImageMemoryMB}MB）に達しました。\n" +
+                    "フルイメージの読み込みをスキップします。\n" +
+                    "設定からメモリ上限を変更するか、フォルダを再読み込みしてください。",
+                    UserNotificationKind.Warning);
+            });
+        }
+        return false;
+    }
+
+    private void PrefetchNearbyFullImages(int selectedIndex)
+    {
+        if (!ShowOriginalImages) return;
+        if (!CheckMemoryAndWarn()) return;
+        for (int delta = -2; delta <= 2; delta++)
+        {
+            int idx = selectedIndex + delta;
+            if (idx >= 0 && idx < DisplayPhotos.Count)
+                DisplayPhotos[idx].TriggerFullImageLoad();
+        }
+    }
+
     [RelayCommand]
     private void SelectPhoto(FolderSessionPhotoViewModel photo)
     {
-        // 既存の選択を解除
         if (SelectedPhoto != null)
-        {
             SelectedPhoto.IsSelected = false;
-        }
 
-        // 新しい写真を選択
         SelectedPhoto = photo;
         if (photo != null)
         {
             photo.IsSelected = true;
+
+            // JPEG primaryをクリックで展開トグル（グループ化有効時のみ）
+            if (_settings.GroupRawJpeg && photo.HasPair && !photo.IsRawFile)
+            {
+                photo.IsExpanded = !photo.IsExpanded;
+                RefreshDisplayPhotos();
+            }
+
+            // 原画像モードのとき隣接写真を先読み
+            PrefetchNearbyFullImages(DisplayPhotos.IndexOf(photo));
         }
     }
 
-    /// <summary>
-    /// 写真をビューアーで開く（グリッド表示用）
-    /// </summary>
     [RelayCommand]
     private void OpenPhoto(FolderSessionPhotoViewModel photo)
     {
-        // PhotoViewModelに変換してビューアーを開く
-        var model = photo.GetModel();
-        var photoModel = new Photo
-        {
-            FilePath = photo.FilePath,
-            FileName = photo.FileName,
-            DateTaken = model.DateTaken,
-            Rating = photo.Rating,
-            IsFavorite = photo.IsFavorite,
-            IsRejected = photo.IsRejected,
-            CameraModel = model.CameraModel,
-            LensModel = model.LensModel,
-            ISO = model.ISO,
-            Aperture = model.Aperture,
-            ShutterSpeed = model.ShutterSpeed,
-            FocalLength = model.FocalLength
-        };
-        var photoVm = new PhotoViewModel(photoModel)
-        {
-            Rating = photo.Rating,
-            IsFavorite = photo.IsFavorite,
-            IsRejected = photo.IsRejected,
-            Thumbnail = photo.Thumbnail
-        };
-        var viewer = new PhotoViewerWindow(photoVm);
-        viewer.ShowDialog();
+        _platformShell.OpenFile(photo.FilePath);
     }
 
-    /// <summary>
-    /// 写真をビューアーで開く（ツリー表示用）
-    /// </summary>
     [RelayCommand]
     private void OpenTreePhoto(PhotoViewModel photo)
     {
-        var viewer = new PhotoViewerWindow(photo);
-        viewer.ShowDialog();
+        _platformShell.OpenFile(photo.FilePath);
     }
 
-    /// <summary>
-    /// レーティングを設定
-    /// </summary>
     [RelayCommand]
-    private async Task SetRatingAsync(int rating)
+    private async Task SetRatingAsync(string? ratingStr)
     {
         if (SelectedPhoto == null) return;
+        if (!int.TryParse(ratingStr, out var rating)) return;
 
         SelectedPhoto.Rating = rating;
         SelectedPhoto.UpdateModel();
@@ -239,111 +382,171 @@ public partial class FolderModeViewModel : ViewModelBase
         await SaveSessionAsync();
     }
 
-    /// <summary>
-    /// お気に入りを切り替え
-    /// </summary>
+    [RelayCommand]
+    private void OpenPhotoFolder(FolderSessionPhotoViewModel? photo)
+    {
+        var target = photo ?? SelectedPhoto;
+        if (target == null) return;
+        _platformShell.ShowInFileBrowser(target.FilePath);
+    }
+
+    [RelayCommand]
+    private void CopyFileName(FolderSessionPhotoViewModel? photo)
+    {
+        var target = photo ?? SelectedPhoto;
+        if (target != null)
+            _platformShell.SetClipboardText(target.FileName);
+    }
+
+    [RelayCommand]
+    private void CopyFilePath(FolderSessionPhotoViewModel? photo)
+    {
+        var target = photo ?? SelectedPhoto;
+        if (target != null)
+            _platformShell.SetClipboardText(target.FilePath);
+    }
+
+    [RelayCommand]
+    private async Task ReloadFolderAsync()
+    {
+        if (string.IsNullOrEmpty(FolderPath)) return;
+        var confirmed = await _interaction.ConfirmAsync(
+            "再読み込みの確認",
+            $"フォルダを再読み込みします。\n現在のセッションは上書きされます。\n\n{FolderPath}",
+            CancellationToken.None);
+        if (!confirmed) return;
+        await LoadFolderAsync(FolderPath);
+    }
+
+    [RelayCommand]
+    private async Task ReloadPhotoAsync(FolderSessionPhotoViewModel? photo)
+    {
+        if (photo == null) return;
+        try
+        {
+            var exifPhoto = _exifService.ExtractExifData(photo.FilePath);
+            photo.Rating = exifPhoto.Rating;
+            photo.IsRejected = exifPhoto.IsRejected;
+            photo.Thumbnail = null;
+            await LoadThumbnailAsync(photo);
+        }
+        catch (Exception ex)
+        {
+            await _interaction.NotifyAsync("エラー", $"再読み込みエラー: {ex.Message}", UserNotificationKind.Error);
+        }
+    }
+
+    [RelayCommand]
+    private void OpenKeyboardShortcuts()
+    {
+        if (_windowManager.ShowKeyboardShortcutsDialog())
+            ShortcutsUpdated?.Invoke();
+    }
+
     [RelayCommand]
     private async Task ToggleFavoriteAsync()
     {
         if (SelectedPhoto == null) return;
-
         SelectedPhoto.IsFavorite = !SelectedPhoto.IsFavorite;
         SelectedPhoto.UpdateModel();
-
         await SaveSessionAsync();
     }
 
-    /// <summary>
-    /// リジェクトを切り替え
-    /// </summary>
     [RelayCommand]
     private async Task ToggleRejectAsync()
     {
         if (SelectedPhoto == null) return;
-
         SelectedPhoto.IsRejected = !SelectedPhoto.IsRejected;
         SelectedPhoto.UpdateModel();
-
         await SaveSessionAsync();
     }
 
-    /// <summary>
-    /// セッションを保存
-    /// </summary>
+    [RelayCommand]
+    private async Task WriteRatingToJpegAsync()
+    {
+        if (SelectedPhoto is null)
+            return;
+
+        if (!JpegExtensions.Contains(Path.GetExtension(SelectedPhoto.FilePath), StringComparer.OrdinalIgnoreCase))
+        {
+            await _interaction.NotifyAsync("JPEGメタデータ", "JPEGファイルだけが対象です。", UserNotificationKind.Warning);
+            return;
+        }
+
+        var confirmed = await _interaction.ConfirmAsync(
+            "JPEGメタデータへ書き込み",
+            "現在の評価をJPEG内部へ明示的に書き込みます。画素の再圧縮は行いません。続行しますか？",
+            CancellationToken.None);
+        if (!confirmed)
+            return;
+
+        var state = new RatingState(SelectedPhoto.Rating, SelectedPhoto.IsFavorite, SelectedPhoto.IsRejected);
+        var result = await _embeddedMetadataWriter.WriteRatingAsync(SelectedPhoto.FilePath, state);
+        if (result.Succeeded)
+        {
+            StatusText = "JPEGメタデータを更新しました（画素は再圧縮していません）";
+            return;
+        }
+
+        await _interaction.NotifyAsync(
+            "JPEGメタデータを書き込めませんでした",
+            result.ErrorMessage ?? "このJPEGは安全なインプレース更新に対応していません。元画像は変更していません。",
+            UserNotificationKind.Warning);
+    }
+
     [RelayCommand]
     private async Task SaveSessionAsync()
     {
         if (CurrentSession == null) return;
-
         try
         {
-            // ViewModelの変更をモデルに反映
             foreach (var photoVm in Photos)
-            {
                 photoVm.UpdateModel();
-            }
-
             await _sessionService.SaveSessionAsync(CurrentSession);
             StatusText = "セッションを保存しました";
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"保存エラー: {ex.Message}", "エラー",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+            await _interaction.NotifyAsync("エラー", $"保存エラー: {ex.Message}", UserNotificationKind.Error);
         }
     }
 
-    /// <summary>
-    /// DBにエクスポート
-    /// </summary>
     [RelayCommand]
     private async Task ExportToDbAsync()
     {
         if (CurrentSession == null) return;
 
-        var result = MessageBox.Show(
-            $"このセッションの写真をDBに追加しますか?\n合計: {TotalPhotos}枚",
+        var confirmed = await _interaction.ConfirmAsync(
             "確認",
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Question);
+            $"このセッションの写真をDBに追加しますか?\n合計: {TotalPhotos}枚",
+            CancellationToken.None);
 
-        if (result != MessageBoxResult.Yes) return;
+        if (!confirmed) return;
 
         IsLoading = true;
         StatusText = "DBにエクスポート中...";
 
         try
         {
-            // PhotoRepositoryをサービスプロバイダーから取得
-            var photoRepository = _serviceProvider.GetRequiredService<PhotoRepository>();
-
-            int importedCount = 0;
-            int updatedCount = 0;
-            int skippedCount = 0;
+            int importedCount = 0, updatedCount = 0, skippedCount = 0;
 
             foreach (var sessionPhoto in CurrentSession.Photos)
             {
-                var existing = await photoRepository.GetByFilePathAsync(sessionPhoto.FilePath);
-
+                var existing = await _photoRepository.GetByFilePathAsync(sessionPhoto.FilePath);
                 if (existing != null)
                 {
-                    // 既存写真のレーティング更新（より高いレーティングのみ）
                     if (sessionPhoto.Rating > existing.Rating)
                     {
                         existing.Rating = sessionPhoto.Rating;
                         existing.IsFavorite = sessionPhoto.IsFavorite;
                         existing.IsRejected = sessionPhoto.IsRejected;
-                        await photoRepository.UpdateAsync(existing);
+                        await _photoRepository.UpdateAsync(existing);
                         updatedCount++;
                     }
-                    else
-                    {
-                        skippedCount++;
-                    }
+                    else skippedCount++;
                 }
                 else
                 {
-                    // 新規追加（EXIF情報も含めて）
                     var photo = new Photo
                     {
                         FilePath = sessionPhoto.FilePath,
@@ -362,24 +565,20 @@ public partial class FolderModeViewModel : ViewModelBase
                         ISO = sessionPhoto.ISO,
                         FocalLength = sessionPhoto.FocalLength
                     };
-
-                    await photoRepository.AddAsync(photo);
+                    await _photoRepository.AddAsync(photo);
                     importedCount++;
                 }
             }
 
-            MessageBox.Show(
-                $"エクスポート完了\n新規: {importedCount}枚\n更新: {updatedCount}枚\nスキップ: {skippedCount}枚",
+            await _interaction.NotifyAsync(
                 "完了",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
-
+                $"エクスポート完了\n新規: {importedCount}枚\n更新: {updatedCount}枚\nスキップ: {skippedCount}枚",
+                UserNotificationKind.Information);
             StatusText = "エクスポート完了";
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"エクスポートエラー: {ex.Message}", "エラー",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+            await _interaction.NotifyAsync("エラー", $"エクスポートエラー: {ex.Message}", UserNotificationKind.Error);
         }
         finally
         {
@@ -388,8 +587,53 @@ public partial class FolderModeViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// 統計情報を更新
+    /// フィルターをリセット
     /// </summary>
+    [RelayCommand]
+    private void ResetFilter()
+    {
+        FilterMinRating = 0;
+        FilterUnratedOnly = false;
+        FilterNameSearch = string.Empty;
+        FilterFileType = "all";
+        FilterDateFrom = null;
+        FilterDateTo = null;
+    }
+
+    /// <summary>
+    /// フォルダモード設定画面を開く
+    /// </summary>
+    [RelayCommand]
+    private void OpenSettings()
+    {
+        var settingsVm = new FolderModeSettingsViewModel();
+        settingsVm.DefaultThumbnailSize = ThumbnailSize;
+        settingsVm.ShowExifInItem = ShowExifInItem;
+        settingsVm.ExifShowLens = ExifItemShowLens;
+        settingsVm.ExifShowSettings = ExifItemShowSettings;
+        settingsVm.ExifShowDate = ExifItemShowDate;
+        settingsVm.ExifShowCamera = ExifItemShowCamera;
+        settingsVm.GroupRawJpeg = _settings.GroupRawJpeg;
+        settingsVm.ShowMemoryWarning = _settings.ShowMemoryWarning;
+        settingsVm.MaxFullImageMemoryMB = _settings.MaxFullImageMemoryMB;
+
+        var accepted = _windowManager.ShowFolderSettingsDialog(settingsVm);
+        if (accepted)
+        {
+            // 設定をViewModelに反映
+            _settings = settingsVm;
+            ThumbnailSize = settingsVm.DefaultThumbnailSize;
+            ShowExifInItem = settingsVm.ShowExifInItem;
+            ExifItemShowLens = settingsVm.ExifShowLens;
+            ExifItemShowSettings = settingsVm.ExifShowSettings;
+            ExifItemShowDate = settingsVm.ExifShowDate;
+            ExifItemShowCamera = settingsVm.ExifShowCamera;
+
+            // RAW+JPEGグループ化設定変更時は表示を更新
+            RefreshDisplayPhotos();
+        }
+    }
+
     private void UpdateStatistics()
     {
         if (CurrentSession != null)
@@ -399,146 +643,160 @@ public partial class FolderModeViewModel : ViewModelBase
         }
     }
 
-    /// <summary>
-    /// ペアファイルを表示
-    /// </summary>
     [RelayCommand]
     private void ShowPairedFile()
     {
         if (SelectedPhoto == null || !SelectedPhoto.HasPair) return;
-
-        // ペアファイルを探して選択
         var pairedPhoto = Photos.FirstOrDefault(p => p.FilePath == SelectedPhoto.PairedFilePath);
         if (pairedPhoto != null)
-        {
-            SelectedPhoto = pairedPhoto;
-        }
+            SelectPhoto(pairedPhoto);
     }
 
-    /// <summary>
-    /// 上に移動
-    /// </summary>
     [RelayCommand]
     private void NavigateUp()
     {
         if (!CanNavigate()) return;
-
-        var currentIndex = Photos.IndexOf(SelectedPhoto!);
+        var currentIndex = DisplayPhotos.IndexOf(SelectedPhoto!);
         var targetIndex = currentIndex - GridColumns;
-
         if (targetIndex >= 0)
-        {
-            SelectPhoto(Photos[targetIndex]);
-        }
+            SelectPhoto(DisplayPhotos[targetIndex]);
     }
 
-    /// <summary>
-    /// 下に移動
-    /// </summary>
     [RelayCommand]
     private void NavigateDown()
     {
         if (!CanNavigate()) return;
-
-        var currentIndex = Photos.IndexOf(SelectedPhoto!);
+        var currentIndex = DisplayPhotos.IndexOf(SelectedPhoto!);
         var targetIndex = currentIndex + GridColumns;
-
-        if (targetIndex < Photos.Count)
-        {
-            SelectPhoto(Photos[targetIndex]);
-        }
+        if (targetIndex < DisplayPhotos.Count)
+            SelectPhoto(DisplayPhotos[targetIndex]);
     }
 
-    /// <summary>
-    /// 左に移動
-    /// </summary>
     [RelayCommand]
     private void NavigateLeft()
     {
         if (!CanNavigate()) return;
-
-        var currentIndex = Photos.IndexOf(SelectedPhoto!);
+        var currentIndex = DisplayPhotos.IndexOf(SelectedPhoto!);
         if (currentIndex > 0)
-        {
-            SelectPhoto(Photos[currentIndex - 1]);
-        }
+            SelectPhoto(DisplayPhotos[currentIndex - 1]);
+        else
+            NotifyBoundary(atStart: true);
     }
 
-    /// <summary>
-    /// 右に移動
-    /// </summary>
     [RelayCommand]
     private void NavigateRight()
     {
         if (!CanNavigate()) return;
-
-        var currentIndex = Photos.IndexOf(SelectedPhoto!);
-        if (currentIndex < Photos.Count - 1)
-        {
-            SelectPhoto(Photos[currentIndex + 1]);
-        }
+        var currentIndex = DisplayPhotos.IndexOf(SelectedPhoto!);
+        if (currentIndex < DisplayPhotos.Count - 1)
+            SelectPhoto(DisplayPhotos[currentIndex + 1]);
+        else
+            NotifyBoundary(atStart: false);
     }
 
-    /// <summary>
-    /// ナビゲーションが可能かチェック
-    /// </summary>
+    [RelayCommand]
+    private void NavigateHome()
+    {
+        if (DisplayPhotos.Count > 0)
+            SelectPhoto(DisplayPhotos[0]);
+    }
+
+    [RelayCommand]
+    private void NavigateEnd()
+    {
+        if (DisplayPhotos.Count > 0)
+            SelectPhoto(DisplayPhotos[DisplayPhotos.Count - 1]);
+    }
+
+    private CancellationTokenSource? _boundaryCts;
+
+    private async void NotifyBoundary(bool atStart)
+    {
+        BoundaryReached?.Invoke(atStart);
+        _boundaryCts?.Cancel();
+        _boundaryCts = new CancellationTokenSource();
+        var token = _boundaryCts.Token;
+        StatusText = atStart ? "◀ 最初の写真です" : "最後の写真です ▶";
+        try
+        {
+            await Task.Delay(1500, token);
+            if (!token.IsCancellationRequested)
+                StatusText = $"{TotalPhotos}枚の写真";
+        }
+        catch (TaskCanceledException) { }
+    }
+
     private bool CanNavigate()
     {
-        // SelectionOnlyモードの場合は、写真が選択されている必要がある
         if (_uiConfig.ArrowKeyNavigationMode == "SelectionOnly")
-        {
             return SelectedPhoto != null;
-        }
 
-        // GridFocusモードの場合
-        // 写真が選択されていない場合は、最初の写真を選択
-        if (SelectedPhoto == null && Photos.Count > 0)
-        {
-            SelectPhoto(Photos[0]);
-        }
+        if (SelectedPhoto == null && DisplayPhotos.Count > 0)
+            SelectPhoto(DisplayPhotos[0]);
 
         return SelectedPhoto != null;
     }
 
-    /// <summary>
-    /// サムネイルを非同期で読み込み
-    /// </summary>
-    private async Task LoadThumbnailAsync(FolderSessionPhotoViewModel photoVm)
+    internal async Task LoadThumbnailAsync(FolderSessionPhotoViewModel photoVm)
     {
         try
         {
-            System.Diagnostics.Debug.WriteLine($"[FolderMode] LoadThumbnailAsync 開始: {Path.GetFileName(photoVm.FilePath)}");
-
             var thumbnail = await _imageLoader.LoadAsync(photoVm.FilePath);
-
-            System.Diagnostics.Debug.WriteLine($"[FolderMode] サムネイル取得完了: {Path.GetFileName(photoVm.FilePath)}, IsNull={thumbnail == null}");
-
-            // UI スレッドでプロパティを更新
-            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
             {
-                System.Diagnostics.Debug.WriteLine($"[FolderMode] UIスレッドでThumbnail設定: {Path.GetFileName(photoVm.FilePath)}");
                 photoVm.Thumbnail = thumbnail;
-                System.Diagnostics.Debug.WriteLine($"[FolderMode] Thumbnail設定完了: {Path.GetFileName(photoVm.FilePath)}, photoVm.Thumbnail IsNull={photoVm.Thumbnail == null}");
+                if (thumbnail != null && thumbnail.PixelWidth > 0 && thumbnail.PixelHeight > 0)
+                    photoVm.PhotoAspectRatio = (double)thumbnail.PixelHeight / thumbnail.PixelWidth;
             });
         }
         catch (Exception ex)
         {
-            // サムネイル読み込みエラーは無視（写真は表示される）
             System.Diagnostics.Debug.WriteLine($"[FolderMode] サムネイル読み込みエラー: {photoVm.FilePath} - {ex.Message}");
-            System.Diagnostics.Debug.WriteLine($"[FolderMode] スタックトレース: {ex.StackTrace}");
         }
     }
 
-    /// <summary>
-    /// ツリー用PhotoViewModelのサムネイルを非同期で読み込み
-    /// </summary>
+    private async Task<BitmapImage?> LoadRawFullImageAsync(string filePath)
+    {
+        var bytes = await _rawGenerator.ExtractEmbeddedJpegBytesAsync(filePath);
+        if (bytes.Length == 0) return null;
+        return await Task.Run(() =>
+        {
+            var bmp = new BitmapImage();
+            using var ms = new System.IO.MemoryStream(bytes);
+            bmp.BeginInit();
+            bmp.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+            bmp.StreamSource = ms;
+            bmp.EndInit();
+            bmp.Freeze();
+            return bmp;
+        });
+    }
+
+    public void EvictNonVisibleIfNeeded(IReadOnlyCollection<FolderSessionPhotoViewModel> visiblePhotos)
+    {
+        long limitBytes = (long)_settings.MaxFullImageMemoryMB * 1024 * 1024;
+        long usedBytes = System.Diagnostics.Process.GetCurrentProcess().WorkingSet64;
+        if (usedBytes < limitBytes) return;
+
+        var visibleSet = new HashSet<FolderSessionPhotoViewModel>(visiblePhotos);
+        foreach (var photo in DisplayPhotos)
+        {
+            if (!visibleSet.Contains(photo))
+                photo.ClearFullImage();
+        }
+    }
+
+    public Task LoadThumbnailIfMissingAsync(FolderSessionPhotoViewModel photoVm)
+    {
+        if (photoVm.Thumbnail != null) return Task.CompletedTask;
+        return LoadThumbnailAsync(photoVm);
+    }
+
     private async Task LoadTreeThumbnailAsync(PhotoViewModel photoVm)
     {
         try
         {
             var thumbnail = await _imageLoader.LoadAsync(photoVm.FilePath);
-
-            // UI スレッドでプロパティを更新
             System.Windows.Application.Current.Dispatcher.Invoke(() =>
             {
                 photoVm.Thumbnail = thumbnail;
@@ -546,19 +804,14 @@ public partial class FolderModeViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            // サムネイル読み込みエラーは無視
             System.Diagnostics.Debug.WriteLine($"[FolderMode.Tree] サムネイル読み込みエラー: {photoVm.FilePath} - {ex.Message}");
         }
     }
 
-    /// <summary>
-    /// 写真ツリーを構築
-    /// </summary>
     public void BuildPhotoTree()
     {
         PhotoTree.Clear();
 
-        // 日付でグループ化（降順）
         var photosByDate = Photos
             .GroupBy(p => p.GetModel().DateTaken.Date)
             .OrderByDescending(g => g.Key)
@@ -568,7 +821,6 @@ public partial class FolderModeViewModel : ViewModelBase
         {
             var date = dateGroup.Key;
 
-            // 年ノードを探すまたは作成
             var yearNode = PhotoTree.FirstOrDefault(n => n.Year == date.Year);
             if (yearNode == null)
             {
@@ -581,7 +833,6 @@ public partial class FolderModeViewModel : ViewModelBase
                 PhotoTree.Add(yearNode);
             }
 
-            // 月ノードを探すまたは作成
             var monthNode = yearNode.Children.FirstOrDefault(n => n.Month == date.Month);
             if (monthNode == null)
             {
@@ -595,7 +846,6 @@ public partial class FolderModeViewModel : ViewModelBase
                 yearNode.Children.Add(monthNode);
             }
 
-            // 日ノードを作成
             var dayNode = new PhotoTreeNode
             {
                 NodeType = TreeNodeType.Day,
@@ -606,58 +856,29 @@ public partial class FolderModeViewModel : ViewModelBase
             };
             monthNode.Children.Add(dayNode);
 
-            // 日内でフォルダパスごとにグループ化
-            var photosByFolder = dateGroup
-                .GroupBy(p => Path.GetDirectoryName(p.FilePath) ?? "")
-                .ToList();
-
-            foreach (var folderGroup in photosByFolder)
+            // 同一日付の写真を直接 Day ノードの Photos にフラットに格納
+            foreach (var photoVm in dateGroup)
             {
-                var folderPath = folderGroup.Key;
-                var folderName = !string.IsNullOrEmpty(folderPath)
-                    ? Path.GetFileName(folderPath)
-                    : "(フォルダなし)";
-
-                // フォルダノードを作成
-                var folderNode = new PhotoTreeNode
+                var photoModel = new Photo
                 {
-                    NodeType = TreeNodeType.Folder,
-                    Year = date.Year,
-                    Month = date.Month,
-                    Day = date.Day,
-                    FolderPath = folderPath,
-                    DisplayName = folderName
+                    FilePath = photoVm.FilePath,
+                    FileName = photoVm.FileName,
+                    DateTaken = photoVm.GetModel().DateTaken,
+                    Rating = photoVm.Rating,
+                    IsFavorite = photoVm.IsFavorite,
+                    IsRejected = photoVm.IsRejected,
+                    CameraModel = photoVm.CameraModel
                 };
 
-                // 写真を追加（Photo modelから PhotoViewModelを作成）
-                foreach (var photoVm in folderGroup)
+                var treePhotoVm = new PhotoViewModel(photoModel)
                 {
-                    // Photo modelを作成してPhotoViewModelを生成
-                    var photoModel = new Photo
-                    {
-                        FilePath = photoVm.FilePath,
-                        FileName = photoVm.FileName,
-                        DateTaken = photoVm.GetModel().DateTaken,
-                        Rating = photoVm.Rating,
-                        IsFavorite = photoVm.IsFavorite,
-                        IsRejected = photoVm.IsRejected,
-                        CameraModel = photoVm.CameraModel
-                    };
-
-                    var treePhotoVm = new PhotoViewModel(photoModel)
-                    {
-                        Rating = photoVm.Rating,
-                        IsFavorite = photoVm.IsFavorite,
-                        IsRejected = photoVm.IsRejected,
-                        Thumbnail = photoVm.Thumbnail
-                    };
-                    folderNode.Photos.Add(treePhotoVm);
-
-                    // ツリー用PhotoViewModelにもサムネイルを非同期で読み込む
-                    _ = LoadTreeThumbnailAsync(treePhotoVm);
-                }
-
-                dayNode.Children.Add(folderNode);
+                    Rating = photoVm.Rating,
+                    IsFavorite = photoVm.IsFavorite,
+                    IsRejected = photoVm.IsRejected,
+                    Thumbnail = photoVm.Thumbnail
+                };
+                dayNode.Photos.Add(treePhotoVm);
+                _ = LoadTreeThumbnailAsync(treePhotoVm);
             }
         }
     }

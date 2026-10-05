@@ -7,21 +7,25 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
+    <!-- Keep normal CI restore and win-x64 publishing represented by the same lock file. -->
+    <RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\PhotoFastRater.Core\PhotoFastRater.Core.csproj" />
+    <ProjectReference Include="..\PhotoFastRater.Infrastructure\PhotoFastRater.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
-    <PackageReference Include="MaterialDesignThemes" Version="5.3.0" />
-    <PackageReference Include="MaterialDesignColors" Version="5.3.0" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.1">
+    <PackageReference Include="CommunityToolkit.Mvvm" />
+    <PackageReference Include="MaterialDesignThemes" />
+    <PackageReference Include="MaterialDesignColors" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.1" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" />
   </ItemGroup>
 
 </Project>

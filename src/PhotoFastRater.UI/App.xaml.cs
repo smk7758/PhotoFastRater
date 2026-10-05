@@ -3,13 +3,16 @@ using System.Text.Json;
 using System.Windows;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using PhotoFastRater.Core.Cache;
-using PhotoFastRater.Core.Database;
-using PhotoFastRater.Core.Database.Repositories;
-using PhotoFastRater.Core.Export;
-using PhotoFastRater.Core.ImageProcessing;
-using PhotoFastRater.Core.Services;
+using Microsoft.Extensions.Logging;
+using PhotoFastRater.Core.Abstractions;
 using PhotoFastRater.Core.UI;
+using PhotoFastRater.Infrastructure.Cache;
+using PhotoFastRater.Infrastructure.Database;
+using PhotoFastRater.Infrastructure.Database.Repositories;
+using PhotoFastRater.Infrastructure.Export;
+using PhotoFastRater.Infrastructure.ImageProcessing;
+using PhotoFastRater.Infrastructure.Metadata;
+using PhotoFastRater.Infrastructure.Services;
 using PhotoFastRater.UI.Services;
 using PhotoFastRater.UI.ViewModels;
 using PhotoFastRater.UI.Views;
@@ -18,6 +21,8 @@ namespace PhotoFastRater.UI;
 
 public partial class App : System.Windows.Application
 {
+    private static readonly Action<ILogger, Exception?> LogUnhandledException =
+        LoggerMessage.Define(LogLevel.Critical, new EventId(1000, "UnhandledUiException"), "Unhandled UI exception");
     private ServiceProvider? _serviceProvider;
 
     protected override void OnStartup(StartupEventArgs e)
@@ -26,23 +31,33 @@ public partial class App : System.Windows.Application
 
         var services = new ServiceCollection();
         ConfigureServices(services);
-        _serviceProvider = services.BuildServiceProvider();
+        _serviceProvider = services.BuildServiceProvider(new ServiceProviderOptions
+        {
+            ValidateOnBuild = true,
+            ValidateScopes = true
+        });
+        _serviceProvider.GetRequiredService<DatabaseInitializer>()
+            .InitializeAsync()
+            .GetAwaiter()
+            .GetResult();
+        _serviceProvider.GetRequiredService<XmpSyncQueue>()
+            .RestorePendingAsync()
+            .GetAwaiter()
+            .GetResult();
 
         var args = e.Args;
+        var windowManager = _serviceProvider.GetRequiredService<WindowManager>();
 
-        if (args.Length >= 2 && args[0] == "--folder")
+        if (args.Length >= 1 && args[0] == "--folder")
         {
             // フォルダモードで起動
-            var folderPath = args[1];
-            var folderWindow = _serviceProvider.GetRequiredService<FolderModeWindow>();
-            folderWindow.LoadFolder(folderPath);
-            folderWindow.Show();
+            var folderPath = args.Length >= 2 ? args[1] : null;
+            windowManager.ShowFolderWindow(folderPath, openDialogWhenEmpty: true);
         }
         else
         {
             // DBモードで起動（通常）
-            var mainWindow = _serviceProvider.GetRequiredService<MainWindow>();
-            mainWindow.Show();
+            windowManager.ShowMainWindow();
         }
     }
 
@@ -50,8 +65,11 @@ public partial class App : System.Windows.Application
     {
         // Load configuration from appsettings.json
         var (cacheConfig, uiConfig) = LoadConfiguration();
+        var settingsStore = new UserSettingsStore();
+        settingsStore.TryLoad(cacheConfig, uiConfig);
         services.AddSingleton(cacheConfig);
         services.AddSingleton(uiConfig);
+        services.AddSingleton(settingsStore);
 
         // Database
         var dbPath = Path.Combine(
@@ -60,24 +78,31 @@ public partial class App : System.Windows.Application
 
         Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
 
-        services.AddDbContext<PhotoDbContext>(options =>
-            options.UseSqlite($"Data Source={dbPath}"));
-
-        // Apply database migrations
-        using (var scope = services.BuildServiceProvider().CreateScope())
-        {
-            var db = scope.ServiceProvider.GetRequiredService<PhotoDbContext>();
-            db.Database.Migrate();
-        }
+        services.AddPooledDbContextFactory<PhotoDbContext>(options =>
+            options.UseSqlite($"Data Source={dbPath};Cache=Shared;Default Timeout=5"));
+        services.AddSingleton<DatabaseInitializer>();
+        var logPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "PhotoFastRater", "Logs", $"PhotoFastRater-{DateTime.UtcNow:yyyyMMdd}.log");
+        services.AddLogging(builder => builder.AddDebug().AddProvider(new LocalFileLoggerProvider(logPath)));
 
         // Repositories
-        services.AddScoped<PhotoRepository>();
-        services.AddScoped<EventRepository>();
-        services.AddScoped<ManagedFolderRepository>();
-        services.AddScoped<FolderExclusionPatternRepository>();
+        services.AddSingleton<PhotoRepository>();
+        services.AddSingleton<IPhotoCatalog>(serviceProvider => serviceProvider.GetRequiredService<PhotoRepository>());
+        services.AddSingleton<EventRepository>();
+        services.AddSingleton<ManagedFolderRepository>();
+        services.AddSingleton<FolderExclusionPatternRepository>();
+        services.AddSingleton<LibraryOrganizationRepository>();
+        services.AddSingleton<IPhotoChangeNotifier, PhotoChangeNotifier>();
+        services.AddSingleton<IXmpSidecarStore, XmpSidecarStore>();
+        services.AddSingleton<XmpSyncQueue>();
+        services.AddSingleton<IRatingCoordinator, RatingCoordinator>();
+        services.AddSingleton<IUserInteractionService, WpfUserInteractionService>();
+        services.AddSingleton<IPlatformShell, WindowsPlatformShell>();
 
         // Services
         services.AddSingleton<ExifService>();
+        services.AddSingleton<IFolderScanner, FolderScanner>();
         services.AddScoped<ImportService>();
         services.AddScoped<EventManagementService>();
         services.AddScoped<ManagedFolderService>();
@@ -99,9 +124,11 @@ public partial class App : System.Windows.Application
             return new ThumbnailCacheManager(config, jpegGenerator, rawGenerator);
         });
         services.AddSingleton<ImageLoader>();
+        services.AddSingleton<IImageDecodeService, ImageDecodeService>();
 
         // Export
         services.AddSingleton<SocialMediaExporter>();
+        services.AddSingleton<IExportService, BatchExportService>();
 
         // ViewModels
         services.AddTransient<MainViewModel>();
@@ -110,11 +137,26 @@ public partial class App : System.Windows.Application
         services.AddTransient<ExportViewModel>();
         services.AddTransient<ManagedFoldersViewModel>();
         services.AddTransient<FolderModeViewModel>();
-        services.AddSingleton<SettingsViewModel>();
+        services.AddTransient<SettingsViewModel>();
+        services.AddTransient<FolderModeSettingsViewModel>();
+        services.AddScoped<CompareWorkspaceViewModel>();
+        services.AddScoped<LibraryOrganizationViewModel>();
+
+        // Metadata write-back
+        services.AddSingleton<IEmbeddedMetadataWriter, EmbeddedMetadataWriter>();
+
+        // Keyboard Shortcuts
+        services.AddSingleton<ShortcutService>();
+        services.AddTransient<KeyboardShortcutsViewModel>();
+        services.AddTransient<KeyboardShortcutsWindow>();
+        services.AddSingleton<WindowManager>();
 
         // Views
         services.AddTransient<MainWindow>();
         services.AddTransient<FolderModeWindow>();
+        services.AddTransient<FolderModeSettingsWindow>();
+        services.AddTransient<PhotoPreviewWindow>();
+        services.AddTransient<CompareWindow>();
     }
 
     private (CacheConfiguration, UIConfiguration) LoadConfiguration()
@@ -128,6 +170,7 @@ public partial class App : System.Windows.Application
                 Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
                 "PhotoFastRater", "Cache"),
             MaxMemoryCacheSizeMB = 500,
+            MaxDiskCacheSizeGB = 10,
             ThumbnailSize = 512,
             JpegQuality = 85,
             MaxParallelGenerations = 4,
@@ -157,6 +200,8 @@ public partial class App : System.Windows.Application
                         cacheConfig.CachePath = cachePath.GetString() ?? cacheConfig.CachePath;
                     if (cacheElement.TryGetProperty("MaxMemoryCacheSizeMB", out var maxMemory))
                         cacheConfig.MaxMemoryCacheSizeMB = maxMemory.GetInt32();
+                    if (cacheElement.TryGetProperty("MaxDiskCacheSizeGB", out var maxDisk))
+                        cacheConfig.MaxDiskCacheSizeGB = Math.Clamp(maxDisk.GetInt32(), 1, 100);
                     if (cacheElement.TryGetProperty("ThumbnailSize", out var thumbnailSize))
                         cacheConfig.ThumbnailSize = thumbnailSize.GetInt32();
                     if (cacheElement.TryGetProperty("JpegQuality", out var jpegQuality))
@@ -184,7 +229,23 @@ public partial class App : System.Windows.Application
             }
         }
 
+        // 利用可能な物理RAMを確認し、キャッシュ上限を動的設定
+        var gcInfo = GC.GetGCMemoryInfo();
+        long availableRamMB = gcInfo.TotalAvailableMemoryBytes / (1024 * 1024);
+        int dynamicLimit = (int)Math.Min(availableRamMB / 2, cacheConfig.MaxMemoryCacheSizeMB);
+        cacheConfig.MaxMemoryCacheSizeMB = Math.Max(dynamicLimit, 128);
+
         return (cacheConfig, uiConfig);
+    }
+
+    private void App_DispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
+    {
+        if (_serviceProvider?.GetService<ILogger<App>>() is { } logger)
+            LogUnhandledException(logger, e.Exception);
+        System.Windows.MessageBox.Show(
+            $"予期しないエラーが発生しました:\n\n{e.Exception.Message}\n\n{e.Exception.GetType().Name}",
+            "エラー", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+        e.Handled = true;
     }
 
     protected override void OnExit(ExitEventArgs e)

@@ -1,0 +1,43 @@
+name: Windows CI
+
+on:
+  push:
+    branches: [ main, dev-2026-05-15 ]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore locked dependencies
+        run: dotnet restore PhotoFastRater.sln --locked-mode
+
+      - name: Verify formatting
+        run: dotnet format whitespace PhotoFastRater.sln --verify-no-changes --no-restore
+
+      - name: Verify code style
+        run: dotnet format style PhotoFastRater.sln --verify-no-changes --no-restore
+
+      - name: Build
+        run: dotnet build PhotoFastRater.sln -c Release --no-restore
+
+      - name: Test
+        run: dotnet test PhotoFastRater.sln -c Release --no-build
+
+      - name: Audit dependencies
+        run: dotnet list PhotoFastRater.sln package --vulnerable --include-transitive
+
+      - name: Verify win-x64 package
+        # ReadyToRun requires runtime/compiler packs absent from the ordinary solution restore.
+        run: dotnet publish src/PhotoFastRater.UI/PhotoFastRater.UI.csproj -p:PublishProfile=win-x64 -p:RestoreLockedMode=true

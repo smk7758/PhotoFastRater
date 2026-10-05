@@ -1,13 +1,17 @@
+using PhotoFastRater.Core.Domain;
+
 namespace PhotoFastRater.Core.Models;
 
 public class Photo
 {
     public int Id { get; set; }
     public string FilePath { get; set; } = string.Empty;
+    public string? NormalizedPath { get; set; }
     public string FileName { get; set; } = string.Empty;
     public string FolderPath { get; set; } = string.Empty;
     public string FolderName { get; set; } = string.Empty;
     public long FileSize { get; set; }
+    public DateTime FileModifiedUtc { get; set; }
 
     // 日時情報
     public DateTime DateTaken { get; set; }
@@ -18,6 +22,18 @@ public class Photo
     public int Rating { get; set; }  // 0-5
     public bool IsFavorite { get; set; }
     public bool IsRejected { get; set; }
+    public DateTime RatingModifiedUtc { get; set; }
+    public long RatingRevision { get; set; }
+    public string RatingSource { get; set; } = "legacy";
+    public DateTime? SidecarModifiedUtc { get; set; }
+    public MetadataSyncStatus MetadataSyncStatus { get; set; }
+
+    // RAW+JPEG links use a stable identifier instead of repeated path scans.
+    public Guid? PairId { get; set; }
+    public PairLinkMode PairLinkMode { get; set; } = PairLinkMode.Linked;
+    public string? NormalizedDirectory { get; set; }
+    public string? NormalizedBaseName { get; set; }
+    public bool IsMissing { get; set; }
 
     // カメラ・レンズ情報
     public string? CameraModel { get; set; }
@@ -45,4 +61,6 @@ public class Photo
 
     // リレーション
     public List<PhotoEventMapping> Events { get; set; } = new();
+    public List<PhotoTagMapping> Tags { get; set; } = [];
+    public List<PhotoCollectionMapping> Collections { get; set; } = [];
 }

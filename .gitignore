@@ -45,9 +45,9 @@ _ReSharper*/
 *.db-shm
 *.db-wal
 
-# Cache
-**/Cache/
+# Runtime image caches. Source directories named "Cache" must remain tracked.
 PhotoCache/
+**/.PhotoFastRaterCache/
 
 # Test Results
 [Tt]est[Rr]esult*/

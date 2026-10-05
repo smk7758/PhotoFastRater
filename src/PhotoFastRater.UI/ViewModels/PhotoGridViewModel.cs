@@ -2,29 +2,41 @@ using System.Collections.ObjectModel;
 using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using PhotoFastRater.Core.Database.Repositories;
-using PhotoFastRater.Core.Export;
+using PhotoFastRater.Core.Abstractions;
+using PhotoFastRater.Core.Domain;
+using PhotoFastRater.Infrastructure.Database.Repositories;
+using PhotoFastRater.Infrastructure.Export;
 using PhotoFastRater.Core.UI;
 using PhotoFastRater.UI.Services;
 using PhotoFastRater.UI.Views;
+using PhotoFastRater.UI.Collections;
 
 namespace PhotoFastRater.UI.ViewModels;
 
-public partial class PhotoGridViewModel : ViewModelBase
+public partial class PhotoGridViewModel : ViewModelBase, IDisposable
 {
     private readonly PhotoRepository _photoRepository;
     private readonly ImageLoader _imageLoader;
     private readonly SocialMediaExporter _socialMediaExporter;
     private readonly UIConfiguration _uiConfig;
+    private readonly IUserInteractionService _interaction;
+    private readonly IPlatformShell _platformShell;
+    private readonly IRatingCoordinator _ratingCoordinator;
+    private readonly IPhotoCatalog _photoCatalog;
+    private PhotoSearchQuery _currentQuery = new();
 
-    [ObservableProperty]
-    private ObservableCollection<PhotoViewModel> _photos = new();
+    public AsyncVirtualizingCollection<PhotoViewModel> Photos { get; }
+
+    public long TotalPhotoCount => Photos.TotalCount;
 
     [ObservableProperty]
     private ObservableCollection<PhotoTreeNode> _photoTree = new();
 
     [ObservableProperty]
     private PhotoViewModel? _selectedPhoto;
+
+    [ObservableProperty]
+    private int? _selectedPhotoId;
 
     [ObservableProperty]
     private string _sortBy = "DateTaken";
@@ -38,6 +50,9 @@ public partial class PhotoGridViewModel : ViewModelBase
     [ObservableProperty]
     private bool _isTreeViewMode;
 
+    [ObservableProperty]
+    private bool _missingOnly;
+
     /// <summary>
     /// IsTreeViewMode が変更されたときの処理
     /// </summary>
@@ -50,47 +65,109 @@ public partial class PhotoGridViewModel : ViewModelBase
         }
     }
 
-    // グリッドの列数（WrapPanelの列数）
-    private const int GridColumns = 6;
+    [ObservableProperty] private int _thumbnailSize = 200;
+    private double _gridWidth = 1200;
+    private int _gridColumns = 6;
+    public int GridColumns { get => _gridColumns; private set => SetProperty(ref _gridColumns, value); }
 
-    public PhotoGridViewModel(PhotoRepository photoRepository, ImageLoader imageLoader, SocialMediaExporter socialMediaExporter, UIConfiguration uiConfig)
+    partial void OnThumbnailSizeChanged(int value) => UpdateGridColumns();
+
+    public void NotifyGridWidth(double width)
+    {
+        _gridWidth = width;
+        UpdateGridColumns();
+    }
+
+    private void UpdateGridColumns() =>
+        GridColumns = Math.Max(1, (int)(_gridWidth / (ThumbnailSize + 8)));
+
+    public PhotoGridViewModel(
+        PhotoRepository photoRepository,
+        ImageLoader imageLoader,
+        SocialMediaExporter socialMediaExporter,
+        UIConfiguration uiConfig,
+        IUserInteractionService interaction,
+        IPlatformShell platformShell,
+        IRatingCoordinator ratingCoordinator,
+        IPhotoCatalog photoCatalog)
     {
         _photoRepository = photoRepository;
         _imageLoader = imageLoader;
         _socialMediaExporter = socialMediaExporter;
         _uiConfig = uiConfig;
-    }
-
-    public async Task LoadAllPhotosAsync()
-    {
-        var photos = await _photoRepository.GetAllAsync();
-        Photos.Clear();
-
-        // まずViewModelを作成してUIに追加（即座に表示）
-        var viewModels = photos.Select(photo => new PhotoViewModel(photo)).ToList();
-        foreach (var vm in viewModels)
+        _interaction = interaction;
+        _platformShell = platformShell;
+        _ratingCoordinator = ratingCoordinator;
+        _photoCatalog = photoCatalog;
+        Photos = new AsyncVirtualizingCollection<PhotoViewModel>(LoadPageAsync);
+        ((System.ComponentModel.INotifyPropertyChanged)Photos).PropertyChanged += (_, eventArgs) =>
         {
-            Photos.Add(vm);
-        }
-
-        // サムネイルを並列で読み込み（バックグラウンドスレッド）
-        var maxDegreeOfParallelism = Environment.ProcessorCount;
-        await Task.Run(() => Parallel.ForEach(viewModels,
-            new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
-            vm =>
-            {
-                // 並列タスクとして実行（await不要）
-                LoadThumbnailAsync(vm).Wait();
-            }));
+            if (eventArgs.PropertyName == nameof(Photos.TotalCount))
+                OnPropertyChanged(nameof(TotalPhotoCount));
+        };
     }
 
-    public async Task LoadVisiblePhotosAsync(int startIndex, int count)
+    public async Task LoadAllPhotosAsync(CancellationToken cancellationToken = default)
+    {
+        _currentQuery = new PhotoSearchQuery();
+        await Photos.ResetAsync(cancellationToken);
+        await LoadVisiblePhotosAsync(0, Math.Min(Photos.Count, 50), cancellationToken);
+    }
+
+    /// <summary>Applies indexed text search and cancels stale page and thumbnail work.</summary>
+    public async Task SearchAsync(string? text, CancellationToken cancellationToken = default)
+    {
+        _currentQuery = _currentQuery with { Text = string.IsNullOrWhiteSpace(text) ? null : text.Trim() };
+        await Photos.ResetAsync(cancellationToken);
+        await LoadVisiblePhotosAsync(0, Math.Min(Photos.Count, 50), cancellationToken);
+        if (IsTreeViewMode)
+            BuildPhotoTree();
+    }
+
+    /// <summary>Loads the next keyset page while retaining no more than 1,280 view models.</summary>
+    public async Task LoadNextPageAsync(CancellationToken cancellationToken = default)
+    {
+        var previousCount = Photos.Count;
+        await Photos.LoadNextAsync(cancellationToken);
+        var added = Math.Max(0, Photos.Count - previousCount);
+        if (added > 0)
+            await LoadVisiblePhotosAsync(
+                Math.Max(0, Photos.Count - added),
+                Math.Min(added, 50),
+                cancellationToken);
+    }
+
+    /// <summary>Returns the selected photo followed by nearby loaded photos, without fetching an unbounded range.</summary>
+    public IReadOnlyList<PhotoViewModel> GetCompareCandidates(int count)
+    {
+        if (count is < 2 or > 4)
+            throw new ArgumentOutOfRangeException(nameof(count));
+        if (SelectedPhoto is null)
+            return [];
+
+        var selectedIndex = Photos.IndexOf(SelectedPhoto);
+        if (selectedIndex < 0)
+            return [];
+        var start = Math.Min(selectedIndex, Math.Max(0, Photos.Count - count));
+        return Photos.Skip(start).Take(count).ToArray();
+    }
+
+    /// <summary>Returns only the bounded pages already resident in the UI for compare navigation.</summary>
+    public IReadOnlyList<PhotoViewModel> GetLoadedPhotosSnapshot() => Photos.ToArray();
+
+    /// <summary>Gets the selected position within the bounded resident pages.</summary>
+    public int SelectedLoadedIndex => SelectedPhoto is null ? -1 : Photos.IndexOf(SelectedPhoto);
+
+    public async Task LoadVisiblePhotosAsync(
+        int startIndex,
+        int count,
+        CancellationToken cancellationToken = default)
     {
         // 表示範囲の画像を並列読み込み
         var visiblePhotos = Photos.Skip(startIndex).Take(count).ToList();
         var loadTasks = visiblePhotos
             .Where(p => p.Thumbnail == null)
-            .Select(p => LoadThumbnailAsync(p, priority: 10));
+            .Select(p => LoadThumbnailAsync(p, priority: 10, cancellationToken));
 
         await Task.WhenAll(loadTasks);
 
@@ -99,13 +176,16 @@ public partial class PhotoGridViewModel : ViewModelBase
         _imageLoader.PrefetchRange(nextPhotos.Select(p => p.FilePath));
     }
 
-    private async Task LoadThumbnailAsync(PhotoViewModel photo, int priority = 0)
+    private async Task LoadThumbnailAsync(
+        PhotoViewModel photo,
+        int priority = 0,
+        CancellationToken cancellationToken = default)
     {
         try
         {
             System.Diagnostics.Debug.WriteLine($"[PhotoGrid] LoadThumbnailAsync 開始: {Path.GetFileName(photo.FilePath)}, Priority={priority}");
 
-            var thumbnail = await _imageLoader.LoadAsync(photo.FilePath, priority);
+            var thumbnail = await _imageLoader.LoadAsync(photo.FilePath, priority, cancellationToken);
 
             System.Diagnostics.Debug.WriteLine($"[PhotoGrid] サムネイル取得完了: {Path.GetFileName(photo.FilePath)}, IsNull={thumbnail == null}");
 
@@ -116,6 +196,10 @@ public partial class PhotoGridViewModel : ViewModelBase
                 photo.Thumbnail = thumbnail;
                 System.Diagnostics.Debug.WriteLine($"[PhotoGrid] Thumbnail設定完了: {Path.GetFileName(photo.FilePath)}, photo.Thumbnail IsNull={photo.Thumbnail == null}");
             });
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // A newer query owns the visible range now.
         }
         catch (Exception ex)
         {
@@ -131,9 +215,9 @@ public partial class PhotoGridViewModel : ViewModelBase
         if (SelectedPhoto == null) return;
 
         SelectedPhoto.Rating = rating;
-        var photo = SelectedPhoto.GetModel();
-        photo.Rating = rating;
-        await _photoRepository.UpdateAsync(photo);
+        await _ratingCoordinator.SetRatingAsync(
+            SelectedPhoto.Id,
+            new RatingState(rating, SelectedPhoto.IsFavorite, SelectedPhoto.IsRejected));
     }
 
     [RelayCommand]
@@ -142,9 +226,9 @@ public partial class PhotoGridViewModel : ViewModelBase
         if (SelectedPhoto == null) return;
 
         SelectedPhoto.IsFavorite = !SelectedPhoto.IsFavorite;
-        var photo = SelectedPhoto.GetModel();
-        photo.IsFavorite = SelectedPhoto.IsFavorite;
-        await _photoRepository.UpdateAsync(photo);
+        await _ratingCoordinator.SetRatingAsync(
+            SelectedPhoto.Id,
+            new RatingState(SelectedPhoto.Rating, SelectedPhoto.IsFavorite, SelectedPhoto.IsRejected));
     }
 
     [RelayCommand]
@@ -175,6 +259,7 @@ public partial class PhotoGridViewModel : ViewModelBase
         if (photo != null)
         {
             photo.IsSelected = true;
+            SelectedPhotoId = photo.Id;
         }
     }
 
@@ -256,31 +341,31 @@ public partial class PhotoGridViewModel : ViewModelBase
     }
 
     // Context menu public methods
-    public async void SetRating(PhotoViewModel photo, int rating)
+    public async Task SetRatingAsync(PhotoViewModel photo, int rating)
     {
         photo.Rating = rating;
-        var model = photo.GetModel();
-        model.Rating = rating;
-        await _photoRepository.UpdateAsync(model);
+        await _ratingCoordinator.SetRatingAsync(
+            photo.Id,
+            new RatingState(rating, photo.IsFavorite, photo.IsRejected));
     }
 
-    public async void ToggleFavorite(PhotoViewModel photo)
+    public async Task ToggleFavoriteAsync(PhotoViewModel photo)
     {
         photo.IsFavorite = !photo.IsFavorite;
-        var model = photo.GetModel();
-        model.IsFavorite = photo.IsFavorite;
-        await _photoRepository.UpdateAsync(model);
+        await _ratingCoordinator.SetRatingAsync(
+            photo.Id,
+            new RatingState(photo.Rating, photo.IsFavorite, photo.IsRejected));
     }
 
-    public async void ToggleReject(PhotoViewModel photo)
+    public async Task ToggleRejectAsync(PhotoViewModel photo)
     {
         photo.IsRejected = !photo.IsRejected;
-        var model = photo.GetModel();
-        model.IsRejected = photo.IsRejected;
-        await _photoRepository.UpdateAsync(model);
+        await _ratingCoordinator.SetRatingAsync(
+            photo.Id,
+            new RatingState(photo.Rating, photo.IsFavorite, photo.IsRejected));
     }
 
-    public async void ExportToSocialMedia(PhotoViewModel photo)
+    public async Task ExportToSocialMediaAsync(PhotoViewModel photo)
     {
         try
         {
@@ -308,17 +393,15 @@ public partial class PhotoGridViewModel : ViewModelBase
 
             await _socialMediaExporter.ExportAsync(model, template, outputPath);
 
-            System.Windows.MessageBox.Show($"エクスポートしました:\n{outputPath}", "完了",
-                System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+            await _interaction.NotifyAsync("完了", $"エクスポートしました:\n{outputPath}", UserNotificationKind.Information);
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show($"エクスポートエラー: {ex.Message}", "エラー",
-                System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            await _interaction.NotifyAsync("エラー", $"エクスポートエラー: {ex.Message}", UserNotificationKind.Error);
         }
     }
 
-    public async void DeleteFromDatabase(PhotoViewModel photo)
+    public async Task DeleteFromDatabaseAsync(PhotoViewModel photo)
     {
         try
         {
@@ -328,33 +411,28 @@ public partial class PhotoGridViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show($"削除エラー: {ex.Message}", "エラー",
-                System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            await _interaction.NotifyAsync("エラー", $"削除エラー: {ex.Message}", UserNotificationKind.Error);
         }
     }
 
-    public async void DeleteFile(PhotoViewModel photo)
+    public async Task DeleteFileAsync(PhotoViewModel photo)
     {
         try
         {
             var model = photo.GetModel();
 
-            // DBから削除
-            await _photoRepository.DeleteAsync(model.Id);
-
-            // ファイルを削除
+            // ごみ箱移動に成功するまでDB記録を残し、失敗時に写真を見失わない。
             if (File.Exists(photo.FilePath))
-            {
-                File.Delete(photo.FilePath);
-            }
+                await _platformShell.MoveToRecycleBinAsync(photo.FilePath);
+
+            await _photoRepository.DeleteAsync(model.Id);
 
             // UIから削除
             Photos.Remove(photo);
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show($"ファイル削除エラー: {ex.Message}", "エラー",
-                System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            await _interaction.NotifyAsync("エラー", $"ごみ箱への移動に失敗しました: {ex.Message}", UserNotificationKind.Error);
         }
     }
 
@@ -471,32 +549,14 @@ public partial class PhotoGridViewModel : ViewModelBase
 
     private async Task ApplyFiltersAsync()
     {
-        IEnumerable<Core.Models.Photo> photos;
-
-        if (!string.IsNullOrEmpty(FilterCamera))
-        {
-            photos = await _photoRepository.GetByCameraAsync(FilterCamera);
-        }
-        else if (FilterRating > 0)
-        {
-            photos = await _photoRepository.GetByRatingAsync(FilterRating);
-        }
-        else
-        {
-            photos = await _photoRepository.GetAllAsync();
-        }
-
-        Photos.Clear();
-        System.Diagnostics.Debug.WriteLine($"[PhotoGrid] 写真の読み込み開始: {photos.Count()}枚");
-        foreach (var photo in photos)
-        {
-            var vm = new PhotoViewModel(photo);
-            Photos.Add(vm);
-            System.Diagnostics.Debug.WriteLine($"[PhotoGrid] PhotosコレクションにViewModel追加: {Path.GetFileName(photo.FilePath)}");
-            // サムネイルをバックグラウンドで非同期読み込み（待機しない）
-            _ = LoadThumbnailAsync(vm);
-        }
-        System.Diagnostics.Debug.WriteLine($"[PhotoGrid] Photosコレクション準備完了: {Photos.Count}枚");
+        _currentQuery = new PhotoSearchQuery(
+            Text: _currentQuery.Text,
+            MinimumRating: FilterRating > 0 ? FilterRating : null,
+            CameraModel: string.IsNullOrWhiteSpace(FilterCamera) ? null : FilterCamera,
+            IncludeMissing: MissingOnly,
+            MissingOnly: MissingOnly);
+        await Photos.ResetAsync();
+        await LoadVisiblePhotosAsync(0, Math.Min(Photos.Count, 50));
 
         // TreeViewモードの場合はツリーも更新（サムネイルは非同期で読み込まれる）
         if (IsTreeViewMode)
@@ -505,5 +565,41 @@ public partial class PhotoGridViewModel : ViewModelBase
             BuildPhotoTree();
             System.Diagnostics.Debug.WriteLine($"[PhotoGrid] BuildPhotoTree完了");
         }
+    }
+
+    [RelayCommand]
+    private async Task ToggleMissingOnlyAsync()
+    {
+        MissingOnly = !MissingOnly;
+        await ApplyFiltersAsync();
+    }
+
+    private async Task<PagedResult<PhotoViewModel>> LoadPageAsync(
+        PageCursor? cursor,
+        int pageSize,
+        CancellationToken cancellationToken)
+    {
+        var page = await _photoCatalog.SearchAsync(_currentQuery, cursor, pageSize, cancellationToken);
+        var items = page.Items.Select(summary => new PhotoViewModel(new Core.Models.Photo
+        {
+            Id = summary.Id,
+            FilePath = summary.FilePath,
+            FileName = summary.FileName,
+            DateTaken = summary.DateTakenUtc,
+            Rating = summary.Rating.Stars,
+            IsFavorite = summary.Rating.IsFavorite,
+            IsRejected = summary.Rating.IsRejected,
+            IsMissing = summary.IsMissing,
+            PairId = summary.PairId,
+            MetadataSyncStatus = summary.SyncStatus
+        })).ToArray();
+        return new PagedResult<PhotoViewModel>(items, page.NextCursor, page.TotalCount);
+    }
+
+    /// <inheritdoc />
+    public void Dispose()
+    {
+        Photos.Dispose();
+        GC.SuppressFinalize(this);
     }
 }

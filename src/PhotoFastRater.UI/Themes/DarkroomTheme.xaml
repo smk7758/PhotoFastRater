@@ -1,0 +1,70 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- The palette mirrors a darkroom bench: a quiet work surface, readable labels, and explicit rating inks. -->
+    <SolidColorBrush x:Key="DarkroomInkBrush" Color="#101214"/>
+    <SolidColorBrush x:Key="DarkroomSlateBrush" Color="#1C2024"/>
+    <SolidColorBrush x:Key="DarkroomRaisedBrush" Color="#272C31"/>
+    <SolidColorBrush x:Key="DarkroomDividerBrush" Color="#3A4148"/>
+    <SolidColorBrush x:Key="DarkroomPaperBrush" Color="#E7EAED"/>
+    <SolidColorBrush x:Key="DarkroomMutedBrush" Color="#A7AFB7"/>
+    <SolidColorBrush x:Key="RatingAmberBrush" Color="#F5B642"/>
+    <SolidColorBrush x:Key="RejectRedBrush" Color="#E45B5B"/>
+
+    <Style TargetType="Window">
+        <Setter Property="Background" Value="{StaticResource DarkroomInkBrush}"/>
+        <Setter Property="Foreground" Value="{StaticResource DarkroomPaperBrush}"/>
+        <Setter Property="FontFamily" Value="Segoe UI Variable, Yu Gothic UI"/>
+        <Setter Property="TextOptions.TextFormattingMode" Value="Display"/>
+    </Style>
+
+    <Style TargetType="ToolBar">
+        <Setter Property="Background" Value="{StaticResource DarkroomSlateBrush}"/>
+        <Setter Property="Foreground" Value="{StaticResource DarkroomPaperBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource DarkroomDividerBrush}"/>
+        <Setter Property="BorderThickness" Value="0,0,0,1"/>
+    </Style>
+
+    <Style TargetType="StatusBar">
+        <Setter Property="Background" Value="{StaticResource DarkroomSlateBrush}"/>
+        <Setter Property="Foreground" Value="{StaticResource DarkroomPaperBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource RatingAmberBrush}"/>
+        <Setter Property="BorderThickness" Value="3,1,0,0"/>
+        <Setter Property="MinHeight" Value="30"/>
+    </Style>
+
+    <Style x:Key="DarkroomActionButton" TargetType="Button">
+        <Setter Property="Background" Value="{StaticResource RatingAmberBrush}"/>
+        <Setter Property="Foreground" Value="{StaticResource DarkroomInkBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource RatingAmberBrush}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="MinHeight" Value="34"/>
+        <Setter Property="Padding" Value="14,6"/>
+        <Setter Property="FocusVisualStyle">
+            <Setter.Value>
+                <Style TargetType="Control">
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate>
+                                <Border BorderBrush="{StaticResource DarkroomPaperBrush}"
+                                        BorderThickness="2" Margin="-3"/>
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="DarkroomPanel" TargetType="Border">
+        <Setter Property="Background" Value="{StaticResource DarkroomSlateBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource DarkroomDividerBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+
+    <Style x:Key="DarkroomSectionTitle" TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource DarkroomPaperBrush}"/>
+        <Setter Property="FontSize" Value="17"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Margin" Value="0,0,0,12"/>
+    </Style>
+</ResourceDictionary>
