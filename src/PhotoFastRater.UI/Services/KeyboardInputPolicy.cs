@@ -13,7 +13,7 @@ public static class KeyboardInputPolicy
         while (target is not null)
         {
             if (target is System.Windows.Controls.Button { DataContext: PhotoFastRater.UI.ViewModels.PhotoViewModel or PhotoFastRater.UI.ViewModels.FolderSessionPhotoViewModel }) return false;
-            if (target is System.Windows.Controls.Primitives.TextBoxBase or PasswordBox or System.Windows.Controls.ComboBox or DatePicker or Slider or System.Windows.Controls.Primitives.ButtonBase or System.Windows.Controls.DataGrid)
+            if (target is System.Windows.Controls.Primitives.TextBoxBase or PasswordBox or System.Windows.Controls.ComboBox or DatePicker or Slider or GridSplitter or System.Windows.Controls.Primitives.ScrollBar or System.Windows.Controls.Primitives.ButtonBase or System.Windows.Controls.DataGrid)
                 return true;
             target = target is Visual or System.Windows.Media.Media3D.Visual3D
                 ? VisualTreeHelper.GetParent(target)

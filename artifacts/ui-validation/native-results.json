@@ -1,0 +1,23 @@
+[
+  {
+    "Id": "Native.Startup.Dpi",
+    "Passed": true,
+    "Dpi": 144,
+    "PerMonitorV2": true,
+    "Title": "Photo Fast Rater フォルダ選別"
+  },
+  {
+    "Id": "Native.Folder.Rating5",
+    "Passed": true,
+    "Evidence": "Actual UI InvokePattern and persisted session JSON"
+  },
+  {
+    "Id": "Native.Shortcuts.Cancel",
+    "Passed": true,
+    "Evidence": "Actual native modal cancellation"
+  },
+  {
+    "Id": "Native.Exit",
+    "Passed": true
+  }
+]

@@ -8,6 +8,7 @@ public partial class PhotoPreviewWindow : Window
     public PhotoPreviewWindow(FolderModeViewModel viewModel)
     {
         InitializeComponent();
+        PhotoFastRater.UI.Services.WindowPlacement.FitOnFirstLoad(this);
         DataContext = viewModel;
     }
 }

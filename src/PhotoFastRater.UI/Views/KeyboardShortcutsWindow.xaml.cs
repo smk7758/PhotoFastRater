@@ -9,6 +9,7 @@ public partial class KeyboardShortcutsWindow : Window
     public KeyboardShortcutsWindow(KeyboardShortcutsViewModel viewModel)
     {
         InitializeComponent();
+        PhotoFastRater.UI.Services.WindowPlacement.FitOnFirstLoad(this);
         DataContext = viewModel;
     }
 

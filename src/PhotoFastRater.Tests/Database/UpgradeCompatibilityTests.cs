@@ -6,6 +6,8 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.Extensions.Logging.Abstractions;
 using PhotoFastRater.Infrastructure.Database;
+using PhotoFastRater.Core.Models;
+using PhotoFastRater.Core.Domain;
 using Xunit;
 
 namespace PhotoFastRater.Tests.Database;
@@ -14,6 +16,54 @@ namespace PhotoFastRater.Tests.Database;
 public sealed class UpgradeCompatibilityTests : IDisposable
 {
     private readonly string _root = Path.Combine(Path.GetTempPath(), "PhotoFastRater.Tests", Guid.NewGuid().ToString("N"));
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ExistingMainCatalogRetainsRelatedDataAfterRepeatedInitialization(bool failedSync)
+    {
+        var factory = CreateFactory("main.db");
+        var pairId = Guid.NewGuid();
+        await using (var context = factory.CreateDbContext())
+        {
+            await context.Database.MigrateAsync();
+            var photo = new Photo
+            {
+                FilePath = @"C:\旧写真\撮影.jpg",
+                FileName = "撮影.jpg",
+                Rating = 3,
+                IsFavorite = true,
+                PairId = pairId,
+                RatingRevision = 7,
+                MetadataSyncStatus = failedSync ? MetadataSyncStatus.Failed : MetadataSyncStatus.Pending
+            };
+            var tag = new PhotoTag { Name = "旅行", NormalizedName = "旅行" };
+            var parent = new PhotoCollection { Name = "作品" };
+            var child = new PhotoCollection { Name = "印刷", Parent = parent };
+            var occasion = new Event { Name = "撮影会", Type = EventType.Custom };
+            context.PhotoTagMappings.Add(new PhotoTagMapping { Photo = photo, Tag = tag });
+            context.PhotoCollectionMappings.Add(new PhotoCollectionMapping { Photo = photo, Collection = child });
+            context.PhotoEventMappings.Add(new PhotoEventMapping { Photo = photo, Event = occasion });
+            await context.SaveChangesAsync();
+        }
+        var initializer = new DatabaseInitializer(factory, NullLogger<DatabaseInitializer>.Instance);
+        await initializer.InitializeAsync();
+        await initializer.InitializeAsync();
+        await using var verification = factory.CreateDbContext();
+        var retained = await verification.Photos.SingleAsync();
+        retained.FilePath.Should().Be(@"C:\旧写真\撮影.jpg");
+        retained.Rating.Should().Be(3);
+        retained.IsFavorite.Should().BeTrue();
+        retained.PairId.Should().Be(pairId);
+        retained.RatingRevision.Should().Be(7);
+        retained.MetadataSyncStatus.Should().Be(failedSync ? MetadataSyncStatus.Failed : MetadataSyncStatus.Pending);
+        (await verification.PhotoTagMappings.Include(mapping => mapping.Tag).SingleAsync()).Tag.Name.Should().Be("旅行");
+        var collection = await verification.PhotoCollectionMappings.Include(mapping => mapping.Collection)
+            .ThenInclude(collection => collection.Parent).SingleAsync();
+        collection.Collection.Parent!.Name.Should().Be("作品");
+        collection.Collection.Name.Should().Be("印刷");
+        (await verification.PhotoEventMappings.Include(mapping => mapping.Event).SingleAsync()).Event.Name.Should().Be("撮影会");
+    }
 
     [Theory]
     [InlineData("20251216163207_AddFolderPathAndName")]

@@ -48,7 +48,7 @@ public partial class FolderSessionPhotoViewModel : ViewModelBase
     private double _photoAspectRatio = 1.0;
 
     private readonly Func<string, Task<BitmapImage?>>? _rawFullImageLoader;
-    private BitmapImage? _thumbnail;
+    private BitmapSource? _thumbnail;
     private BitmapImage? _fullImage;
     private bool _fullImageLoading;
 
@@ -140,7 +140,7 @@ public partial class FolderSessionPhotoViewModel : ViewModelBase
         }
     }
 
-    public BitmapImage? Thumbnail
+    public BitmapSource? Thumbnail
     {
         get => _thumbnail;
         set

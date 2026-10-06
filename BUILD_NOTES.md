@@ -81,3 +81,7 @@ pwsh -NoProfile -File tools/validation/Get-UiInventory.ps1
 ```
 
 UIValidationは専用プロファイルを作り本番DIとWPF画面を使います。確認・ファイル選択・外部シェルの一部を代替するため、実OS操作や物理入力の完全なE2Eとは区別します。測定中は同じ結果ファイルを書き換える別の測定を起動しないでください。RAW素材は取得スクリプトで取得しSHA-256を検証します。UIの実機条件と受入手順はUI_TEST_PLAN／UI_TEST_REPORTを参照してください。
+
+dotnet run --project tools/PhotoFastRater.UIValidation -c Release -- C:\Programming\PhotoFastRater\artifacts\ui-validation 0 prepare-uat
+
+本人用の起動と記録は docs/ja/UI_UAT_CHECKLIST.md を参照してください。

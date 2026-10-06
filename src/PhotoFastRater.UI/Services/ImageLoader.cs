@@ -16,8 +16,8 @@ public sealed class ImageLoader : IDisposable
     private readonly CancellationTokenSource _shutdown = new();
     private readonly Task[] _workers;
     private const int MaximumDecodedImages = 64;
-    private readonly Dictionary<string, LinkedListNode<(string Key, BitmapImage Image)>> _decoded = new(StringComparer.Ordinal);
-    private readonly LinkedList<(string Key, BitmapImage Image)> _decodedLru = new();
+    private readonly Dictionary<string, LinkedListNode<(string Key, BitmapSource Image)>> _decoded = new(StringComparer.Ordinal);
+    private readonly LinkedList<(string Key, BitmapSource Image)> _decodedLru = new();
     private readonly object _decodedGate = new();
 
     /// <summary>Starts a fixed number of workers; queue memory stays independent of library size.</summary>
@@ -30,13 +30,13 @@ public sealed class ImageLoader : IDisposable
     }
 
     /// <summary>Queues an image. Positive priority is visible, zero is normal, and negative is prefetch.</summary>
-    public async Task<BitmapImage?> LoadAsync(
+    public async Task<BitmapSource?> LoadAsync(
         string filePath,
         int priority = 0,
         CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
-        var completion = new TaskCompletionSource<BitmapImage?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var completion = new TaskCompletionSource<BitmapSource?>(TaskCreationOptions.RunContinuationsAsynchronously);
         var request = new LoadRequest(filePath, completion, cancellationToken);
         await SelectWriter(priority).WriteAsync(request, cancellationToken);
         return await completion.Task.WaitAsync(cancellationToken);
@@ -108,7 +108,7 @@ public sealed class ImageLoader : IDisposable
             {
                 request.Completion?.TrySetCanceled(request.CancellationToken);
             }
-            catch (Exception exception) when (exception is IOException or ArgumentException or NotSupportedException)
+            catch (Exception exception) when (exception is IOException or ArgumentException or NotSupportedException or InvalidOperationException or UnauthorizedAccessException)
             {
                 request.Completion?.TrySetException(new InvalidOperationException(
                     $"サムネイルを読み込めませんでした: {request.FilePath}", exception));
@@ -138,21 +138,27 @@ public sealed class ImageLoader : IDisposable
         }
     }
 
-    private static BitmapImage ConvertToImageSource(byte[] imageData)
+    private static BitmapSource ConvertToImageSource(byte[] imageData)
     {
         if (imageData.Length == 0)
             throw new ArgumentException("Image data cannot be empty.", nameof(imageData));
-        var bitmap = new BitmapImage();
         using var stream = new MemoryStream(imageData, writable: false);
-        bitmap.BeginInit();
-        bitmap.CacheOption = BitmapCacheOption.OnLoad;
-        bitmap.StreamSource = stream;
-        bitmap.EndInit();
+        var decoder = BitmapDecoder.Create(stream, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
+        var frame = decoder.Frames[0];
+        BitmapSource pixels = frame.ColorContexts is { Count: > 0 } contexts
+            ? new ColorConvertedBitmap(frame, contexts[0], new System.Windows.Media.ColorContext(System.Windows.Media.PixelFormats.Bgra32), System.Windows.Media.PixelFormats.Bgra32)
+            : new FormatConvertedBitmap(frame, System.Windows.Media.PixelFormats.Bgra32, null, 0);
+        var stride = checked(pixels.PixelWidth * 4);
+        var buffer = new byte[checked(stride * pixels.PixelHeight)];
+        pixels.CopyPixels(buffer, stride, 0);
+        // Retain pixels, not the JPEG decoder and its native codec/stream graph, in the long-lived LRU.
+        var bitmap = BitmapSource.Create(pixels.PixelWidth, pixels.PixelHeight, 96, 96,
+            System.Windows.Media.PixelFormats.Bgra32, null, buffer, stride);
         bitmap.Freeze();
         return bitmap;
     }
 
-    private BitmapImage GetDecodedImage(byte[] bytes)
+    private BitmapSource GetDecodedImage(byte[] bytes)
     {
         // Content identity handles file edits and lets identical thumbnails share a single frozen WPF surface.
         var key = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes));
@@ -175,6 +181,6 @@ public sealed class ImageLoader : IDisposable
 
     private sealed record LoadRequest(
         string FilePath,
-        TaskCompletionSource<BitmapImage?>? Completion,
+        TaskCompletionSource<BitmapSource?>? Completion,
         CancellationToken CancellationToken);
 }

@@ -16,9 +16,11 @@ public partial class ManagedFoldersViewModel : ViewModelBase
     public static IReadOnlyList<PatternType> PatternTypes { get; } = [PatternType.Wildcard, PatternType.Regex, PatternType.Exact];
 
     /// <summary>Persists explicitly edited rows, keeping unsaved changes visible until the user chooses to save.</summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanManage))]
     private async Task SaveEditsAsync()
     {
+        if (IsScanning) return;
+        IsScanning = true;
         try
         {
             foreach (var item in ExclusionPatterns)
@@ -45,6 +47,7 @@ public partial class ManagedFoldersViewModel : ViewModelBase
             ScanStatus = "保存が完了していません。入力とアクセス権を確認してください。";
             await _interaction.NotifyAsync("管理設定の保存エラー", exception.Message, UserNotificationKind.Error);
         }
+        finally { IsScanning = false; }
     }
     private readonly ManagedFolderService _folderService;
     private readonly ManagedFolderRepository _folderRepository;
@@ -64,7 +67,17 @@ public partial class ManagedFoldersViewModel : ViewModelBase
     private ExclusionPatternViewModel? _selectedPattern;
 
     [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveEditsCommand))]
+    [NotifyCanExecuteChangedFor(nameof(AddFolderCommand))]
+    [NotifyCanExecuteChangedFor(nameof(RemoveFolderCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ScanFolderCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ScanAllFoldersCommand))]
+    [NotifyCanExecuteChangedFor(nameof(AddPatternCommand))]
+    [NotifyCanExecuteChangedFor(nameof(RemovePatternCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ToggleFolderActiveCommand))]
     private bool _isScanning = false;
+
+    private bool CanManage() => !IsScanning;
 
     [ObservableProperty]
     private string _scanStatus = string.Empty;
@@ -113,7 +126,7 @@ public partial class ManagedFoldersViewModel : ViewModelBase
     /// <summary>
     /// フォルダを追加
     /// </summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanManage))]
     private async Task AddFolderAsync()
     {
         var selectedPath = await _interaction.SelectFolderAsync("管理するフォルダを選択してください");
@@ -135,7 +148,7 @@ public partial class ManagedFoldersViewModel : ViewModelBase
     /// <summary>
     /// フォルダを削除
     /// </summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanManage))]
     private async Task RemoveFolderAsync()
     {
         if (SelectedFolder == null) return;
@@ -155,9 +168,10 @@ public partial class ManagedFoldersViewModel : ViewModelBase
     /// <summary>
     /// フォルダをスキャン
     /// </summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanManage))]
     private async Task ScanFolderAsync()
     {
+        if (IsScanning) return;
         if (SelectedFolder == null) return;
 
         IsScanning = true;
@@ -197,9 +211,10 @@ public partial class ManagedFoldersViewModel : ViewModelBase
     /// <summary>
     /// すべてのフォルダをスキャン
     /// </summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanManage))]
     private async Task ScanAllFoldersAsync()
     {
+        if (IsScanning) return;
         IsScanning = true;
         ScanStatus = "一括スキャン中...";
 
@@ -239,7 +254,7 @@ public partial class ManagedFoldersViewModel : ViewModelBase
     /// <summary>
     /// 除外パターンを追加
     /// </summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanManage))]
     private async Task AddPatternAsync()
     {
         // 簡易的な入力ダイアログ（後でカスタムダイアログに置き換え可能）
@@ -273,7 +288,7 @@ public partial class ManagedFoldersViewModel : ViewModelBase
     /// <summary>
     /// 除外パターンを削除
     /// </summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanManage))]
     private async Task RemovePatternAsync()
     {
         if (SelectedPattern == null) return;
@@ -293,7 +308,7 @@ public partial class ManagedFoldersViewModel : ViewModelBase
     /// <summary>
     /// フォルダの有効/無効を切り替え
     /// </summary>
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanManage))]
     private async Task ToggleFolderActiveAsync(ManagedFolderItemViewModel folder)
     {
         await _folderService.ToggleFolderActiveAsync(folder.Id);

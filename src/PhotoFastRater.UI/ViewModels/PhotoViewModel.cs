@@ -8,9 +8,9 @@ public partial class PhotoViewModel : ViewModelBase
 {
     private readonly Photo _photo;
 
-    private BitmapImage? _thumbnail;
+    private BitmapSource? _thumbnail;
 
-    public BitmapImage? Thumbnail
+    public BitmapSource? Thumbnail
     {
         get => _thumbnail;
         set

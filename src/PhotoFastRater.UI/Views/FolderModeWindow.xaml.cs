@@ -23,6 +23,7 @@ public partial class FolderModeWindow : Window
     public FolderModeWindow(FolderModeViewModel viewModel, ShortcutService shortcutService)
     {
         InitializeComponent();
+        PhotoFastRater.UI.Services.WindowPlacement.FitOnFirstLoad(this);
         _vm = viewModel;
         _shortcutService = shortcutService;
         DataContext = viewModel;

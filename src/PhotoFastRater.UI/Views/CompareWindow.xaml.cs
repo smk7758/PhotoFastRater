@@ -19,6 +19,7 @@ public partial class CompareWindow : Window
     public CompareWindow(CompareWorkspaceViewModel viewModel)
     {
         InitializeComponent();
+        PhotoFastRater.UI.Services.WindowPlacement.FitOnFirstLoad(this);
         DataContext = viewModel;
     }
 

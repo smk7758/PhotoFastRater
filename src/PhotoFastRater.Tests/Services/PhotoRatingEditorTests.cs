@@ -13,6 +13,23 @@ namespace PhotoFastRater.Tests.Services;
 public sealed class PhotoRatingEditorTests
 {
     [Fact]
+    public async Task ClosingDuringCommitAllowsTheAcceptedEditToFinish()
+    {
+        var completion = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var coordinator = new Mock<IRatingCoordinator>();
+        coordinator.Setup(service => service.SetRatingAsync(It.IsAny<int>(), It.IsAny<RatingState>(), It.IsAny<CancellationToken>()))
+            .Returns(completion.Task);
+        var editor = new PhotoRatingEditor(coordinator.Object);
+        var photo = new PhotoViewModel(new Photo { Id = 1 });
+        var write = editor.SetStarsAsync(photo, 4);
+        editor.Dispose();
+        completion.SetResult();
+        await write;
+        photo.Rating.Should().Be(4);
+        await FluentActions.Awaiting(() => editor.SetStarsAsync(photo, 5)).Should().ThrowAsync<ObjectDisposedException>();
+    }
+
+    [Fact]
     public async Task FailedCommitLeavesDisplayAndExportModelUnchanged()
     {
         var coordinator = new Mock<IRatingCoordinator>();

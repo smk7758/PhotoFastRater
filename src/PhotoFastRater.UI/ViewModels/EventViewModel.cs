@@ -4,14 +4,17 @@ using CommunityToolkit.Mvvm.Input;
 using PhotoFastRater.Infrastructure.Database.Repositories;
 using PhotoFastRater.Core.Models;
 using PhotoFastRater.Infrastructure.Services;
+using PhotoFastRater.Core.Abstractions;
 
 namespace PhotoFastRater.UI.ViewModels;
 
+/// <summary>Separates event proposals from persisted organization and confirms removal of related metadata.</summary>
 public partial class EventViewModel : ViewModelBase
 {
     private readonly EventRepository _eventRepository;
     private readonly EventManagementService _eventService;
     private readonly PhotoRepository _photoRepository;
+    private readonly IUserInteractionService _interaction;
 
     [ObservableProperty]
     private ObservableCollection<Event> _events = new();
@@ -27,9 +30,10 @@ public partial class EventViewModel : ViewModelBase
     [ObservableProperty]
     private string _previewStatus = "自動候補はまだ作成されていません。";
 
-    public EventViewModel(EventRepository eventRepository, EventManagementService eventService, PhotoRepository photoRepository)
+    public EventViewModel(EventRepository eventRepository, EventManagementService eventService, PhotoRepository photoRepository, IUserInteractionService interaction)
     {
         _eventRepository = eventRepository;
+        _interaction = interaction;
         _eventService = eventService;
         _photoRepository = photoRepository;
     }
@@ -60,6 +64,10 @@ public partial class EventViewModel : ViewModelBase
     [RelayCommand]
     private async Task DeleteEventAsync(int eventId)
     {
+        var target = Events.FirstOrDefault(occasion => occasion.Id == eventId);
+        if (target is null) return;
+        if (!await _interaction.ConfirmAsync("イベント削除",
+            $"イベント「{target.Name}」と写真の関連付けを削除しますか?\n写真ファイルと評価は残ります。", CancellationToken.None)) return;
         await _eventRepository.DeleteAsync(eventId);
         await LoadEventsAsync();
     }

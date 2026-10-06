@@ -1,0 +1,58 @@
+[
+  {
+    "Foreground": "DarkroomPaperBrush",
+    "Background": "DarkroomInkBrush",
+    "Ratio": 15.545263294117708,
+    "Minimum": 4.5,
+    "Passed": true
+  },
+  {
+    "Foreground": "DarkroomPaperBrush",
+    "Background": "DarkroomSlateBrush",
+    "Ratio": 13.570353533843466,
+    "Minimum": 4.5,
+    "Passed": true
+  },
+  {
+    "Foreground": "DarkroomPaperBrush",
+    "Background": "DarkroomRaisedBrush",
+    "Ratio": 11.664037555564846,
+    "Minimum": 4.5,
+    "Passed": true
+  },
+  {
+    "Foreground": "DarkroomMutedBrush",
+    "Background": "DarkroomSlateBrush",
+    "Ratio": 7.381348848076886,
+    "Minimum": 4.5,
+    "Passed": true
+  },
+  {
+    "Foreground": "DarkroomMutedBrush",
+    "Background": "DarkroomRaisedBrush",
+    "Ratio": 6.344442682349887,
+    "Minimum": 4.5,
+    "Passed": true
+  },
+  {
+    "Foreground": "DarkroomInkBrush",
+    "Background": "RatingAmberBrush",
+    "Ratio": 10.41638148533706,
+    "Minimum": 4.5,
+    "Passed": true
+  },
+  {
+    "Foreground": "RejectRedBrush",
+    "Background": "DarkroomSlateBrush",
+    "Ratio": 4.640269475998732,
+    "Minimum": 4.5,
+    "Passed": true
+  },
+  {
+    "Foreground": "DarkroomDividerBrush",
+    "Background": "DarkroomRaisedBrush",
+    "Ratio": 3.031587518441937,
+    "Minimum": 3.0,
+    "Passed": true
+  }
+]

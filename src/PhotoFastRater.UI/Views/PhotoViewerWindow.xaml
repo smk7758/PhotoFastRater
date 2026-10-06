@@ -1,4 +1,4 @@
-<Window x:Class="PhotoFastRater.UI.Views.PhotoViewerWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes" Title="写真ビューア" Height="700" Width="1200" Background="Black" WindowStartupLocation="CenterScreen" KeyDown="Window_KeyDown">
+<Window x:Class="PhotoFastRater.UI.Views.PhotoViewerWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes" Title="写真ビューア" Height="700" Width="1200" Background="Black" WindowStartupLocation="CenterScreen" KeyDown="Window_KeyDown" Foreground="{DynamicResource DarkroomPaperBrush}">
   <Grid>
     <Grid.ColumnDefinitions>
       <ColumnDefinition Width="*" />
@@ -12,7 +12,7 @@
       </Grid.RowDefinitions>
       <!-- 画像表示エリア -->
       <ScrollViewer Grid.Row="0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-        <Image x:Name="PhotoImage" Source="{Binding FullImageSource}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
+        <Image x:Name="PhotoImage" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" />
       </ScrollViewer>
       <!-- 情報パネル -->
       <Border Grid.Row="1" Background="#CC000000" Padding="16">
@@ -70,7 +70,7 @@
           <TextBlock Text="エクスポート設定" Foreground="White" FontSize="18" FontWeight="Bold" Margin="0,0,0,16" />
           <!-- プラットフォーム選択 -->
           <TextBlock Text="プラットフォーム" Foreground="White" FontWeight="Bold" Margin="0,0,0,4" />
-          <ComboBox x:Name="PlatformComboBox" SelectedIndex="0" Margin="0,0,0,16" AutomationProperties.AutomationId="PhotoViewerWindow.PlatformComboBox" AutomationProperties.Name="PlatformComboBox">
+          <ComboBox x:Name="PlatformComboBox" SelectedIndex="0" Margin="0,0,0,16" AutomationProperties.AutomationId="PhotoViewerWindow.PlatformComboBox" AutomationProperties.Name="SNS出力サイズ">
             <ComboBoxItem Content="Instagram" Tag="Instagram" />
             <ComboBoxItem Content="Twitter" Tag="Twitter" />
             <ComboBoxItem Content="Facebook" Tag="Facebook" />
@@ -81,12 +81,12 @@
           <!-- 枠設定 -->
           <CheckBox x:Name="EnableFrameCheckBox" Content="枠を追加" Foreground="White" IsChecked="True" Checked="PreviewSetting_Changed" Unchecked="PreviewSetting_Changed" Margin="0,0,0,8" AutomationProperties.AutomationId="PhotoViewerWindow.EnableFrameCheckBox" AutomationProperties.Name="枠を追加" />
           <TextBlock Text="枠の幅" Foreground="White" Margin="0,0,0,4" />
-          <Slider x:Name="FrameWidthSlider" Minimum="10" Maximum="100" Value="30" TickFrequency="10" IsSnapToTickEnabled="True" ValueChanged="PreviewSetting_Changed" Margin="0,0,0,4" AutomationProperties.AutomationId="PhotoViewerWindow.FrameWidthSlider" AutomationProperties.Name="FrameWidthSlider" />
+          <Slider x:Name="FrameWidthSlider" Minimum="10" Maximum="100" Value="30" TickFrequency="10" IsSnapToTickEnabled="True" ValueChanged="PreviewSetting_Changed" Margin="0,0,0,4" AutomationProperties.AutomationId="PhotoViewerWindow.FrameWidthSlider" AutomationProperties.Name="枠の幅" />
           <TextBlock Text="{Binding ElementName=FrameWidthSlider, Path=Value, StringFormat='{}{0:F0} px'}" Foreground="#AAA" Margin="0,0,0,16" />
           <!-- EXIF オーバーレイ設定 -->
           <CheckBox x:Name="EnableExifOverlayCheckBox" Content="EXIF情報を表示" Foreground="White" Checked="PreviewSetting_Changed" Unchecked="PreviewSetting_Changed" IsChecked="True" Margin="0,0,0,8" AutomationProperties.AutomationId="PhotoViewerWindow.EnableExifOverlayCheckBox" AutomationProperties.Name="EXIF情報を表示" />
           <TextBlock Text="EXIF表示位置" Foreground="White" Margin="0,0,0,4" />
-          <ComboBox x:Name="OverlayPositionComboBox" SelectedIndex="2" SelectionChanged="OverlayPositionComboBox_SelectionChanged" Margin="0,0,0,8" AutomationProperties.AutomationId="PhotoViewerWindow.OverlayPositionComboBox" AutomationProperties.Name="OverlayPositionComboBox">
+          <ComboBox x:Name="OverlayPositionComboBox" SelectedIndex="2" SelectionChanged="OverlayPositionComboBox_SelectionChanged" Margin="0,0,0,8" AutomationProperties.AutomationId="PhotoViewerWindow.OverlayPositionComboBox" AutomationProperties.Name="EXIFの表示位置">
             <ComboBoxItem Content="左上" Tag="TopLeft" />
             <ComboBoxItem Content="右上" Tag="TopRight" />
             <ComboBoxItem Content="左下" Tag="BottomLeft" />
@@ -96,10 +96,10 @@
           <!-- カスタム位置設定 -->
           <StackPanel x:Name="CustomPositionPanel" Visibility="Collapsed" Margin="0,0,0,16">
             <TextBlock Text="横位置 (左 ← → 右)" Foreground="White" Margin="0,0,0,4" />
-            <Slider x:Name="CustomXSlider" Minimum="0" Maximum="100" Value="10" TickFrequency="5" IsSnapToTickEnabled="True" ValueChanged="CustomSlider_ValueChanged" Margin="0,0,0,4" AutomationProperties.AutomationId="PhotoViewerWindow.CustomXSlider" AutomationProperties.Name="CustomXSlider" />
+            <Slider x:Name="CustomXSlider" Minimum="0" Maximum="100" Value="10" TickFrequency="5" IsSnapToTickEnabled="True" ValueChanged="CustomSlider_ValueChanged" Margin="0,0,0,4" AutomationProperties.AutomationId="PhotoViewerWindow.CustomXSlider" AutomationProperties.Name="EXIFの横位置（%）" />
             <TextBlock Text="{Binding ElementName=CustomXSlider, Path=Value, StringFormat='{}{0:F0}%'}" Foreground="#AAA" Margin="0,0,0,8" />
             <TextBlock Text="縦位置 (上 ← → 下)" Foreground="White" Margin="0,0,0,4" />
-            <Slider x:Name="CustomYSlider" Minimum="0" Maximum="100" Value="90" TickFrequency="5" IsSnapToTickEnabled="True" ValueChanged="CustomSlider_ValueChanged" Margin="0,0,0,4" AutomationProperties.AutomationId="PhotoViewerWindow.CustomYSlider" AutomationProperties.Name="CustomYSlider" />
+            <Slider x:Name="CustomYSlider" Minimum="0" Maximum="100" Value="90" TickFrequency="5" IsSnapToTickEnabled="True" ValueChanged="CustomSlider_ValueChanged" Margin="0,0,0,4" AutomationProperties.AutomationId="PhotoViewerWindow.CustomYSlider" AutomationProperties.Name="EXIFの縦位置（%）" />
             <TextBlock Text="{Binding ElementName=CustomYSlider, Path=Value, StringFormat='{}{0:F0}%'}" Foreground="#AAA" Margin="0,0,0,8" />
             <!-- プレビュー -->
             <TextBlock Text="プレビュー（ドラッグで位置調整）" Foreground="White" FontWeight="Bold" Margin="0,0,0,4" />
@@ -107,7 +107,7 @@
               <Grid x:Name="PreviewGrid">
                 <!-- 画像 -->
                 <Border x:Name="PreviewFrameBorder" Background="White" BorderBrush="White" BorderThickness="0" Margin="0">
-                  <Image x:Name="PreviewImage" Source="{Binding Thumbnail}" Stretch="Uniform" />
+                  <Image x:Name="PreviewImage" Stretch="Uniform" />
                 </Border>
                 <!-- EXIFオーバーレイ -->
                 <Border x:Name="ExifPreviewBorder" Background="#AA000000" Padding="6,4" HorizontalAlignment="Left" VerticalAlignment="Top" Cursor="Hand" MouseLeftButtonDown="ExifPreview_MouseLeftButtonDown" MouseMove="ExifPreview_MouseMove" MouseLeftButtonUp="ExifPreview_MouseLeftButtonUp">

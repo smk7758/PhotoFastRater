@@ -201,6 +201,11 @@ public partial class MainViewModel : ViewModelBase, IDisposable
             await _interaction.NotifyAsync("イベント", "先に写真を1枚選択してください。", UserNotificationKind.Warning);
             return;
         }
+        if (string.IsNullOrWhiteSpace(Events.NewEventName))
+        {
+            await _interaction.NotifyAsync("イベント", "イベント名を入力してください。", UserNotificationKind.Warning);
+            return;
+        }
         await Events.CreateEventAsync([photoId]);
     }
 

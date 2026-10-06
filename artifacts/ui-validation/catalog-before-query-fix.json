@@ -1,0 +1,12 @@
+{
+  "MeasuredUtc": "2026-10-06T14:39:47.2942259Z",
+  "OperatingSystem": "Microsoft Windows NT 10.0.26200.0",
+  "LogicalProcessorCount": 24,
+  "AvailableMemoryBytes": 34104283136,
+  "PhotoCount": 100000,
+  "InitialIndexSeconds": 46.8321652,
+  "FirstPageMilliseconds": 77.1829,
+  "SearchP95Milliseconds": 447.1872,
+  "RatingP95Milliseconds": 2.7637,
+  "PeakWorkingSetBytes": 137220096
+}

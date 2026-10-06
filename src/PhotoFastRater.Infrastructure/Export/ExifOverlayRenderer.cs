@@ -144,7 +144,7 @@ public class ExifOverlayRenderer
         var textSize = TextMeasurer.MeasureSize(text, textOptions);
         var padding = 20f;
 
-        return template.Position switch
+        var position = template.Position switch
         {
             ExifOverlayPosition.TopLeft => new PointF(padding, padding),
             ExifOverlayPosition.TopRight => new PointF(imageSize.Width - textSize.Width - padding, padding),
@@ -157,6 +157,10 @@ public class ExifOverlayRenderer
                 imageSize.Height * template.CustomY / 100f),
             _ => new PointF(padding, imageSize.Height - textSize.Height - padding)
         };
+        // A custom 100% position must not put the entire label outside the exported photograph.
+        return new PointF(
+            Math.Clamp(position.X, 0, Math.Max(0, imageSize.Width - textSize.Width)),
+            Math.Clamp(position.Y, 0, Math.Max(0, imageSize.Height - textSize.Height)));
     }
 
     private static Color ParseColor(string hexColor)

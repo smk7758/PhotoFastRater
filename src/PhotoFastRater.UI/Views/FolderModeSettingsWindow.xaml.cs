@@ -9,6 +9,7 @@ public partial class FolderModeSettingsWindow : Window
     public FolderModeSettingsWindow(FolderModeSettingsViewModel viewModel)
     {
         InitializeComponent();
+        PhotoFastRater.UI.Services.WindowPlacement.FitOnFirstLoad(this);
         DataContext = viewModel;
     }
 

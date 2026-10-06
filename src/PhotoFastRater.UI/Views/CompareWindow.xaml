@@ -1,4 +1,4 @@
-<Window x:Class="PhotoFastRater.UI.Views.CompareWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="写真を比較 - Photo Fast Rater" Width="1280" Height="700" MinWidth="900" MinHeight="600" Background="{DynamicResource DarkroomInkBrush}" KeyDown="Window_KeyDown">
+<Window x:Class="PhotoFastRater.UI.Views.CompareWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="写真を比較 - Photo Fast Rater" Width="1280" Height="700" MinWidth="900" MinHeight="600" Background="{DynamicResource DarkroomInkBrush}" KeyDown="Window_KeyDown" Foreground="{DynamicResource DarkroomPaperBrush}">
   <Grid>
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto" />
@@ -64,7 +64,7 @@
                   <Button Content="4" Tag="4" Click="Rating_Click" Padding="7,3" Margin="1" AutomationProperties.AutomationId="CompareWindow.Rating_Click.4" />
                   <Button Content="5" Tag="5" Click="Rating_Click" Padding="7,3" Margin="1" AutomationProperties.AutomationId="CompareWindow.Rating_Click.5" />
                 </StackPanel>
-                <ToggleButton Grid.Column="2" Content="固定" IsChecked="{Binding IsPinned, Mode=OneWay}" Command="{Binding DataContext.TogglePinCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" Margin="4" Padding="10,4" ToolTip="次の写真へ進めるとき、このペインを残す" AutomationProperties.AutomationId="CompareWindow.DataContext.TogglePinCommand" AutomationProperties.Name="固定" />
+                <ToggleButton Grid.Column="2" Content="固定" IsChecked="{Binding IsPinned}" Margin="4" Padding="10,4" ToolTip="次の写真へ進めるとき、このペインを残す" AutomationProperties.AutomationId="CompareWindow.DataContext.TogglePinCommand" AutomationProperties.Name="固定" />
                 <Button Grid.Column="3" Content="右へ入替" Command="{Binding DataContext.SwapRightCommand, RelativeSource={RelativeSource AncestorType=Window}}" CommandParameter="{Binding}" Margin="4" Padding="10,4" AutomationProperties.AutomationId="CompareWindow.DataContext.SwapRightCommand" />
               </Grid>
             </Grid>

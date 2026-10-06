@@ -61,7 +61,9 @@ public sealed class WindowManager
     public bool ShowKeyboardShortcutsDialog()
     {
         using var scope = _scopeFactory.CreateScope();
-        return scope.ServiceProvider.GetRequiredService<KeyboardShortcutsWindow>().ShowDialog() == true;
+        var window = scope.ServiceProvider.GetRequiredService<KeyboardShortcutsWindow>();
+        SetDialogOwner(window);
+        return window.ShowDialog() == true;
     }
 
     /// <summary>Shows folder settings while preserving the caller-owned settings model.</summary>
@@ -71,7 +73,19 @@ public sealed class WindowManager
         using var scope = _scopeFactory.CreateScope();
         var window = scope.ServiceProvider.GetRequiredService<FolderModeSettingsWindow>();
         window.DataContext = settings;
+        SetDialogOwner(window);
         return window.ShowDialog() == true;
+    }
+
+    private static void SetDialogOwner(System.Windows.Window dialog)
+    {
+        var owner = System.Windows.Application.Current.Windows.OfType<System.Windows.Window>()
+            .FirstOrDefault(window => window.IsActive && !ReferenceEquals(window, dialog))
+            ?? System.Windows.Application.Current.MainWindow;
+        if (owner is not { IsVisible: true } || ReferenceEquals(owner, dialog)) return;
+        // Settings belong to the workspace that opened them, including when that workspace is on another monitor.
+        dialog.Owner = owner;
+        dialog.WindowStartupLocation = System.Windows.WindowStartupLocation.CenterOwner;
     }
 
     private TWindow ShowScopedWindow<TWindow>() where TWindow : System.Windows.Window

@@ -50,7 +50,11 @@ public sealed class VirtualizingPhotoPanel : VirtualizingPanel, IScrollInfo
         {
             var itemIndex = generator.IndexFromGeneratorPosition(new GeneratorPosition(childIndex, 0));
             if (itemIndex >= first && itemIndex <= last) continue;
-            generator.Remove(new GeneratorPosition(childIndex, 0), 1);
+            // Recycle the bounded viewport containers instead of rebuilding native text/layout resources on every scroll.
+            if (generator is IRecyclingItemContainerGenerator recycling)
+                recycling.Recycle(new GeneratorPosition(childIndex, 0), 1);
+            else
+                generator.Remove(new GeneratorPosition(childIndex, 0), 1);
             RemoveInternalChildRange(childIndex, 1);
         }
         if (last < first) return _viewport;
@@ -61,7 +65,7 @@ public sealed class VirtualizingPhotoPanel : VirtualizingPanel, IScrollInfo
             for (var index = first; index <= last; index++, insertion++)
             {
                 var child = (UIElement)generator.GenerateNext(out var newlyRealized);
-                if (newlyRealized)
+                if (newlyRealized || !InternalChildren.Contains(child))
                 {
                     if (insertion >= InternalChildren.Count) AddInternalChild(child);
                     else InsertInternalChild(insertion, child);

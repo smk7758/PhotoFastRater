@@ -1,0 +1,1955 @@
+{
+  "DurationSeconds": 1800.0198953,
+  "Frames": 187999,
+  "AverageRenderCallbackFps": 104.44273432668227,
+  "DispatcherP95Ms": 26.7303,
+  "Samples": [
+    {
+      "Seconds": 7.0120149,
+      "WorkingSet": 769024000,
+      "Managed": 60920584,
+      "Retained": 1280,
+      "Frames": 716
+    },
+    {
+      "Seconds": 13.307357,
+      "WorkingSet": 768417792,
+      "Managed": 55843584,
+      "Retained": 1280,
+      "Frames": 1402
+    },
+    {
+      "Seconds": 20.4194262,
+      "WorkingSet": 761536512,
+      "Managed": 55740032,
+      "Retained": 1280,
+      "Frames": 2118
+    },
+    {
+      "Seconds": 27.0083991,
+      "WorkingSet": 759394304,
+      "Managed": 57130840,
+      "Retained": 1280,
+      "Frames": 2822
+    },
+    {
+      "Seconds": 33.7363869,
+      "WorkingSet": 764751872,
+      "Managed": 62246000,
+      "Retained": 1280,
+      "Frames": 3527
+    },
+    {
+      "Seconds": 40.4779449,
+      "WorkingSet": 773160960,
+      "Managed": 57725064,
+      "Retained": 1280,
+      "Frames": 4226
+    },
+    {
+      "Seconds": 46.6847268,
+      "WorkingSet": 765788160,
+      "Managed": 59444600,
+      "Retained": 1280,
+      "Frames": 4905
+    },
+    {
+      "Seconds": 53.0608692,
+      "WorkingSet": 766709760,
+      "Managed": 60994488,
+      "Retained": 1280,
+      "Frames": 5593
+    },
+    {
+      "Seconds": 59.5287176,
+      "WorkingSet": 766676992,
+      "Managed": 56017368,
+      "Retained": 1280,
+      "Frames": 6287
+    },
+    {
+      "Seconds": 66.062636,
+      "WorkingSet": 763678720,
+      "Managed": 56403720,
+      "Retained": 1280,
+      "Frames": 6991
+    },
+    {
+      "Seconds": 72.4147718,
+      "WorkingSet": 767320064,
+      "Managed": 57615496,
+      "Retained": 1280,
+      "Frames": 7665
+    },
+    {
+      "Seconds": 78.7168089,
+      "WorkingSet": 766369792,
+      "Managed": 57481512,
+      "Retained": 1280,
+      "Frames": 8343
+    },
+    {
+      "Seconds": 85.2363244,
+      "WorkingSet": 879013888,
+      "Managed": 53363576,
+      "Retained": 1280,
+      "Frames": 9043
+    },
+    {
+      "Seconds": 91.5097183,
+      "WorkingSet": 878436352,
+      "Managed": 56477600,
+      "Retained": 1280,
+      "Frames": 9740
+    },
+    {
+      "Seconds": 98.0114289,
+      "WorkingSet": 880619520,
+      "Managed": 54634936,
+      "Retained": 1280,
+      "Frames": 10432
+    },
+    {
+      "Seconds": 104.7459339,
+      "WorkingSet": 874762240,
+      "Managed": 57176528,
+      "Retained": 1280,
+      "Frames": 11097
+    },
+    {
+      "Seconds": 111.2098739,
+      "WorkingSet": 881721344,
+      "Managed": 66549248,
+      "Retained": 1280,
+      "Frames": 11772
+    },
+    {
+      "Seconds": 117.623732,
+      "WorkingSet": 884359168,
+      "Managed": 60037152,
+      "Retained": 1280,
+      "Frames": 12439
+    },
+    {
+      "Seconds": 128.6919924,
+      "WorkingSet": 881565696,
+      "Managed": 53640288,
+      "Retained": 1280,
+      "Frames": 13111
+    },
+    {
+      "Seconds": 135.2670627,
+      "WorkingSet": 880930816,
+      "Managed": 55229488,
+      "Retained": 1280,
+      "Frames": 13804
+    },
+    {
+      "Seconds": 141.8902888,
+      "WorkingSet": 889466880,
+      "Managed": 56600008,
+      "Retained": 1280,
+      "Frames": 14488
+    },
+    {
+      "Seconds": 148.1531207,
+      "WorkingSet": 882339840,
+      "Managed": 59716472,
+      "Retained": 1280,
+      "Frames": 15166
+    },
+    {
+      "Seconds": 154.6637373,
+      "WorkingSet": 885411840,
+      "Managed": 55045840,
+      "Retained": 1280,
+      "Frames": 15860
+    },
+    {
+      "Seconds": 161.1294593,
+      "WorkingSet": 890531840,
+      "Managed": 58001808,
+      "Retained": 1280,
+      "Frames": 16567
+    },
+    {
+      "Seconds": 167.3833713,
+      "WorkingSet": 887345152,
+      "Managed": 55775224,
+      "Retained": 1280,
+      "Frames": 17241
+    },
+    {
+      "Seconds": 173.7879648,
+      "WorkingSet": 887590912,
+      "Managed": 59237776,
+      "Retained": 1280,
+      "Frames": 17925
+    },
+    {
+      "Seconds": 180.5613722,
+      "WorkingSet": 898883584,
+      "Managed": 56348360,
+      "Retained": 1280,
+      "Frames": 18632
+    },
+    {
+      "Seconds": 186.9900605,
+      "WorkingSet": 887263232,
+      "Managed": 58347536,
+      "Retained": 1280,
+      "Frames": 19298
+    },
+    {
+      "Seconds": 193.5520027,
+      "WorkingSet": 885846016,
+      "Managed": 60186096,
+      "Retained": 1280,
+      "Frames": 19994
+    },
+    {
+      "Seconds": 200.258152,
+      "WorkingSet": 897212416,
+      "Managed": 63925896,
+      "Retained": 1280,
+      "Frames": 20666
+    },
+    {
+      "Seconds": 206.6502723,
+      "WorkingSet": 890118144,
+      "Managed": 58291472,
+      "Retained": 1280,
+      "Frames": 21357
+    },
+    {
+      "Seconds": 213.3014979,
+      "WorkingSet": 888025088,
+      "Managed": 57805664,
+      "Retained": 1280,
+      "Frames": 22049
+    },
+    {
+      "Seconds": 220.5863358,
+      "WorkingSet": 882364416,
+      "Managed": 54749256,
+      "Retained": 1280,
+      "Frames": 22744
+    },
+    {
+      "Seconds": 227.1051376,
+      "WorkingSet": 887259136,
+      "Managed": 56077232,
+      "Retained": 1280,
+      "Frames": 23413
+    },
+    {
+      "Seconds": 234.363983,
+      "WorkingSet": 886677504,
+      "Managed": 59711744,
+      "Retained": 1280,
+      "Frames": 24122
+    },
+    {
+      "Seconds": 242.3433612,
+      "WorkingSet": 895442944,
+      "Managed": 56451936,
+      "Retained": 1280,
+      "Frames": 24797
+    },
+    {
+      "Seconds": 249.6824639,
+      "WorkingSet": 892960768,
+      "Managed": 56572536,
+      "Retained": 1280,
+      "Frames": 25539
+    },
+    {
+      "Seconds": 256.7121659,
+      "WorkingSet": 900595712,
+      "Managed": 58271032,
+      "Retained": 1280,
+      "Frames": 26220
+    },
+    {
+      "Seconds": 264.0630662,
+      "WorkingSet": 894111744,
+      "Managed": 58514792,
+      "Retained": 1280,
+      "Frames": 26945
+    },
+    {
+      "Seconds": 270.4456622,
+      "WorkingSet": 897417216,
+      "Managed": 58906680,
+      "Retained": 1280,
+      "Frames": 27613
+    },
+    {
+      "Seconds": 276.8009558,
+      "WorkingSet": 894128128,
+      "Managed": 55480152,
+      "Retained": 1280,
+      "Frames": 28277
+    },
+    {
+      "Seconds": 283.2502678,
+      "WorkingSet": 894689280,
+      "Managed": 57029112,
+      "Retained": 1280,
+      "Frames": 28962
+    },
+    {
+      "Seconds": 289.5135076,
+      "WorkingSet": 895180800,
+      "Managed": 56354256,
+      "Retained": 1280,
+      "Frames": 29624
+    },
+    {
+      "Seconds": 295.8668731,
+      "WorkingSet": 886317056,
+      "Managed": 42912704,
+      "Retained": 1280,
+      "Frames": 30308
+    },
+    {
+      "Seconds": 302.2191197,
+      "WorkingSet": 896086016,
+      "Managed": 40657904,
+      "Retained": 1280,
+      "Frames": 30989
+    },
+    {
+      "Seconds": 308.4369323,
+      "WorkingSet": 892944384,
+      "Managed": 41126592,
+      "Retained": 1280,
+      "Frames": 31669
+    },
+    {
+      "Seconds": 314.7689766,
+      "WorkingSet": 890736640,
+      "Managed": 40718224,
+      "Retained": 1280,
+      "Frames": 32357
+    },
+    {
+      "Seconds": 321.122913,
+      "WorkingSet": 897957888,
+      "Managed": 36159392,
+      "Retained": 1280,
+      "Frames": 33034
+    },
+    {
+      "Seconds": 327.4625671,
+      "WorkingSet": 886018048,
+      "Managed": 34871752,
+      "Retained": 1280,
+      "Frames": 33688
+    },
+    {
+      "Seconds": 333.9379958,
+      "WorkingSet": 893394944,
+      "Managed": 36857144,
+      "Retained": 1280,
+      "Frames": 34357
+    },
+    {
+      "Seconds": 340.5867701,
+      "WorkingSet": 894726144,
+      "Managed": 32611560,
+      "Retained": 1280,
+      "Frames": 35032
+    },
+    {
+      "Seconds": 347.1749207,
+      "WorkingSet": 895979520,
+      "Managed": 29401984,
+      "Retained": 1280,
+      "Frames": 35722
+    },
+    {
+      "Seconds": 353.4888637,
+      "WorkingSet": 874659840,
+      "Managed": 29081000,
+      "Retained": 1280,
+      "Frames": 36401
+    },
+    {
+      "Seconds": 359.7706251,
+      "WorkingSet": 865316864,
+      "Managed": 28971592,
+      "Retained": 1280,
+      "Frames": 37063
+    },
+    {
+      "Seconds": 366.0454506,
+      "WorkingSet": 874541056,
+      "Managed": 30276184,
+      "Retained": 1280,
+      "Frames": 37737
+    },
+    {
+      "Seconds": 372.4188565,
+      "WorkingSet": 875315200,
+      "Managed": 30643008,
+      "Retained": 1280,
+      "Frames": 38440
+    },
+    {
+      "Seconds": 378.6673759,
+      "WorkingSet": 879562752,
+      "Managed": 30627776,
+      "Retained": 1280,
+      "Frames": 39107
+    },
+    {
+      "Seconds": 384.9916849,
+      "WorkingSet": 875479040,
+      "Managed": 28456968,
+      "Retained": 1280,
+      "Frames": 39787
+    },
+    {
+      "Seconds": 391.3179346,
+      "WorkingSet": 876965888,
+      "Managed": 26636296,
+      "Retained": 1280,
+      "Frames": 40441
+    },
+    {
+      "Seconds": 397.5005682,
+      "WorkingSet": 873246720,
+      "Managed": 28914688,
+      "Retained": 1280,
+      "Frames": 41102
+    },
+    {
+      "Seconds": 403.858678,
+      "WorkingSet": 870408192,
+      "Managed": 28904312,
+      "Retained": 1280,
+      "Frames": 41782
+    },
+    {
+      "Seconds": 410.1827537,
+      "WorkingSet": 877568000,
+      "Managed": 26854272,
+      "Retained": 1280,
+      "Frames": 42453
+    },
+    {
+      "Seconds": 416.4928663,
+      "WorkingSet": 879538176,
+      "Managed": 27299472,
+      "Retained": 1280,
+      "Frames": 43115
+    },
+    {
+      "Seconds": 422.7715286,
+      "WorkingSet": 877674496,
+      "Managed": 27274224,
+      "Retained": 1280,
+      "Frames": 43817
+    },
+    {
+      "Seconds": 429.0518966,
+      "WorkingSet": 872378368,
+      "Managed": 27285656,
+      "Retained": 1280,
+      "Frames": 44496
+    },
+    {
+      "Seconds": 435.339787,
+      "WorkingSet": 872714240,
+      "Managed": 26763872,
+      "Retained": 1280,
+      "Frames": 45157
+    },
+    {
+      "Seconds": 441.7113254,
+      "WorkingSet": 878542848,
+      "Managed": 28218128,
+      "Retained": 1280,
+      "Frames": 45850
+    },
+    {
+      "Seconds": 448.090532,
+      "WorkingSet": 878612480,
+      "Managed": 30030776,
+      "Retained": 1280,
+      "Frames": 46538
+    },
+    {
+      "Seconds": 454.5141595,
+      "WorkingSet": 880271360,
+      "Managed": 26732728,
+      "Retained": 1280,
+      "Frames": 47217
+    },
+    {
+      "Seconds": 460.884474,
+      "WorkingSet": 874528768,
+      "Managed": 28938192,
+      "Retained": 1280,
+      "Frames": 47880
+    },
+    {
+      "Seconds": 467.1832258,
+      "WorkingSet": 868270080,
+      "Managed": 29003296,
+      "Retained": 1280,
+      "Frames": 48561
+    },
+    {
+      "Seconds": 473.4518431,
+      "WorkingSet": 871391232,
+      "Managed": 25926944,
+      "Retained": 1280,
+      "Frames": 49240
+    },
+    {
+      "Seconds": 479.7315123,
+      "WorkingSet": 872955904,
+      "Managed": 26794648,
+      "Retained": 1280,
+      "Frames": 49914
+    },
+    {
+      "Seconds": 486.0642069,
+      "WorkingSet": 876990464,
+      "Managed": 31955712,
+      "Retained": 1280,
+      "Frames": 50575
+    },
+    {
+      "Seconds": 492.3804471,
+      "WorkingSet": 879349760,
+      "Managed": 26721088,
+      "Retained": 1280,
+      "Frames": 51265
+    },
+    {
+      "Seconds": 498.7236037,
+      "WorkingSet": 884772864,
+      "Managed": 26887776,
+      "Retained": 1280,
+      "Frames": 51929
+    },
+    {
+      "Seconds": 504.985426,
+      "WorkingSet": 873373696,
+      "Managed": 26779776,
+      "Retained": 1280,
+      "Frames": 52603
+    },
+    {
+      "Seconds": 511.704336,
+      "WorkingSet": 879689728,
+      "Managed": 26711232,
+      "Retained": 1280,
+      "Frames": 53286
+    },
+    {
+      "Seconds": 518.3502349,
+      "WorkingSet": 878522368,
+      "Managed": 26848752,
+      "Retained": 1280,
+      "Frames": 53960
+    },
+    {
+      "Seconds": 524.9334553,
+      "WorkingSet": 880275456,
+      "Managed": 26612720,
+      "Retained": 1280,
+      "Frames": 54628
+    },
+    {
+      "Seconds": 531.4672661,
+      "WorkingSet": 877211648,
+      "Managed": 27338040,
+      "Retained": 1280,
+      "Frames": 55284
+    },
+    {
+      "Seconds": 537.9199417,
+      "WorkingSet": 879075328,
+      "Managed": 28488976,
+      "Retained": 1280,
+      "Frames": 55955
+    },
+    {
+      "Seconds": 544.3389271,
+      "WorkingSet": 880529408,
+      "Managed": 27506904,
+      "Retained": 1280,
+      "Frames": 56636
+    },
+    {
+      "Seconds": 550.7675509,
+      "WorkingSet": 877170688,
+      "Managed": 28978728,
+      "Retained": 1280,
+      "Frames": 57312
+    },
+    {
+      "Seconds": 557.1420019,
+      "WorkingSet": 880099328,
+      "Managed": 28648992,
+      "Retained": 1280,
+      "Frames": 57970
+    },
+    {
+      "Seconds": 563.4861554,
+      "WorkingSet": 878948352,
+      "Managed": 28507984,
+      "Retained": 1280,
+      "Frames": 58654
+    },
+    {
+      "Seconds": 569.8636912,
+      "WorkingSet": 882958336,
+      "Managed": 26788136,
+      "Retained": 1280,
+      "Frames": 59317
+    },
+    {
+      "Seconds": 576.1832887,
+      "WorkingSet": 885334016,
+      "Managed": 29100384,
+      "Retained": 1280,
+      "Frames": 59977
+    },
+    {
+      "Seconds": 583.0841125,
+      "WorkingSet": 886202368,
+      "Managed": 32115880,
+      "Retained": 1280,
+      "Frames": 60697
+    },
+    {
+      "Seconds": 589.3928741,
+      "WorkingSet": 884445184,
+      "Managed": 29039912,
+      "Retained": 1280,
+      "Frames": 61348
+    },
+    {
+      "Seconds": 595.7614038,
+      "WorkingSet": 884469760,
+      "Managed": 27411312,
+      "Retained": 1280,
+      "Frames": 62016
+    },
+    {
+      "Seconds": 602.7372994,
+      "WorkingSet": 878129152,
+      "Managed": 32773616,
+      "Retained": 1280,
+      "Frames": 62723
+    },
+    {
+      "Seconds": 609.220024,
+      "WorkingSet": 885788672,
+      "Managed": 28478984,
+      "Retained": 1280,
+      "Frames": 63399
+    },
+    {
+      "Seconds": 615.693536,
+      "WorkingSet": 885772288,
+      "Managed": 26489680,
+      "Retained": 1280,
+      "Frames": 64086
+    },
+    {
+      "Seconds": 622.8728569,
+      "WorkingSet": 884506624,
+      "Managed": 26870224,
+      "Retained": 1280,
+      "Frames": 64789
+    },
+    {
+      "Seconds": 629.5956043,
+      "WorkingSet": 882569216,
+      "Managed": 29191080,
+      "Retained": 1280,
+      "Frames": 65459
+    },
+    {
+      "Seconds": 636.276503,
+      "WorkingSet": 888344576,
+      "Managed": 29348480,
+      "Retained": 1280,
+      "Frames": 66135
+    },
+    {
+      "Seconds": 642.6772558,
+      "WorkingSet": 883089408,
+      "Managed": 27659584,
+      "Retained": 1280,
+      "Frames": 66814
+    },
+    {
+      "Seconds": 648.9790481,
+      "WorkingSet": 885747712,
+      "Managed": 26344472,
+      "Retained": 1280,
+      "Frames": 67472
+    },
+    {
+      "Seconds": 655.3014694,
+      "WorkingSet": 883843072,
+      "Managed": 27244968,
+      "Retained": 1280,
+      "Frames": 68143
+    },
+    {
+      "Seconds": 661.7737719,
+      "WorkingSet": 893595648,
+      "Managed": 30851976,
+      "Retained": 1280,
+      "Frames": 68809
+    },
+    {
+      "Seconds": 668.096072,
+      "WorkingSet": 887431168,
+      "Managed": 26894512,
+      "Retained": 1280,
+      "Frames": 69478
+    },
+    {
+      "Seconds": 674.4880083,
+      "WorkingSet": 889495552,
+      "Managed": 27313960,
+      "Retained": 1280,
+      "Frames": 70131
+    },
+    {
+      "Seconds": 680.9019588,
+      "WorkingSet": 884596736,
+      "Managed": 26700680,
+      "Retained": 1280,
+      "Frames": 70799
+    },
+    {
+      "Seconds": 687.3084568,
+      "WorkingSet": 885272576,
+      "Managed": 28339496,
+      "Retained": 1280,
+      "Frames": 71473
+    },
+    {
+      "Seconds": 693.6227883,
+      "WorkingSet": 885608448,
+      "Managed": 26080576,
+      "Retained": 1280,
+      "Frames": 72164
+    },
+    {
+      "Seconds": 699.876808,
+      "WorkingSet": 890376192,
+      "Managed": 26781640,
+      "Retained": 1280,
+      "Frames": 72828
+    },
+    {
+      "Seconds": 706.2927836,
+      "WorkingSet": 890904576,
+      "Managed": 30168400,
+      "Retained": 1280,
+      "Frames": 73487
+    },
+    {
+      "Seconds": 712.5310696,
+      "WorkingSet": 890945536,
+      "Managed": 27368944,
+      "Retained": 1280,
+      "Frames": 74162
+    },
+    {
+      "Seconds": 718.7980163,
+      "WorkingSet": 889446400,
+      "Managed": 26807624,
+      "Retained": 1280,
+      "Frames": 74822
+    },
+    {
+      "Seconds": 725.1321072,
+      "WorkingSet": 891269120,
+      "Managed": 26838416,
+      "Retained": 1280,
+      "Frames": 75495
+    },
+    {
+      "Seconds": 731.5875118,
+      "WorkingSet": 892112896,
+      "Managed": 29084216,
+      "Retained": 1280,
+      "Frames": 76168
+    },
+    {
+      "Seconds": 737.957047,
+      "WorkingSet": 894275584,
+      "Managed": 26785576,
+      "Retained": 1280,
+      "Frames": 76849
+    },
+    {
+      "Seconds": 744.6930448,
+      "WorkingSet": 899084288,
+      "Managed": 26886384,
+      "Retained": 1280,
+      "Frames": 77498
+    },
+    {
+      "Seconds": 751.1027105,
+      "WorkingSet": 893792256,
+      "Managed": 26462312,
+      "Retained": 1280,
+      "Frames": 78167
+    },
+    {
+      "Seconds": 757.9536107,
+      "WorkingSet": 890105856,
+      "Managed": 29006648,
+      "Retained": 1280,
+      "Frames": 78875
+    },
+    {
+      "Seconds": 764.4259502,
+      "WorkingSet": 885952512,
+      "Managed": 28512712,
+      "Retained": 1280,
+      "Frames": 79534
+    },
+    {
+      "Seconds": 770.7251347,
+      "WorkingSet": 896696320,
+      "Managed": 26816272,
+      "Retained": 1280,
+      "Frames": 80207
+    },
+    {
+      "Seconds": 777.0206525,
+      "WorkingSet": 896651264,
+      "Managed": 26878752,
+      "Retained": 1280,
+      "Frames": 80869
+    },
+    {
+      "Seconds": 783.3681904,
+      "WorkingSet": 896700416,
+      "Managed": 29222656,
+      "Retained": 1280,
+      "Frames": 81547
+    },
+    {
+      "Seconds": 789.95344,
+      "WorkingSet": 896049152,
+      "Managed": 27295360,
+      "Retained": 1280,
+      "Frames": 82257
+    },
+    {
+      "Seconds": 796.2671725,
+      "WorkingSet": 892563456,
+      "Managed": 30247384,
+      "Retained": 1280,
+      "Frames": 82920
+    },
+    {
+      "Seconds": 802.5943892,
+      "WorkingSet": 891621376,
+      "Managed": 26881600,
+      "Retained": 1280,
+      "Frames": 83606
+    },
+    {
+      "Seconds": 808.9358452,
+      "WorkingSet": 896610304,
+      "Managed": 29078632,
+      "Retained": 1280,
+      "Frames": 84262
+    },
+    {
+      "Seconds": 815.2665946,
+      "WorkingSet": 899514368,
+      "Managed": 26903440,
+      "Retained": 1280,
+      "Frames": 84925
+    },
+    {
+      "Seconds": 821.6426269,
+      "WorkingSet": 899522560,
+      "Managed": 27398832,
+      "Retained": 1280,
+      "Frames": 85602
+    },
+    {
+      "Seconds": 827.9323795,
+      "WorkingSet": 899637248,
+      "Managed": 27374088,
+      "Retained": 1280,
+      "Frames": 86268
+    },
+    {
+      "Seconds": 834.2962138,
+      "WorkingSet": 899739648,
+      "Managed": 28628424,
+      "Retained": 1280,
+      "Frames": 86909
+    },
+    {
+      "Seconds": 840.7011028,
+      "WorkingSet": 904871936,
+      "Managed": 29549080,
+      "Retained": 1280,
+      "Frames": 87605
+    },
+    {
+      "Seconds": 847.0253336,
+      "WorkingSet": 898555904,
+      "Managed": 26911568,
+      "Retained": 1280,
+      "Frames": 88272
+    },
+    {
+      "Seconds": 853.9704259,
+      "WorkingSet": 898170880,
+      "Managed": 26052592,
+      "Retained": 1280,
+      "Frames": 88952
+    },
+    {
+      "Seconds": 861.6519672,
+      "WorkingSet": 907534336,
+      "Managed": 33470472,
+      "Retained": 1280,
+      "Frames": 89707
+    },
+    {
+      "Seconds": 869.602679,
+      "WorkingSet": 901730304,
+      "Managed": 31208512,
+      "Retained": 1280,
+      "Frames": 90482
+    },
+    {
+      "Seconds": 876.8463474,
+      "WorkingSet": 898908160,
+      "Managed": 28594592,
+      "Retained": 1280,
+      "Frames": 91203
+    },
+    {
+      "Seconds": 883.6437394,
+      "WorkingSet": 905420800,
+      "Managed": 31428680,
+      "Retained": 1280,
+      "Frames": 91900
+    },
+    {
+      "Seconds": 890.2169469,
+      "WorkingSet": 900227072,
+      "Managed": 26884576,
+      "Retained": 1280,
+      "Frames": 92580
+    },
+    {
+      "Seconds": 897.4997969,
+      "WorkingSet": 903143424,
+      "Managed": 29102248,
+      "Retained": 1280,
+      "Frames": 93319
+    },
+    {
+      "Seconds": 904.3260321,
+      "WorkingSet": 902189056,
+      "Managed": 26871744,
+      "Retained": 1280,
+      "Frames": 94016
+    },
+    {
+      "Seconds": 911.2070071,
+      "WorkingSet": 902795264,
+      "Managed": 27959408,
+      "Retained": 1280,
+      "Frames": 94677
+    },
+    {
+      "Seconds": 917.5771778,
+      "WorkingSet": 901656576,
+      "Managed": 28642488,
+      "Retained": 1280,
+      "Frames": 95351
+    },
+    {
+      "Seconds": 924.1249736,
+      "WorkingSet": 901038080,
+      "Managed": 28638088,
+      "Retained": 1280,
+      "Frames": 96045
+    },
+    {
+      "Seconds": 930.5250016,
+      "WorkingSet": 897552384,
+      "Managed": 29447416,
+      "Retained": 1280,
+      "Frames": 96686
+    },
+    {
+      "Seconds": 936.837413,
+      "WorkingSet": 902569984,
+      "Managed": 26847512,
+      "Retained": 1280,
+      "Frames": 97362
+    },
+    {
+      "Seconds": 943.2916889,
+      "WorkingSet": 903065600,
+      "Managed": 29908592,
+      "Retained": 1280,
+      "Frames": 98060
+    },
+    {
+      "Seconds": 949.5136578,
+      "WorkingSet": 902230016,
+      "Managed": 29087320,
+      "Retained": 1280,
+      "Frames": 98735
+    },
+    {
+      "Seconds": 955.8263672,
+      "WorkingSet": 904921088,
+      "Managed": 29278832,
+      "Retained": 1280,
+      "Frames": 99400
+    },
+    {
+      "Seconds": 962.0940664,
+      "WorkingSet": 904622080,
+      "Managed": 26834328,
+      "Retained": 1280,
+      "Frames": 100063
+    },
+    {
+      "Seconds": 968.3785226,
+      "WorkingSet": 904495104,
+      "Managed": 27412656,
+      "Retained": 1280,
+      "Frames": 100737
+    },
+    {
+      "Seconds": 974.7074552,
+      "WorkingSet": 901292032,
+      "Managed": 26904000,
+      "Retained": 1280,
+      "Frames": 101399
+    },
+    {
+      "Seconds": 981.063448,
+      "WorkingSet": 906530816,
+      "Managed": 30751368,
+      "Retained": 1280,
+      "Frames": 102080
+    },
+    {
+      "Seconds": 987.3956184,
+      "WorkingSet": 904175616,
+      "Managed": 28624576,
+      "Retained": 1280,
+      "Frames": 102719
+    },
+    {
+      "Seconds": 993.7293946,
+      "WorkingSet": 904540160,
+      "Managed": 28954984,
+      "Retained": 1280,
+      "Frames": 103391
+    },
+    {
+      "Seconds": 1000.0031516,
+      "WorkingSet": 905179136,
+      "Managed": 25445328,
+      "Retained": 1280,
+      "Frames": 104070
+    },
+    {
+      "Seconds": 1006.3110312,
+      "WorkingSet": 905191424,
+      "Managed": 28568752,
+      "Retained": 1280,
+      "Frames": 104737
+    },
+    {
+      "Seconds": 1012.9070158,
+      "WorkingSet": 904536064,
+      "Managed": 27349600,
+      "Retained": 1280,
+      "Frames": 105432
+    },
+    {
+      "Seconds": 1019.4346965,
+      "WorkingSet": 909434880,
+      "Managed": 26449496,
+      "Retained": 1280,
+      "Frames": 106084
+    },
+    {
+      "Seconds": 1025.9359819,
+      "WorkingSet": 909582336,
+      "Managed": 27398480,
+      "Retained": 1280,
+      "Frames": 106745
+    },
+    {
+      "Seconds": 1032.2556004,
+      "WorkingSet": 908144640,
+      "Managed": 27779424,
+      "Retained": 1280,
+      "Frames": 107428
+    },
+    {
+      "Seconds": 1038.5163014,
+      "WorkingSet": 909287424,
+      "Managed": 27371928,
+      "Retained": 1280,
+      "Frames": 108088
+    },
+    {
+      "Seconds": 1044.8287992,
+      "WorkingSet": 901332992,
+      "Managed": 26777816,
+      "Retained": 1280,
+      "Frames": 108788
+    },
+    {
+      "Seconds": 1051.1384912,
+      "WorkingSet": 909709312,
+      "Managed": 29255144,
+      "Retained": 1280,
+      "Frames": 109454
+    },
+    {
+      "Seconds": 1057.4491249,
+      "WorkingSet": 909086720,
+      "Managed": 27076912,
+      "Retained": 1280,
+      "Frames": 110127
+    },
+    {
+      "Seconds": 1063.7961164,
+      "WorkingSet": 908902400,
+      "Managed": 28594016,
+      "Retained": 1280,
+      "Frames": 110832
+    },
+    {
+      "Seconds": 1070.1711393,
+      "WorkingSet": 908906496,
+      "Managed": 26935904,
+      "Retained": 1280,
+      "Frames": 111506
+    },
+    {
+      "Seconds": 1076.4582528,
+      "WorkingSet": 911314944,
+      "Managed": 27509160,
+      "Retained": 1280,
+      "Frames": 112137
+    },
+    {
+      "Seconds": 1082.8022124,
+      "WorkingSet": 912830464,
+      "Managed": 29277376,
+      "Retained": 1280,
+      "Frames": 112825
+    },
+    {
+      "Seconds": 1089.1638027,
+      "WorkingSet": 911306752,
+      "Managed": 28683808,
+      "Retained": 1280,
+      "Frames": 113510
+    },
+    {
+      "Seconds": 1095.4360853,
+      "WorkingSet": 909819904,
+      "Managed": 27481048,
+      "Retained": 1280,
+      "Frames": 114161
+    },
+    {
+      "Seconds": 1101.7902241,
+      "WorkingSet": 906539008,
+      "Managed": 28631688,
+      "Retained": 1280,
+      "Frames": 114853
+    },
+    {
+      "Seconds": 1108.5328087,
+      "WorkingSet": 914001920,
+      "Managed": 27025264,
+      "Retained": 1280,
+      "Frames": 115528
+    },
+    {
+      "Seconds": 1115.1541052,
+      "WorkingSet": 910237696,
+      "Managed": 26952384,
+      "Retained": 1280,
+      "Frames": 116205
+    },
+    {
+      "Seconds": 1121.6104019,
+      "WorkingSet": 910598144,
+      "Managed": 28703456,
+      "Retained": 1280,
+      "Frames": 116879
+    },
+    {
+      "Seconds": 1127.9073531,
+      "WorkingSet": 910782464,
+      "Managed": 28672672,
+      "Retained": 1280,
+      "Frames": 117541
+    },
+    {
+      "Seconds": 1134.2646078,
+      "WorkingSet": 905613312,
+      "Managed": 26542816,
+      "Retained": 1280,
+      "Frames": 118222
+    },
+    {
+      "Seconds": 1140.8789053,
+      "WorkingSet": 911650816,
+      "Managed": 27505776,
+      "Retained": 1280,
+      "Frames": 118914
+    },
+    {
+      "Seconds": 1147.2444192,
+      "WorkingSet": 913805312,
+      "Managed": 27526560,
+      "Retained": 1280,
+      "Frames": 119562
+    },
+    {
+      "Seconds": 1153.629455,
+      "WorkingSet": 909000704,
+      "Managed": 27096104,
+      "Retained": 1280,
+      "Frames": 120231
+    },
+    {
+      "Seconds": 1159.9200286,
+      "WorkingSet": 911282176,
+      "Managed": 28753216,
+      "Retained": 1280,
+      "Frames": 120895
+    },
+    {
+      "Seconds": 1166.2524566,
+      "WorkingSet": 913813504,
+      "Managed": 26909336,
+      "Retained": 1280,
+      "Frames": 121572
+    },
+    {
+      "Seconds": 1172.6897932,
+      "WorkingSet": 913752064,
+      "Managed": 27022720,
+      "Retained": 1280,
+      "Frames": 122238
+    },
+    {
+      "Seconds": 1178.9231101,
+      "WorkingSet": 913784832,
+      "Managed": 30359536,
+      "Retained": 1280,
+      "Frames": 122900
+    },
+    {
+      "Seconds": 1185.2767399,
+      "WorkingSet": 918106112,
+      "Managed": 29104280,
+      "Retained": 1280,
+      "Frames": 123565
+    },
+    {
+      "Seconds": 1191.5382548,
+      "WorkingSet": 912011264,
+      "Managed": 27479432,
+      "Retained": 1280,
+      "Frames": 124226
+    },
+    {
+      "Seconds": 1197.8265166,
+      "WorkingSet": 915247104,
+      "Managed": 27516312,
+      "Retained": 1280,
+      "Frames": 124903
+    },
+    {
+      "Seconds": 1204.1764481,
+      "WorkingSet": 914845696,
+      "Managed": 28759008,
+      "Retained": 1280,
+      "Frames": 125590
+    },
+    {
+      "Seconds": 1210.601836,
+      "WorkingSet": 914792448,
+      "Managed": 28657232,
+      "Retained": 1280,
+      "Frames": 126273
+    },
+    {
+      "Seconds": 1217.0259716,
+      "WorkingSet": 922918912,
+      "Managed": 26735264,
+      "Retained": 1280,
+      "Frames": 126955
+    },
+    {
+      "Seconds": 1223.3428496,
+      "WorkingSet": 919543808,
+      "Managed": 27450176,
+      "Retained": 1280,
+      "Frames": 127646
+    },
+    {
+      "Seconds": 1229.6436654,
+      "WorkingSet": 921894912,
+      "Managed": 29202344,
+      "Retained": 1280,
+      "Frames": 128299
+    },
+    {
+      "Seconds": 1235.9874281,
+      "WorkingSet": 920252416,
+      "Managed": 29172952,
+      "Retained": 1280,
+      "Frames": 128972
+    },
+    {
+      "Seconds": 1242.2911045,
+      "WorkingSet": 920424448,
+      "Managed": 28713032,
+      "Retained": 1280,
+      "Frames": 129627
+    },
+    {
+      "Seconds": 1248.6290079,
+      "WorkingSet": 920436736,
+      "Managed": 29239616,
+      "Retained": 1280,
+      "Frames": 130290
+    },
+    {
+      "Seconds": 1254.9461058,
+      "WorkingSet": 919416832,
+      "Managed": 26960496,
+      "Retained": 1280,
+      "Frames": 130967
+    },
+    {
+      "Seconds": 1261.3209894,
+      "WorkingSet": 925220864,
+      "Managed": 29407072,
+      "Retained": 1280,
+      "Frames": 131636
+    },
+    {
+      "Seconds": 1267.5682057,
+      "WorkingSet": 920473600,
+      "Managed": 28676040,
+      "Retained": 1280,
+      "Frames": 132311
+    },
+    {
+      "Seconds": 1273.7835079,
+      "WorkingSet": 918388736,
+      "Managed": 29230720,
+      "Retained": 1280,
+      "Frames": 132981
+    },
+    {
+      "Seconds": 1279.9766113,
+      "WorkingSet": 919937024,
+      "Managed": 25622344,
+      "Retained": 1280,
+      "Frames": 133651
+    },
+    {
+      "Seconds": 1286.25765,
+      "WorkingSet": 917004288,
+      "Managed": 27022008,
+      "Retained": 1280,
+      "Frames": 134350
+    },
+    {
+      "Seconds": 1292.614421,
+      "WorkingSet": 918712320,
+      "Managed": 27025368,
+      "Retained": 1280,
+      "Frames": 135023
+    },
+    {
+      "Seconds": 1298.8979623,
+      "WorkingSet": 918233088,
+      "Managed": 29191952,
+      "Retained": 1280,
+      "Frames": 135694
+    },
+    {
+      "Seconds": 1305.2533998,
+      "WorkingSet": 927571968,
+      "Managed": 28885640,
+      "Retained": 1280,
+      "Frames": 136349
+    },
+    {
+      "Seconds": 1311.5860252,
+      "WorkingSet": 925196288,
+      "Managed": 27444000,
+      "Retained": 1280,
+      "Frames": 137000
+    },
+    {
+      "Seconds": 1317.9135861,
+      "WorkingSet": 924717056,
+      "Managed": 27009536,
+      "Retained": 1280,
+      "Frames": 137669
+    },
+    {
+      "Seconds": 1324.3837334,
+      "WorkingSet": 925646848,
+      "Managed": 27052384,
+      "Retained": 1280,
+      "Frames": 138350
+    },
+    {
+      "Seconds": 1330.7926401,
+      "WorkingSet": 927174656,
+      "Managed": 28668384,
+      "Retained": 1280,
+      "Frames": 139035
+    },
+    {
+      "Seconds": 1337.1975603,
+      "WorkingSet": 933527552,
+      "Managed": 27541456,
+      "Retained": 1280,
+      "Frames": 139707
+    },
+    {
+      "Seconds": 1343.5423783,
+      "WorkingSet": 924073984,
+      "Managed": 26973568,
+      "Retained": 1280,
+      "Frames": 140376
+    },
+    {
+      "Seconds": 1349.7883218,
+      "WorkingSet": 920387584,
+      "Managed": 26979040,
+      "Retained": 1280,
+      "Frames": 141050
+    },
+    {
+      "Seconds": 1356.0873615,
+      "WorkingSet": 920559616,
+      "Managed": 28733984,
+      "Retained": 1280,
+      "Frames": 141712
+    },
+    {
+      "Seconds": 1362.4322553,
+      "WorkingSet": 925229056,
+      "Managed": 26981832,
+      "Retained": 1280,
+      "Frames": 142381
+    },
+    {
+      "Seconds": 1368.9043057,
+      "WorkingSet": 926486528,
+      "Managed": 30129856,
+      "Retained": 1280,
+      "Frames": 143051
+    },
+    {
+      "Seconds": 1375.4993618,
+      "WorkingSet": 929660928,
+      "Managed": 30014960,
+      "Retained": 1280,
+      "Frames": 143715
+    },
+    {
+      "Seconds": 1382.4101551,
+      "WorkingSet": 921214976,
+      "Managed": 31641320,
+      "Retained": 1280,
+      "Frames": 144434
+    },
+    {
+      "Seconds": 1388.8288713,
+      "WorkingSet": 927215616,
+      "Managed": 27183896,
+      "Retained": 1280,
+      "Frames": 145093
+    },
+    {
+      "Seconds": 1395.1978107,
+      "WorkingSet": 930254848,
+      "Managed": 28827864,
+      "Retained": 1280,
+      "Frames": 145747
+    },
+    {
+      "Seconds": 1401.5848957,
+      "WorkingSet": 923279360,
+      "Managed": 27185296,
+      "Retained": 1280,
+      "Frames": 146446
+    },
+    {
+      "Seconds": 1407.7915207,
+      "WorkingSet": 926961664,
+      "Managed": 28217312,
+      "Retained": 1280,
+      "Frames": 147098
+    },
+    {
+      "Seconds": 1414.0593251,
+      "WorkingSet": 928878592,
+      "Managed": 31475840,
+      "Retained": 1280,
+      "Frames": 147758
+    },
+    {
+      "Seconds": 1420.3467887,
+      "WorkingSet": 939204608,
+      "Managed": 26514776,
+      "Retained": 1280,
+      "Frames": 148449
+    },
+    {
+      "Seconds": 1426.6736601,
+      "WorkingSet": 929185792,
+      "Managed": 29131616,
+      "Retained": 1280,
+      "Frames": 149103
+    },
+    {
+      "Seconds": 1432.9947716,
+      "WorkingSet": 928387072,
+      "Managed": 28708080,
+      "Retained": 1280,
+      "Frames": 149771
+    },
+    {
+      "Seconds": 1439.3711678,
+      "WorkingSet": 924934144,
+      "Managed": 27021320,
+      "Retained": 1280,
+      "Frames": 150425
+    },
+    {
+      "Seconds": 1445.7372622,
+      "WorkingSet": 929935360,
+      "Managed": 27821176,
+      "Retained": 1280,
+      "Frames": 151084
+    },
+    {
+      "Seconds": 1452.0352638,
+      "WorkingSet": 930021376,
+      "Managed": 29144864,
+      "Retained": 1280,
+      "Frames": 151753
+    },
+    {
+      "Seconds": 1458.3310882,
+      "WorkingSet": 930869248,
+      "Managed": 26994832,
+      "Retained": 1280,
+      "Frames": 152439
+    },
+    {
+      "Seconds": 1464.7647386,
+      "WorkingSet": 929259520,
+      "Managed": 26932928,
+      "Retained": 1280,
+      "Frames": 153114
+    },
+    {
+      "Seconds": 1471.2245133,
+      "WorkingSet": 932524032,
+      "Managed": 28715616,
+      "Retained": 1280,
+      "Frames": 153780
+    },
+    {
+      "Seconds": 1477.6384419,
+      "WorkingSet": 934957056,
+      "Managed": 29108192,
+      "Retained": 1280,
+      "Frames": 154441
+    },
+    {
+      "Seconds": 1484.0398825,
+      "WorkingSet": 933113856,
+      "Managed": 27441832,
+      "Retained": 1280,
+      "Frames": 155088
+    },
+    {
+      "Seconds": 1490.4013338,
+      "WorkingSet": 934219776,
+      "Managed": 28645832,
+      "Retained": 1280,
+      "Frames": 155759
+    },
+    {
+      "Seconds": 1496.7724402,
+      "WorkingSet": 932007936,
+      "Managed": 27225192,
+      "Retained": 1280,
+      "Frames": 156419
+    },
+    {
+      "Seconds": 1503.2110302,
+      "WorkingSet": 940507136,
+      "Managed": 27543792,
+      "Retained": 1280,
+      "Frames": 157084
+    },
+    {
+      "Seconds": 1509.6119245,
+      "WorkingSet": 937201664,
+      "Managed": 26930880,
+      "Retained": 1280,
+      "Frames": 157736
+    },
+    {
+      "Seconds": 1515.92711,
+      "WorkingSet": 930631680,
+      "Managed": 28701016,
+      "Retained": 1280,
+      "Frames": 158421
+    },
+    {
+      "Seconds": 1523.4519509,
+      "WorkingSet": 937463808,
+      "Managed": 27436920,
+      "Retained": 1280,
+      "Frames": 159164
+    },
+    {
+      "Seconds": 1530.3315846,
+      "WorkingSet": 938348544,
+      "Managed": 27942512,
+      "Retained": 1280,
+      "Frames": 159829
+    },
+    {
+      "Seconds": 1536.6653404,
+      "WorkingSet": 932741120,
+      "Managed": 30342736,
+      "Retained": 1280,
+      "Frames": 160498
+    },
+    {
+      "Seconds": 1543.0732114,
+      "WorkingSet": 936558592,
+      "Managed": 29181960,
+      "Retained": 1280,
+      "Frames": 161185
+    },
+    {
+      "Seconds": 1549.3823617,
+      "WorkingSet": 935555072,
+      "Managed": 26702304,
+      "Retained": 1280,
+      "Frames": 161853
+    },
+    {
+      "Seconds": 1555.6937454,
+      "WorkingSet": 936214528,
+      "Managed": 29073248,
+      "Retained": 1280,
+      "Frames": 162528
+    },
+    {
+      "Seconds": 1562.1203425,
+      "WorkingSet": 938606592,
+      "Managed": 26766416,
+      "Retained": 1280,
+      "Frames": 163193
+    },
+    {
+      "Seconds": 1568.4728552,
+      "WorkingSet": 938979328,
+      "Managed": 28671312,
+      "Retained": 1280,
+      "Frames": 163852
+    },
+    {
+      "Seconds": 1574.8726138,
+      "WorkingSet": 934727680,
+      "Managed": 27530400,
+      "Retained": 1280,
+      "Frames": 164533
+    },
+    {
+      "Seconds": 1581.2953594,
+      "WorkingSet": 942280704,
+      "Managed": 28699288,
+      "Retained": 1280,
+      "Frames": 165188
+    },
+    {
+      "Seconds": 1587.6928038,
+      "WorkingSet": 950210560,
+      "Managed": 32550072,
+      "Retained": 1280,
+      "Frames": 165843
+    },
+    {
+      "Seconds": 1594.2146473,
+      "WorkingSet": 941543424,
+      "Managed": 32099080,
+      "Retained": 1280,
+      "Frames": 166514
+    },
+    {
+      "Seconds": 1600.6795259,
+      "WorkingSet": 939999232,
+      "Managed": 29204064,
+      "Retained": 1280,
+      "Frames": 167192
+    },
+    {
+      "Seconds": 1607.0358943,
+      "WorkingSet": 934096896,
+      "Managed": 27028800,
+      "Retained": 1280,
+      "Frames": 167864
+    },
+    {
+      "Seconds": 1613.4581986,
+      "WorkingSet": 936075264,
+      "Managed": 27294384,
+      "Retained": 1280,
+      "Frames": 168514
+    },
+    {
+      "Seconds": 1620.0468363,
+      "WorkingSet": 945397760,
+      "Managed": 32045720,
+      "Retained": 1280,
+      "Frames": 169177
+    },
+    {
+      "Seconds": 1626.4695659,
+      "WorkingSet": 939962368,
+      "Managed": 27544320,
+      "Retained": 1280,
+      "Frames": 169856
+    },
+    {
+      "Seconds": 1632.8351334,
+      "WorkingSet": 941142016,
+      "Managed": 27565592,
+      "Retained": 1280,
+      "Frames": 170506
+    },
+    {
+      "Seconds": 1639.1394747,
+      "WorkingSet": 943271936,
+      "Managed": 28360936,
+      "Retained": 1280,
+      "Frames": 171175
+    },
+    {
+      "Seconds": 1645.3830175,
+      "WorkingSet": 943357952,
+      "Managed": 27001176,
+      "Retained": 1280,
+      "Frames": 171847
+    },
+    {
+      "Seconds": 1651.6262594,
+      "WorkingSet": 942542848,
+      "Managed": 30398176,
+      "Retained": 1280,
+      "Frames": 172511
+    },
+    {
+      "Seconds": 1658.0023036,
+      "WorkingSet": 944975872,
+      "Managed": 31410896,
+      "Retained": 1280,
+      "Frames": 173172
+    },
+    {
+      "Seconds": 1664.3738362,
+      "WorkingSet": 945278976,
+      "Managed": 27003952,
+      "Retained": 1280,
+      "Frames": 173844
+    },
+    {
+      "Seconds": 1671.2821528,
+      "WorkingSet": 939630592,
+      "Managed": 27495440,
+      "Retained": 1280,
+      "Frames": 174530
+    },
+    {
+      "Seconds": 1677.7725057,
+      "WorkingSet": 946712576,
+      "Managed": 30435072,
+      "Retained": 1280,
+      "Frames": 175195
+    },
+    {
+      "Seconds": 1684.2327179,
+      "WorkingSet": 942882816,
+      "Managed": 29271992,
+      "Retained": 1280,
+      "Frames": 175881
+    },
+    {
+      "Seconds": 1690.6092778,
+      "WorkingSet": 941146112,
+      "Managed": 26923616,
+      "Retained": 1280,
+      "Frames": 176553
+    },
+    {
+      "Seconds": 1696.9788227,
+      "WorkingSet": 949374976,
+      "Managed": 27053496,
+      "Retained": 1280,
+      "Frames": 177194
+    },
+    {
+      "Seconds": 1703.2501444,
+      "WorkingSet": 944766976,
+      "Managed": 27920952,
+      "Retained": 1280,
+      "Frames": 177874
+    },
+    {
+      "Seconds": 1709.5412111,
+      "WorkingSet": 943927296,
+      "Managed": 28730392,
+      "Retained": 1280,
+      "Frames": 178545
+    },
+    {
+      "Seconds": 1715.8396511,
+      "WorkingSet": 947605504,
+      "Managed": 27030568,
+      "Retained": 1280,
+      "Frames": 179224
+    },
+    {
+      "Seconds": 1722.2013726,
+      "WorkingSet": 947572736,
+      "Managed": 27456704,
+      "Retained": 1280,
+      "Frames": 179906
+    },
+    {
+      "Seconds": 1728.4532888,
+      "WorkingSet": 946819072,
+      "Managed": 27083704,
+      "Retained": 1280,
+      "Frames": 180577
+    },
+    {
+      "Seconds": 1734.8259936,
+      "WorkingSet": 946872320,
+      "Managed": 27596864,
+      "Retained": 1280,
+      "Frames": 181255
+    },
+    {
+      "Seconds": 1741.2681302,
+      "WorkingSet": 954834944,
+      "Managed": 29208000,
+      "Retained": 1280,
+      "Frames": 181900
+    },
+    {
+      "Seconds": 1747.6492766,
+      "WorkingSet": 951255040,
+      "Managed": 26983616,
+      "Retained": 1280,
+      "Frames": 182549
+    },
+    {
+      "Seconds": 1753.9774973,
+      "WorkingSet": 948510720,
+      "Managed": 28409672,
+      "Retained": 1280,
+      "Frames": 183212
+    },
+    {
+      "Seconds": 1760.3811506,
+      "WorkingSet": 949301248,
+      "Managed": 27470328,
+      "Retained": 1280,
+      "Frames": 183877
+    },
+    {
+      "Seconds": 1766.7276911,
+      "WorkingSet": 944865280,
+      "Managed": 29164984,
+      "Retained": 1280,
+      "Frames": 184545
+    },
+    {
+      "Seconds": 1773.2159117,
+      "WorkingSet": 950718464,
+      "Managed": 30030344,
+      "Retained": 1280,
+      "Frames": 185229
+    },
+    {
+      "Seconds": 1779.5277775,
+      "WorkingSet": 950751232,
+      "Managed": 33058552,
+      "Retained": 1280,
+      "Frames": 185876
+    },
+    {
+      "Seconds": 1786.0782808,
+      "WorkingSet": 961753088,
+      "Managed": 30244400,
+      "Retained": 1280,
+      "Frames": 186565
+    },
+    {
+      "Seconds": 1793.0472684,
+      "WorkingSet": 957075456,
+      "Managed": 29162648,
+      "Retained": 1280,
+      "Frames": 187277
+    },
+    {
+      "Seconds": 1799.5644362,
+      "WorkingSet": 956043264,
+      "Managed": 27927216,
+      "Retained": 1280,
+      "Frames": 187963
+    }
+  ],
+  "Limitations": "Dispatcher probes are not OS input-to-present latency. Rendering callbacks are not physical monitor FPS."
+}

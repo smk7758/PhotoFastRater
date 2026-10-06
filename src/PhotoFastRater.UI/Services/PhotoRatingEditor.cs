@@ -8,6 +8,7 @@ namespace PhotoFastRater.UI.Services;
 public sealed class PhotoRatingEditor(IRatingCoordinator coordinator) : IDisposable
 {
     private readonly SemaphoreSlim _gate = new(1, 1);
+    private int _disposed;
 
     public Task SetStarsAsync(PhotoViewModel photo, int stars) => UpdateAsync(photo,
         state => new RatingState(stars, state.IsFavorite, state.IsRejected));
@@ -20,6 +21,7 @@ public sealed class PhotoRatingEditor(IRatingCoordinator coordinator) : IDisposa
 
     private async Task UpdateAsync(PhotoViewModel photo, Func<RatingState, RatingState> change)
     {
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
         await _gate.WaitAsync();
         try
         {
@@ -38,7 +40,9 @@ public sealed class PhotoRatingEditor(IRatingCoordinator coordinator) : IDisposa
 
     public void Dispose()
     {
-        _gate.Dispose();
+        // Closing a window can overlap a committed write. Let existing callers release this managed gate;
+        // no OS wait handle is allocated, so disposing it early only creates a shutdown race.
+        Interlocked.Exchange(ref _disposed, 1);
         GC.SuppressFinalize(this);
     }
 }

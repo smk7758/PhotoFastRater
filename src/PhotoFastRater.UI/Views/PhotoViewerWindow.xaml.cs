@@ -24,10 +24,18 @@ public partial class PhotoViewerWindow : Window
     public PhotoViewerWindow(PhotoViewModel viewModel, PhotoRatingEditor ratingEditor, IImageDecodeService decoder)
     {
         InitializeComponent();
+        PhotoFastRater.UI.Services.WindowPlacement.FitOnFirstLoad(this);
         _viewModel = viewModel;
         _ratingEditor = ratingEditor;
         _decoder = decoder;
-        Closed += (_, _) => _lifetime.Cancel();
+        Closed += (_, _) =>
+        {
+            _lifetime.Cancel();
+            _lifetime.Dispose();
+            // Full images belong to this window, not to the long-lived catalog photo view model.
+            PhotoImage.Source = null;
+            PreviewImage.Source = null;
+        };
         DataContext = _viewModel;
 
         // SocialMediaExporter インスタンスを作成
@@ -41,6 +49,8 @@ public partial class PhotoViewerWindow : Window
 
         // プレビューのEXIFテキストを更新
         UpdateExifPreviewText();
+        PreviewGrid.SizeChanged += (_, _) => UpdateExifPreviewPosition();
+        ExifPreviewBorder.SizeChanged += (_, _) => UpdateExifPreviewPosition();
     }
 
     private async void LoadFullImageAsync()
@@ -48,6 +58,7 @@ public partial class PhotoViewerWindow : Window
         try
         {
             var bytes = await _decoder.DecodeAsync(_viewModel.FilePath, 4096, _lifetime.Token);
+            if (_lifetime.IsCancellationRequested) return;
             using var stream = new MemoryStream(bytes.ToArray());
             var bitmap = new BitmapImage();
             bitmap.BeginInit();
@@ -55,12 +66,15 @@ public partial class PhotoViewerWindow : Window
             bitmap.StreamSource = stream;
             bitmap.EndInit();
             bitmap.Freeze();
-            _viewModel.FullImageSource = bitmap;
+            PhotoImage.Source = bitmap;
+            PreviewImage.Source = bitmap;
         }
         catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
         catch (Exception exception)
         {
-            _viewModel.FullImageSource = _viewModel.Thumbnail;
+            if (_lifetime.IsCancellationRequested) return;
+            PhotoImage.Source = _viewModel.Thumbnail;
+            PreviewImage.Source = _viewModel.Thumbnail;
             StatusText.Text = $"画像を読み込めません: {exception.Message}";
         }
     }
@@ -111,6 +125,7 @@ public partial class PhotoViewerWindow : Window
                 ? Visibility.Visible
                 : Visibility.Collapsed;
         }
+        UpdateExifPreviewPosition();
     }
 
     private async void Export_Click(object sender, RoutedEventArgs e)
@@ -244,7 +259,7 @@ public partial class PhotoViewerWindow : Window
 
     private void UpdateExifPreviewPosition()
     {
-        if (ExifPreviewBorder == null || PreviewGrid == null)
+        if (ExifPreviewBorder == null || PreviewGrid == null || CustomXSlider == null || CustomYSlider == null)
             return;
 
         var gridWidth = PreviewGrid.ActualWidth;
@@ -253,8 +268,22 @@ public partial class PhotoViewerWindow : Window
         if (gridWidth == 0 || gridHeight == 0)
             return;
 
-        var x = gridWidth * CustomXSlider.Value / 100.0;
-        var y = gridHeight * CustomYSlider.Value / 100.0;
+        var maxX = Math.Max(0, gridWidth - ExifPreviewBorder.ActualWidth);
+        var maxY = Math.Max(0, gridHeight - ExifPreviewBorder.ActualHeight);
+        var position = (OverlayPositionComboBox.SelectedItem as ComboBoxItem)?.Tag as string;
+        // Preset selection must move the preview too; keep the entire text inside the preview at 100%.
+        var x = position switch
+        {
+            "TopRight" or "BottomRight" => maxX,
+            "Custom" => Math.Clamp(gridWidth * CustomXSlider.Value / 100.0, 0, maxX),
+            _ => 0
+        };
+        var y = position switch
+        {
+            "BottomLeft" or "BottomRight" => maxY,
+            "Custom" => Math.Clamp(gridHeight * CustomYSlider.Value / 100.0, 0, maxY),
+            _ => 0
+        };
 
         var margin = new Thickness(x, y, 0, 0);
         ExifPreviewBorder.Margin = margin;
@@ -303,6 +332,7 @@ public partial class PhotoViewerWindow : Window
 
     private void ExifPreview_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        OverlayPositionComboBox.SelectedIndex = 4; // Dragging explicitly selects the custom export position.
         _isDragging = true;
         _dragStartPoint = e.GetPosition(PreviewGrid);
         ExifPreviewBorder.CaptureMouse();

@@ -67,4 +67,7 @@ Desktop.ini
 artifacts/ui-validation/data/
 artifacts/ui-validation/profiles/
 artifacts/ui-validation/screenshots/
+artifacts/ui-validation/uat-data-path.txt
+artifacts/ui-validation/*-progress.json
+artifacts/ui-validation/*.log
 _GARBAGE/

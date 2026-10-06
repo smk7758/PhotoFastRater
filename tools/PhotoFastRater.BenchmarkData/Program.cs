@@ -9,13 +9,14 @@ using PhotoFastRater.Infrastructure.Database.Repositories;
 
 if (!TryParseArguments(args, out var mode, out var outputDirectory, out var count))
 {
-    Console.Error.WriteLine("Usage: PhotoFastRater.BenchmarkData [generate|measure] <output-directory> <count: 1..100000>");
+    Console.Error.WriteLine("Usage: PhotoFastRater.BenchmarkData [generate|measure|recheck] <output-directory> <count: 1..100000>");
     return 2;
 }
 
 Directory.CreateDirectory(outputDirectory);
 if (mode == "generate")
     return await GenerateFilesAsync(outputDirectory, count);
+if (mode == "recheck") return await RecheckCatalogAsync(outputDirectory);
 return await MeasureCatalogAsync(outputDirectory, count);
 
 static bool TryParseArguments(string[] arguments, out string mode, out string outputDirectory, out int count)
@@ -26,7 +27,7 @@ static bool TryParseArguments(string[] arguments, out string mode, out string ou
     var countIndex = arguments.Length == 2 ? 1 : 2;
     outputDirectory = arguments.Length > pathIndex ? Path.GetFullPath(arguments[pathIndex]) : string.Empty;
     return arguments.Length is 2 or 3 &&
-           mode is "generate" or "measure" &&
+           mode is "generate" or "measure" or "recheck" &&
            int.TryParse(arguments[countIndex], NumberStyles.None, CultureInfo.InvariantCulture, out count) &&
            count is >= 1 and <= 100_000;
 }
@@ -84,16 +85,16 @@ static async Task<int> MeasureCatalogAsync(string outputDirectory, int count)
     var firstPage = Stopwatch.StartNew();
     var first = await repository.SearchAsync(new PhotoSearchQuery(), null, 256);
     firstPage.Stop();
-    var searchSamples = new List<double>(20);
-    for (var index = 0; index < 20; index++)
+    var searchSamples = new List<double>(100);
+    for (var index = 0; index < 100; index++)
     {
         var timer = Stopwatch.StartNew();
         _ = await repository.SearchAsync(new PhotoSearchQuery("benchmark"), null, 256);
         timer.Stop();
         searchSamples.Add(timer.Elapsed.TotalMilliseconds);
     }
-    var ratingSamples = new List<double>(20);
-    foreach (var id in first.Items.Take(20).Select(photo => photo.Id))
+    var ratingSamples = new List<double>(100);
+    foreach (var id in first.Items.Take(100).Select(photo => photo.Id))
     {
         var timer = Stopwatch.StartNew();
         await repository.CommitRatingAsync(id, new RatingState(4, false, false));
@@ -119,6 +120,26 @@ static async Task<int> MeasureCatalogAsync(string outputDirectory, int count)
     return 0;
 }
 
+/// <summary>Measures an existing synthetic catalog without reindexing or touching user catalog paths.</summary>
+static async Task<int> RecheckCatalogAsync(string directory)
+{
+    var database = Path.Combine(directory, "benchmark.db");
+    if (!File.Exists(database)) return 3;
+    var options = new DbContextOptionsBuilder<PhotoDbContext>().UseSqlite(
+        new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder { DataSource = database, Mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadOnly }.ToString()).Options;
+    var repository = new PhotoRepository(new BenchmarkContextFactory(options));
+    var timings = new List<double>(100);
+    for (var index = 0; index < 100; index++)
+    {
+        var watch = Stopwatch.StartNew();
+        var page = await repository.SearchAsync(new PhotoSearchQuery("benchmark"), null, 256);
+        watch.Stop(); timings.Add(watch.Elapsed.TotalMilliseconds);
+    }
+    var result = new { Trials = timings.Count, SearchP95Milliseconds = Percentile95(timings), SearchSamples = timings };
+    await File.WriteAllTextAsync(Path.Combine(directory, "recheck-result.json"), JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true }));
+    Console.WriteLine($"Search p95: {result.SearchP95Milliseconds:F2}ms ({timings.Count} trials)");
+    return result.SearchP95Milliseconds <= 300 ? 0 : 1;
+}
 static Photo CreatePhoto(int index)
 {
     var path = Path.GetFullPath(Path.Combine("C:\\PFR-Benchmark-Photos", (index / 1000).ToString("D3", CultureInfo.InvariantCulture), $"benchmark-{index:D6}.jpg"));

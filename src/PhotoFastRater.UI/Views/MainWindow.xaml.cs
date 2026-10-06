@@ -17,7 +17,10 @@ public partial class MainWindow : Window
 
     public MainWindow(MainViewModel viewModel, WindowManager windowManager)
     {
+        // Start bounded catalog work while constructing the view; Loaded awaits the same task, never a second query.
+        var initialLoad = viewModel.LoadPhotosCommand.ExecuteAsync(null);
         InitializeComponent();
+        PhotoFastRater.UI.Services.WindowPlacement.FitOnFirstLoad(this);
         DataContext = viewModel;
         _windowManager = windowManager;
         AddHandler(System.Windows.Controls.Validation.ErrorEvent, new EventHandler<ValidationErrorEventArgs>((_, args) =>
@@ -48,7 +51,7 @@ public partial class MainWindow : Window
                     viewModel.PhotoGrid.NotifyGridWidth(e.NewSize.Width);
                 viewModel.PhotoGrid.NotifyGridWidth(PhotoGridScrollViewer.ActualWidth);
             }
-            await viewModel.LoadPhotosCommand.ExecuteAsync(null);
+            await initialLoad;
         };
         KeyDown += HandlePhotoKeys;
         Closed += (_, _) => { _isClosed = true; _visibleLoadCancellation?.Cancel(); _visibleLoadCancellation?.Dispose(); };

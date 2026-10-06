@@ -1,4 +1,4 @@
-<Window x:Class="PhotoFastRater.UI.Views.FolderModeWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes" mc:Ignorable="d" Title="Photo Fast Rater - フォルダモード" Height="800" Width="1400" Language="ja-JP" UseLayoutRounding="True" SnapsToDevicePixels="True" AutomationProperties.Name="Photo Fast Rater フォルダ選別" Background="{DynamicResource DarkroomInkBrush}" AllowDrop="True" DragOver="Window_DragOver" Drop="Window_Drop" SizeChanged="Window_SizeChanged">
+<Window x:Class="PhotoFastRater.UI.Views.FolderModeWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:d="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes" mc:Ignorable="d" Title="Photo Fast Rater - フォルダモード" Height="800" Width="1400" Language="ja-JP" UseLayoutRounding="True" SnapsToDevicePixels="True" AutomationProperties.Name="Photo Fast Rater フォルダ選別" Background="{DynamicResource DarkroomInkBrush}" AllowDrop="True" DragOver="Window_DragOver" Drop="Window_Drop" SizeChanged="Window_SizeChanged" Foreground="{DynamicResource DarkroomPaperBrush}">
   <Grid>
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto" />
@@ -12,16 +12,16 @@
         <Button Content="フォルダを開く" Command="{Binding OpenFolderCommand}" Style="{StaticResource DarkroomActionButton}" AutomationProperties.AutomationId="FolderModeWindow.OpenFolderCommand" Margin="0,0,8,6" />
         <StackPanel Orientation="Horizontal" Margin="0,0,8,6">
           <TextBlock Text="ツリー表示" VerticalAlignment="Center" />
-          <ToggleButton IsChecked="{Binding IsTreeViewMode}" Margin="4,0" Padding="16,8" AutomationProperties.AutomationId="FolderModeWindow.IsTreeViewMode" AutomationProperties.Name="IsTreeViewMode" />
+          <ToggleButton IsChecked="{Binding IsTreeViewMode}" Margin="4,0" Padding="16,8" AutomationProperties.AutomationId="FolderModeWindow.IsTreeViewMode" AutomationProperties.Name="ツリー表示" />
         </StackPanel>
         <StackPanel Orientation="Horizontal" Margin="0,0,8,6">
           <TextBlock Text="フィルター" VerticalAlignment="Center" />
-          <ToggleButton IsChecked="{Binding IsFilterPanelOpen}" Margin="4,0" Padding="16,8" AutomationProperties.AutomationId="FolderModeWindow.IsFilterPanelOpen" AutomationProperties.Name="IsFilterPanelOpen" />
+          <ToggleButton IsChecked="{Binding IsFilterPanelOpen}" Margin="4,0" Padding="16,8" AutomationProperties.AutomationId="FolderModeWindow.IsFilterPanelOpen" AutomationProperties.Name="フィルターの表示" />
         </StackPanel>
         <!-- サムネイルサイズスライダー -->
         <StackPanel Orientation="Horizontal" Margin="0,0,8,6">
           <TextBlock Text="サイズ:" VerticalAlignment="Center" Margin="4,0" />
-          <Slider Minimum="100" Maximum="2000" Value="{Binding ThumbnailSize}" Width="120" VerticalAlignment="Center" Margin="4,0" AutomationProperties.AutomationId="FolderModeWindow.ThumbnailSize" AutomationProperties.Name="ThumbnailSize" />
+          <Slider Minimum="100" Maximum="2000" Value="{Binding ThumbnailSize}" Width="120" VerticalAlignment="Center" Margin="4,0" AutomationProperties.AutomationId="FolderModeWindow.ThumbnailSize" AutomationProperties.Name="サムネイルの大きさ" />
           <TextBlock Text="{Binding ThumbnailSize, StringFormat={}{0}px}" VerticalAlignment="Center" Margin="4,0" Width="40" />
         </StackPanel>
         <StackPanel Orientation="Horizontal" Margin="0,0,8,6">
@@ -33,19 +33,19 @@
         <Button Content="再読み込み" Command="{Binding ReloadFolderCommand}" Margin="4,0" AutomationProperties.AutomationId="FolderModeWindow.ReloadFolderCommand" />
         <StackPanel Orientation="Horizontal" Margin="0,0,8,6">
           <TextBlock Text="原画像" VerticalAlignment="Center" />
-          <ToggleButton IsChecked="{Binding ShowOriginalImages}" Margin="4,0" Padding="12,6" AutomationProperties.AutomationId="FolderModeWindow.ShowOriginalImages" AutomationProperties.Name="ShowOriginalImages" />
+          <ToggleButton IsChecked="{Binding ShowOriginalImages}" Margin="4,0" Padding="12,6" AutomationProperties.AutomationId="FolderModeWindow.ShowOriginalImages" AutomationProperties.Name="元画像を表示" />
         </StackPanel>
         <StackPanel Orientation="Horizontal" Margin="0,0,8,6">
           <TextBlock Text="同一サイズ" VerticalAlignment="Center" />
-          <ToggleButton IsChecked="{Binding UniformPhotoSize}" Margin="4,0" Padding="12,6" AutomationProperties.AutomationId="FolderModeWindow.UniformPhotoSize" AutomationProperties.Name="UniformPhotoSize" />
+          <ToggleButton IsChecked="{Binding UniformPhotoSize}" Margin="4,0" Padding="12,6" AutomationProperties.AutomationId="FolderModeWindow.UniformPhotoSize" AutomationProperties.Name="写真の表示サイズをそろえる" />
         </StackPanel>
         <StackPanel Orientation="Horizontal" Margin="0,0,8,6">
           <TextBlock Text="名前下表示" VerticalAlignment="Center" />
-          <ToggleButton IsChecked="{Binding NameLabelBelow}" Margin="4,0" Padding="12,6" AutomationProperties.AutomationId="FolderModeWindow.NameLabelBelow" AutomationProperties.Name="NameLabelBelow" />
+          <ToggleButton IsChecked="{Binding NameLabelBelow}" Margin="4,0" Padding="12,6" AutomationProperties.AutomationId="FolderModeWindow.NameLabelBelow" AutomationProperties.Name="名前を写真の下に表示" />
         </StackPanel>
         <StackPanel Orientation="Horizontal" Margin="0,0,8,6">
           <TextBlock Text="インライン" VerticalAlignment="Center" />
-          <ToggleButton IsChecked="{Binding IsInlinePreviewMode}" Margin="4,0" Padding="12,6" AutomationProperties.AutomationId="FolderModeWindow.IsInlinePreviewMode" AutomationProperties.Name="IsInlinePreviewMode" />
+          <ToggleButton IsChecked="{Binding IsInlinePreviewMode}" Margin="4,0" Padding="12,6" AutomationProperties.AutomationId="FolderModeWindow.IsInlinePreviewMode" AutomationProperties.Name="インラインプレビュー" />
         </StackPanel>
         <Button Content="プレビュー" Click="OpenPreview_Click" Margin="4,0" AutomationProperties.AutomationId="FolderModeWindow.OpenPreview_Click" />
         <Button Content="設定" Command="{Binding OpenSettingsCommand}" Margin="4,0" AutomationProperties.AutomationId="FolderModeWindow.OpenSettingsCommand" />
@@ -59,12 +59,12 @@
           <!-- ファイル名検索 -->
           <StackPanel Orientation="Horizontal" Margin="0,0,16,4">
             <TextBlock Text="ファイル名:" VerticalAlignment="Center" Margin="0,0,4,0" />
-            <TextBox Text="{Binding FilterNameSearch, UpdateSourceTrigger=PropertyChanged}" Width="160" VerticalAlignment="Center" Style="{StaticResource MaterialDesignTextBox}" AutomationProperties.AutomationId="FolderModeWindow.FilterNameSearch" AutomationProperties.Name="FilterNameSearch" />
+            <TextBox Text="{Binding FilterNameSearch, UpdateSourceTrigger=PropertyChanged}" Width="160" VerticalAlignment="Center" Style="{StaticResource MaterialDesignTextBox}" AutomationProperties.AutomationId="FolderModeWindow.FilterNameSearch" AutomationProperties.Name="ファイル名で絞り込み" />
           </StackPanel>
           <!-- 最低レーティング -->
           <StackPanel Orientation="Horizontal" Margin="0,0,16,4">
             <TextBlock Text="最低レーティング:" VerticalAlignment="Center" Margin="0,0,4,0" />
-            <ComboBox SelectedValue="{Binding FilterMinRating}" SelectedValuePath="Tag" Width="100" VerticalAlignment="Center" AutomationProperties.AutomationId="FolderModeWindow.FilterMinRating" AutomationProperties.Name="FilterMinRating">
+            <ComboBox SelectedValue="{Binding FilterMinRating}" SelectedValuePath="Tag" Width="100" VerticalAlignment="Center" AutomationProperties.AutomationId="FolderModeWindow.FilterMinRating" AutomationProperties.Name="評価の下限">
               <ComboBoxItem Content="すべて">
                 <ComboBoxItem.Tag>
                   <sys:Int32 xmlns:sys="clr-namespace:System;assembly=mscorlib">0</sys:Int32>
@@ -100,7 +100,7 @@
           <!-- ファイル種別 -->
           <StackPanel Orientation="Horizontal" Margin="0,0,16,4">
             <TextBlock Text="ファイル種別:" VerticalAlignment="Center" Margin="0,0,4,0" />
-            <ComboBox SelectedValue="{Binding FilterFileType}" SelectedValuePath="Tag" Width="100" VerticalAlignment="Center" AutomationProperties.AutomationId="FolderModeWindow.FilterFileType" AutomationProperties.Name="FilterFileType">
+            <ComboBox SelectedValue="{Binding FilterFileType}" SelectedValuePath="Tag" Width="100" VerticalAlignment="Center" AutomationProperties.AutomationId="FolderModeWindow.FilterFileType" AutomationProperties.Name="写真の種類">
               <ComboBoxItem Tag="all" Content="すべて" />
               <ComboBoxItem Tag="jpeg" Content="JPEG" />
               <ComboBoxItem Tag="raw" Content="RAW" />
@@ -111,11 +111,11 @@
           <!-- 撮影日 from -->
           <StackPanel Orientation="Horizontal" Margin="0,0,8,4">
             <TextBlock Text="撮影日 From:" VerticalAlignment="Center" Margin="0,0,4,0" />
-            <DatePicker SelectedDate="{Binding FilterDateFrom}" Width="120" AutomationProperties.AutomationId="FolderModeWindow.FilterDateFrom" AutomationProperties.Name="FilterDateFrom" />
+            <DatePicker SelectedDate="{Binding FilterDateFrom}" Width="120" AutomationProperties.AutomationId="FolderModeWindow.FilterDateFrom" AutomationProperties.Name="撮影日の開始" />
           </StackPanel>
           <StackPanel Orientation="Horizontal" Margin="0,0,16,4">
             <TextBlock Text="To:" VerticalAlignment="Center" Margin="0,0,4,0" />
-            <DatePicker SelectedDate="{Binding FilterDateTo}" Width="120" AutomationProperties.AutomationId="FolderModeWindow.FilterDateTo" AutomationProperties.Name="FilterDateTo" />
+            <DatePicker SelectedDate="{Binding FilterDateTo}" Width="120" AutomationProperties.AutomationId="FolderModeWindow.FilterDateTo" AutomationProperties.Name="撮影日の終了" />
           </StackPanel>
           <!-- リセット -->
           <Button Content="リセット" Command="{Binding ResetFilterCommand}" Style="{StaticResource MaterialDesignFlatButton}" Margin="0,0,0,4" AutomationProperties.AutomationId="FolderModeWindow.ResetFilterCommand" />

@@ -14,7 +14,8 @@ using PhotoFastRater.UI.Services;
 
 namespace PhotoFastRater.UI.ViewModels;
 
-public partial class FolderModeViewModel : ViewModelBase
+/// <summary>Coordinates one isolated folder session; owns navigation feedback lifetime and releases decoded photos at scope close.</summary>
+public partial class FolderModeViewModel : ViewModelBase, IDisposable
 {
     private readonly FolderSessionService _sessionService;
     private readonly WindowManager _windowManager;
@@ -729,6 +730,7 @@ public partial class FolderModeViewModel : ViewModelBase
     {
         BoundaryReached?.Invoke(atStart);
         _boundaryCts?.Cancel();
+        _boundaryCts?.Dispose();
         _boundaryCts = new CancellationTokenSource();
         var token = _boundaryCts.Token;
         StatusText = atStart ? "◀ 最初の写真です" : "最後の写真です ▶";
@@ -739,6 +741,20 @@ public partial class FolderModeViewModel : ViewModelBase
                 StatusText = $"{TotalPhotos}枚の写真";
         }
         catch (TaskCanceledException) { }
+    }
+
+    /// <summary>Ends transient boundary feedback and drops window-owned decoded images without touching saved session data.</summary>
+    public void Dispose()
+    {
+        _boundaryCts?.Cancel();
+        _boundaryCts?.Dispose();
+        _boundaryCts = null;
+        foreach (var photo in Photos)
+        {
+            photo.ClearFullImage();
+            photo.Thumbnail = null;
+        }
+        GC.SuppressFinalize(this);
     }
 
     private bool CanNavigate()

@@ -4,7 +4,7 @@
     <SolidColorBrush x:Key="DarkroomInkBrush" Color="#101214"/>
     <SolidColorBrush x:Key="DarkroomSlateBrush" Color="#1C2024"/>
     <SolidColorBrush x:Key="DarkroomRaisedBrush" Color="#272C31"/>
-    <SolidColorBrush x:Key="DarkroomDividerBrush" Color="#687582"/>
+    <SolidColorBrush x:Key="DarkroomDividerBrush" Color="#697683"/>
     <SolidColorBrush x:Key="DarkroomPaperBrush" Color="#E7EAED"/>
     <SolidColorBrush x:Key="DarkroomMutedBrush" Color="#A7AFB7"/>
     <SolidColorBrush x:Key="RatingAmberBrush" Color="#F5B642"/>
@@ -12,7 +12,7 @@
 
     <!-- Explicit text colors prevent third-party light defaults from rendering black text on the darkroom surface. -->
     <Style TargetType="TextBlock">
-        <Setter Property="Foreground" Value="{StaticResource DarkroomPaperBrush}"/>
+        <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType={x:Type Control}}, FallbackValue={StaticResource DarkroomPaperBrush}}"/>
         <Setter Property="FontSize" Value="14"/>
     </Style>
     <Style TargetType="TextBox" BasedOn="{StaticResource MaterialDesignTextBox}">
