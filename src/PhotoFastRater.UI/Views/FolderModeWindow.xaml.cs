@@ -74,6 +74,7 @@ public partial class FolderModeWindow : Window
         };
 
         _activeShortcuts = _shortcutService.Load();
+        Closed += (_, _) => { _fullImageScrollDebounce?.Cancel(); _fullImageScrollDebounce?.Dispose(); _previewWindow?.Close(); };
         PreviewKeyDown += HandleShortcutKeys;
         PreviewMouseWheel += (_, e) =>
         {
@@ -161,6 +162,8 @@ public partial class FolderModeWindow : Window
 
     private void HandleShortcutKeys(object sender, System.Windows.Input.KeyEventArgs e)
     {
+        // Tab belongs to focus navigation; typing and standard controls retain their own keys.
+        if (e.Key == Key.Tab || KeyboardInputPolicy.IsControlInput(e.OriginalSource as DependencyObject)) return;
         var key = e.Key == Key.System ? e.SystemKey : e.Key;
         var modifiers = Keyboard.Modifiers;
 
@@ -188,7 +191,7 @@ public partial class FolderModeWindow : Window
     private void NavigatePageDown()
     {
         if (_vm.DisplayPhotos.Count == 0) return;
-        var bottom = PhotoScrollViewer.VerticalOffset + PhotoScrollViewer.ViewportHeight;
+        var bottom = PhotoScrollViewer.ViewportHeight;
         int lastFullyVisible = -1;
         for (int i = 0; i < _vm.DisplayPhotos.Count; i++)
         {
@@ -208,8 +211,7 @@ public partial class FolderModeWindow : Window
     private void NavigatePageUp()
     {
         if (_vm.DisplayPhotos.Count == 0) return;
-        var top = PhotoScrollViewer.VerticalOffset;
-        var bottom = top + PhotoScrollViewer.ViewportHeight;
+        var bottom = PhotoScrollViewer.ViewportHeight;
         int firstFullyVisible = -1;
         for (int i = 0; i < _vm.DisplayPhotos.Count; i++)
         {
@@ -291,6 +293,12 @@ public partial class FolderModeWindow : Window
     {
         if ((sender as FrameworkElement)?.DataContext is FolderSessionPhotoViewModel vm)
             System.Windows.Clipboard.SetText(vm.FileName);
+    }
+
+    private async void TreeThumbnail_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: PhotoViewModel photo } && photo.Thumbnail is null)
+            await _vm.LoadTreeThumbnailAsync(photo);
     }
 
     private void CopyFilePath_Click(object sender, RoutedEventArgs e)

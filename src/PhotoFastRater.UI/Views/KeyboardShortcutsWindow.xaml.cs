@@ -28,9 +28,15 @@ public partial class KeyboardShortcutsWindow : Window
 
     private void Save_Click(object sender, RoutedEventArgs e)
     {
-        if (DataContext is KeyboardShortcutsViewModel vm)
-            vm.Save();
-        DialogResult = true;
+        try
+        {
+            if (DataContext is KeyboardShortcutsViewModel vm) vm.Save();
+            DialogResult = true;
+        }
+        catch (Exception exception) when (exception is System.IO.IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            System.Windows.MessageBox.Show(exception.Message, "ショートカットを保存できませんでした", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private void Cancel_Click(object sender, RoutedEventArgs e)

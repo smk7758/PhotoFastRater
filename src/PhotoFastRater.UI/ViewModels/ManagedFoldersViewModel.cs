@@ -13,7 +13,41 @@ namespace PhotoFastRater.UI.ViewModels;
 /// </summary>
 public partial class ManagedFoldersViewModel : ViewModelBase
 {
+    public static IReadOnlyList<PatternType> PatternTypes { get; } = [PatternType.Wildcard, PatternType.Regex, PatternType.Exact];
+
+    /// <summary>Persists explicitly edited rows, keeping unsaved changes visible until the user chooses to save.</summary>
+    [RelayCommand]
+    private async Task SaveEditsAsync()
+    {
+        try
+        {
+            foreach (var item in ExclusionPatterns)
+            {
+                if (string.IsNullOrWhiteSpace(item.PatternString))
+                    throw new ArgumentException("除外パターンは空にできません。");
+                if (item.Type == PatternType.Regex)
+                    _ = new System.Text.RegularExpressions.Regex(item.PatternString, System.Text.RegularExpressions.RegexOptions.CultureInvariant, TimeSpan.FromMilliseconds(250));
+            }
+            foreach (var item in Folders)
+            {
+                item.UpdateModel();
+                await _folderRepository.UpdateAsync(item.GetModel());
+            }
+            foreach (var item in ExclusionPatterns)
+            {
+                item.UpdateModel();
+                await _patternRepository.UpdateAsync(item.GetModel());
+            }
+            ScanStatus = "管理フォルダと除外パターンを保存しました。";
+        }
+        catch (Exception exception) when (exception is ArgumentException or IOException or UnauthorizedAccessException or Microsoft.EntityFrameworkCore.DbUpdateException)
+        {
+            ScanStatus = "保存が完了していません。入力とアクセス権を確認してください。";
+            await _interaction.NotifyAsync("管理設定の保存エラー", exception.Message, UserNotificationKind.Error);
+        }
+    }
     private readonly ManagedFolderService _folderService;
+    private readonly ManagedFolderRepository _folderRepository;
     private readonly FolderExclusionPatternRepository _patternRepository;
     private readonly IUserInteractionService _interaction;
 
@@ -38,10 +72,12 @@ public partial class ManagedFoldersViewModel : ViewModelBase
     public ManagedFoldersViewModel(
         ManagedFolderService folderService,
         FolderExclusionPatternRepository patternRepository,
+        ManagedFolderRepository folderRepository,
         IUserInteractionService interaction)
     {
         _folderService = folderService;
         _patternRepository = patternRepository;
+        _folderRepository = folderRepository;
         _interaction = interaction;
     }
 

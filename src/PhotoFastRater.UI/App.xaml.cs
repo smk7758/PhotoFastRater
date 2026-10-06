@@ -24,11 +24,21 @@ public partial class App : System.Windows.Application
     private static readonly Action<ILogger, Exception?> LogUnhandledException =
         LoggerMessage.Define(LogLevel.Critical, new EventId(1000, "UnhandledUiException"), "Unhandled UI exception");
     private ServiceProvider? _serviceProvider;
+    private bool _validationHost;
+
+    /// <summary>Records dispatcher failures in an isolated harness instead of leaving unattended modal dialogs open.</summary>
+    internal void UseValidationExceptionHandler(Action<Exception> report)
+    {
+        _validationHost = true;
+        DispatcherUnhandledException -= App_DispatcherUnhandledException;
+        DispatcherUnhandledException += (_, args) => { report(args.Exception); args.Handled = true; };
+    }
 
     /// <summary>Initializes the selected profile without blocking dispatcher continuations.</summary>
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        if (_validationHost) return;
         try
         {
             var options = StartupOptions.Parse(e.Args);
@@ -44,12 +54,14 @@ public partial class App : System.Windows.Application
                 ? System.Windows.Interop.RenderMode.Default
                 : System.Windows.Interop.RenderMode.SoftwareOnly;
             await _serviceProvider.GetRequiredService<DatabaseInitializer>().InitializeAsync();
-            await _serviceProvider.GetRequiredService<XmpSyncQueue>().RestorePendingAsync();
             var windows = _serviceProvider.GetRequiredService<WindowManager>();
             if (options.FolderMode)
                 windows.ShowFolderWindow(options.FolderPath, openDialogWhenEmpty: true);
             else
                 windows.ShowMainWindow();
+            // A bounded sidecar channel can take minutes to drain a large durable backlog.
+            // Display the window first; queue backpressure must not hide the entire application.
+            _ = RestorePendingSafelyAsync();
         }
         catch (Exception exception)
         {
@@ -59,7 +71,18 @@ public partial class App : System.Windows.Application
             Shutdown(1);
         }
     }
-    private void ConfigureServices(IServiceCollection services, ApplicationPaths paths)
+
+    private async Task RestorePendingSafelyAsync()
+    {
+        try { await _serviceProvider!.GetRequiredService<XmpSyncQueue>().RestorePendingAsync(); }
+        catch (Exception exception)
+        {
+            if (!Dispatcher.HasShutdownStarted && _serviceProvider?.GetService<ILogger<App>>() is { } logger)
+                LogUnhandledException(logger, exception);
+        }
+    }
+    /// <summary>Composes the same production graph for isolated UI validation without replacing domain services.</summary>
+    internal void ConfigureServices(IServiceCollection services, ApplicationPaths paths)
     {
         // Load configuration from appsettings.json
         var (cacheConfig, uiConfig) = LoadConfiguration(paths);
@@ -95,6 +118,7 @@ public partial class App : System.Windows.Application
         services.AddSingleton<IXmpSidecarStore, XmpSidecarStore>();
         services.AddSingleton<XmpSyncQueue>();
         services.AddSingleton<IRatingCoordinator, RatingCoordinator>();
+        services.AddSingleton<PhotoRatingEditor>();
         services.AddSingleton<IUserInteractionService, WpfUserInteractionService>();
         services.AddSingleton<IPlatformShell, WindowsPlatformShell>();
 

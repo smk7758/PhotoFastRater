@@ -152,6 +152,12 @@ public partial class FolderModeViewModel : ViewModelBase
 
     private void RefreshDisplayPhotos()
     {
+        if (FilterDateFrom.HasValue && FilterDateTo.HasValue && FilterDateFrom.Value.Date > FilterDateTo.Value.Date)
+        {
+            DisplayPhotos.Clear();
+            StatusText = "撮影日の開始日は終了日以前にしてください。";
+            return;
+        }
         var filtered = Photos.AsEnumerable();
 
         if (!string.IsNullOrEmpty(FilterNameSearch))
@@ -172,7 +178,7 @@ public partial class FolderModeViewModel : ViewModelBase
             filtered = filtered.Where(p => p.DateTaken >= FilterDateFrom.Value);
 
         if (FilterDateTo.HasValue)
-            filtered = filtered.Where(p => p.DateTaken < FilterDateTo.Value.AddDays(1));
+            filtered = filtered.Where(p => p.DateTaken.Date <= FilterDateTo.Value.Date);
 
         // RAW+JPEGグループ化: ペアのJPEGがフィルター済みにあるRAWはスキップ、JPEGのIsExpanded=TrueのときRAWを直後に挿入
         var filteredList = filtered.ToList();
@@ -375,10 +381,11 @@ public partial class FolderModeViewModel : ViewModelBase
     private async Task SetRatingAsync(string? ratingStr)
     {
         if (SelectedPhoto == null) return;
-        if (!int.TryParse(ratingStr, out var rating)) return;
+        if (!int.TryParse(ratingStr, out var rating) || rating is < 0 or > 5) return;
 
         SelectedPhoto.Rating = rating;
         SelectedPhoto.UpdateModel();
+        SynchronizeGroupedRating();
 
         UpdateStatistics();
         await SaveSessionAsync();
@@ -451,6 +458,7 @@ public partial class FolderModeViewModel : ViewModelBase
         if (SelectedPhoto == null) return;
         SelectedPhoto.IsFavorite = !SelectedPhoto.IsFavorite;
         SelectedPhoto.UpdateModel();
+        SynchronizeGroupedRating();
         await SaveSessionAsync();
     }
 
@@ -460,7 +468,17 @@ public partial class FolderModeViewModel : ViewModelBase
         if (SelectedPhoto == null) return;
         SelectedPhoto.IsRejected = !SelectedPhoto.IsRejected;
         SelectedPhoto.UpdateModel();
+        SynchronizeGroupedRating();
         await SaveSessionAsync();
+    }
+
+    private void SynchronizeGroupedRating()
+    {
+        if (!_settings.GroupRawJpeg || SelectedPhoto?.PairedFilePath is not string pairedPath) return;
+        var pair = Photos.FirstOrDefault(photo => string.Equals(photo.FilePath, pairedPath, StringComparison.OrdinalIgnoreCase));
+        if (pair is null) return;
+        pair.Rating = SelectedPhoto.Rating; pair.IsFavorite = SelectedPhoto.IsFavorite; pair.IsRejected = SelectedPhoto.IsRejected;
+        pair.UpdateModel();
     }
 
     [RelayCommand]
@@ -509,6 +527,7 @@ public partial class FolderModeViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
+            StatusText = "セッションを保存できませんでした。アクセス権と空き容量を確認して再保存してください。";
             await _interaction.NotifyAsync("エラー", $"保存エラー: {ex.Message}", UserNotificationKind.Error);
         }
     }
@@ -520,7 +539,7 @@ public partial class FolderModeViewModel : ViewModelBase
 
         var confirmed = await _interaction.ConfirmAsync(
             "確認",
-            $"このセッションの写真をDBに追加しますか?\n合計: {TotalPhotos}枚",
+            $"このセッションの写真をDBに追加しますか?\n登録済み写真の評価・お気に入り・リジェクトはセッションの値に置き換えます。\n合計: {TotalPhotos}枚",
             CancellationToken.None);
 
         if (!confirmed) return;
@@ -532,46 +551,37 @@ public partial class FolderModeViewModel : ViewModelBase
         {
             int importedCount = 0, updatedCount = 0, skippedCount = 0;
 
-            foreach (var sessionPhoto in CurrentSession.Photos)
+            // Snapshot values before awaiting so one confirmed transfer uses a consistent session state.
+            var snapshot = CurrentSession.Photos.Select(sessionPhoto =>
             {
-                var existing = await _photoRepository.GetByFilePathAsync(sessionPhoto.FilePath);
-                if (existing != null)
+                return new Photo
                 {
-                    if (sessionPhoto.Rating > existing.Rating)
-                    {
-                        existing.Rating = sessionPhoto.Rating;
-                        existing.IsFavorite = sessionPhoto.IsFavorite;
-                        existing.IsRejected = sessionPhoto.IsRejected;
-                        await _photoRepository.UpdateAsync(existing);
-                        updatedCount++;
-                    }
-                    else skippedCount++;
-                }
-                else
-                {
-                    var photo = new Photo
-                    {
-                        FilePath = sessionPhoto.FilePath,
-                        FileName = sessionPhoto.FileName,
-                        FileSize = sessionPhoto.FileSize,
-                        DateTaken = sessionPhoto.DateTaken,
-                        ImportDate = DateTime.Now,
-                        Rating = sessionPhoto.Rating,
-                        IsFavorite = sessionPhoto.IsFavorite,
-                        IsRejected = sessionPhoto.IsRejected,
-                        Width = sessionPhoto.Width,
-                        Height = sessionPhoto.Height,
-                        CameraModel = sessionPhoto.CameraModel,
-                        Aperture = sessionPhoto.Aperture,
-                        ShutterSpeed = sessionPhoto.ShutterSpeed,
-                        ISO = sessionPhoto.ISO,
-                        FocalLength = sessionPhoto.FocalLength
-                    };
-                    await _photoRepository.AddAsync(photo);
-                    importedCount++;
-                }
+                    FilePath = sessionPhoto.FilePath,
+                    FileName = sessionPhoto.FileName,
+                    FileSize = sessionPhoto.FileSize,
+                    DateTaken = sessionPhoto.DateTaken,
+                    ImportDate = DateTime.Now,
+                    Rating = sessionPhoto.Rating,
+                    IsFavorite = sessionPhoto.IsFavorite,
+                    IsRejected = sessionPhoto.IsRejected,
+                    Width = sessionPhoto.Width,
+                    Height = sessionPhoto.Height,
+                    CameraModel = sessionPhoto.CameraModel,
+                    Aperture = sessionPhoto.Aperture,
+                    ShutterSpeed = sessionPhoto.ShutterSpeed,
+                    ISO = sessionPhoto.ISO,
+                    FocalLength = sessionPhoto.FocalLength
+                };
+            }).ToArray();
+            foreach (var batch in snapshot.Chunk(256))
+            {
+                var result = await _photoRepository.TransferSessionBatchAsync(batch);
+                importedCount += result.Added;
+                updatedCount += result.Updated;
+                skippedCount += result.Unchanged;
+                StatusText = $"DBへ保存中: {importedCount + updatedCount + skippedCount}/{snapshot.Length}枚";
+                await System.Windows.Threading.Dispatcher.Yield();
             }
-
             await _interaction.NotifyAsync(
                 "完了",
                 $"エクスポート完了\n新規: {importedCount}枚\n更新: {updatedCount}枚\nスキップ: {skippedCount}枚",
@@ -580,7 +590,7 @@ public partial class FolderModeViewModel : ViewModelBase
         }
         catch (Exception ex)
         {
-            await _interaction.NotifyAsync("エラー", $"エクスポートエラー: {ex.Message}", UserNotificationKind.Error);
+            await _interaction.NotifyAsync("エラー", $"DBへの保存を完了できませんでした。完了済みの分は保持されています。再実行できます: {ex.Message}", UserNotificationKind.Error);
         }
         finally
         {
@@ -797,7 +807,7 @@ public partial class FolderModeViewModel : ViewModelBase
         return LoadThumbnailAsync(photoVm);
     }
 
-    private async Task LoadTreeThumbnailAsync(PhotoViewModel photoVm)
+    internal async Task LoadTreeThumbnailAsync(PhotoViewModel photoVm)
     {
         try
         {
@@ -883,7 +893,7 @@ public partial class FolderModeViewModel : ViewModelBase
                     Thumbnail = photoVm.Thumbnail
                 };
                 dayNode.Photos.Add(treePhotoVm);
-                _ = LoadTreeThumbnailAsync(treePhotoVm);
+                // Tree items load on realization, rather than decoding every hidden photo at folder startup.
             }
         }
     }

@@ -19,7 +19,7 @@ public sealed class BatchExportService(PhotoRepository repository) : IExportServ
     private static readonly char[] InvalidFileNameCharacters = Path.GetInvalidFileNameChars();
     private static readonly HashSet<string> RawExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
-        ".cr2", ".cr3", ".nef", ".arw", ".dng", ".raf", ".orf", ".rw2"
+        ".raw", ".cr2", ".cr3", ".nef", ".arw", ".dng", ".raf", ".orf", ".rw2"
     };
 
     /// <inheritdoc />

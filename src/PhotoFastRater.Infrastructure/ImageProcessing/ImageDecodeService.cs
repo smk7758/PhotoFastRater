@@ -10,7 +10,7 @@ public sealed class ImageDecodeService(RawThumbnailGenerator rawGenerator) : IIm
 {
     private static readonly HashSet<string> RawExtensions = new(StringComparer.OrdinalIgnoreCase)
     {
-        ".cr2", ".cr3", ".nef", ".arw", ".rw2", ".orf", ".raf", ".dng",
+        ".raw", ".cr2", ".cr3", ".nef", ".arw", ".rw2", ".orf", ".raf", ".dng",
         ".pef", ".srw", ".x3f", ".3fr", ".mef", ".mrw", ".nrw", ".rwl"
     };
 

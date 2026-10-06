@@ -15,6 +15,10 @@ public sealed class ImageLoader : IDisposable
     private readonly Channel<LoadRequest> _prefetchQueue = CreateQueue();
     private readonly CancellationTokenSource _shutdown = new();
     private readonly Task[] _workers;
+    private const int MaximumDecodedImages = 64;
+    private readonly Dictionary<string, LinkedListNode<(string Key, BitmapImage Image)>> _decoded = new(StringComparer.Ordinal);
+    private readonly LinkedList<(string Key, BitmapImage Image)> _decodedLru = new();
+    private readonly object _decodedGate = new();
 
     /// <summary>Starts a fixed number of workers; queue memory stays independent of library size.</summary>
     public ImageLoader(ThumbnailCacheManager cacheManager)
@@ -43,8 +47,8 @@ public sealed class ImageLoader : IDisposable
     {
         foreach (var path in filePaths.Take(QueueCapacity))
         {
-            var completion = new TaskCompletionSource<BitmapImage?>(TaskCreationOptions.RunContinuationsAsynchronously);
-            _prefetchQueue.Writer.TryWrite(new LoadRequest(path, completion, CancellationToken.None));
+            // Prefetch warms bytes only; discarded WPF bitmaps would churn native decode memory on every scroll.
+            _prefetchQueue.Writer.TryWrite(new LoadRequest(path, null, CancellationToken.None));
         }
     }
 
@@ -87,22 +91,26 @@ public sealed class ImageLoader : IDisposable
             var request = await ReadNextAsync(cancellationToken);
             if (request.CancellationToken.IsCancellationRequested)
             {
-                request.Completion.TrySetCanceled(request.CancellationToken);
+                request.Completion?.TrySetCanceled(request.CancellationToken);
                 continue;
             }
 
             try
             {
                 var bytes = await _cacheManager.GetThumbnailAsync(request.FilePath, request.CancellationToken);
-                request.Completion.TrySetResult(bytes.Length == 0 ? null : ConvertToImageSource(bytes));
+                if (request.Completion is { } completion)
+                {
+                    request.CancellationToken.ThrowIfCancellationRequested();
+                    completion.TrySetResult(bytes.Length == 0 ? null : GetDecodedImage(bytes));
+                }
             }
             catch (OperationCanceledException) when (request.CancellationToken.IsCancellationRequested)
             {
-                request.Completion.TrySetCanceled(request.CancellationToken);
+                request.Completion?.TrySetCanceled(request.CancellationToken);
             }
             catch (Exception exception) when (exception is IOException or ArgumentException or NotSupportedException)
             {
-                request.Completion.TrySetException(new InvalidOperationException(
+                request.Completion?.TrySetException(new InvalidOperationException(
                     $"サムネイルを読み込めませんでした: {request.FilePath}", exception));
             }
         }
@@ -119,10 +127,13 @@ public sealed class ImageLoader : IDisposable
             if (_prefetchQueue.Reader.TryRead(out var prefetch))
                 return prefetch;
 
-            var visibleReady = _visibleQueue.Reader.WaitToReadAsync(cancellationToken).AsTask();
-            var normalReady = _normalQueue.Reader.WaitToReadAsync(cancellationToken).AsTask();
-            var prefetchReady = _prefetchQueue.Reader.WaitToReadAsync(cancellationToken).AsTask();
+            // Cancel losing waits: otherwise idle channels retain a new waiter on every scroll request.
+            using var readyCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            var visibleReady = _visibleQueue.Reader.WaitToReadAsync(readyCancellation.Token).AsTask();
+            var normalReady = _normalQueue.Reader.WaitToReadAsync(readyCancellation.Token).AsTask();
+            var prefetchReady = _prefetchQueue.Reader.WaitToReadAsync(readyCancellation.Token).AsTask();
             await Task.WhenAny(visibleReady, normalReady, prefetchReady);
+            await readyCancellation.CancelAsync();
             cancellationToken.ThrowIfCancellationRequested();
         }
     }
@@ -141,8 +152,29 @@ public sealed class ImageLoader : IDisposable
         return bitmap;
     }
 
+    private BitmapImage GetDecodedImage(byte[] bytes)
+    {
+        // Content identity handles file edits and lets identical thumbnails share a single frozen WPF surface.
+        var key = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes));
+        lock (_decodedGate)
+        {
+            if (_decoded.TryGetValue(key, out var existing))
+            {
+                _decodedLru.Remove(existing); _decodedLru.AddFirst(existing);
+                return existing.Value.Image;
+            }
+            var image = ConvertToImageSource(bytes);
+            _decoded.Add(key, _decodedLru.AddFirst((key, image)));
+            if (_decoded.Count > MaximumDecodedImages)
+            {
+                var last = _decodedLru.Last!; _decoded.Remove(last.Value.Key); _decodedLru.RemoveLast();
+            }
+            return image;
+        }
+    }
+
     private sealed record LoadRequest(
         string FilePath,
-        TaskCompletionSource<BitmapImage?> Completion,
+        TaskCompletionSource<BitmapImage?>? Completion,
         CancellationToken CancellationToken);
 }

@@ -6,6 +6,8 @@ using Microsoft.Win32;
 using PhotoFastRater.Infrastructure.Export;
 using PhotoFastRater.Core.Models;
 using PhotoFastRater.UI.ViewModels;
+using PhotoFastRater.UI.Services;
+using PhotoFastRater.Core.Abstractions;
 
 namespace PhotoFastRater.UI.Views;
 
@@ -13,13 +15,19 @@ public partial class PhotoViewerWindow : Window
 {
     private readonly PhotoViewModel _viewModel;
     private readonly SocialMediaExporter _exporter;
-    private bool _isDragging = false;
+    private readonly PhotoRatingEditor _ratingEditor;
+    private readonly IImageDecodeService _decoder;
+    private readonly CancellationTokenSource _lifetime = new();
+    private bool _isDragging;
     private System.Windows.Point _dragStartPoint;
 
-    public PhotoViewerWindow(PhotoViewModel viewModel)
+    public PhotoViewerWindow(PhotoViewModel viewModel, PhotoRatingEditor ratingEditor, IImageDecodeService decoder)
     {
         InitializeComponent();
         _viewModel = viewModel;
+        _ratingEditor = ratingEditor;
+        _decoder = decoder;
+        Closed += (_, _) => _lifetime.Cancel();
         DataContext = _viewModel;
 
         // SocialMediaExporter インスタンスを作成
@@ -39,70 +47,42 @@ public partial class PhotoViewerWindow : Window
     {
         try
         {
-            await Task.Run(() =>
-            {
-                var bitmap = new BitmapImage();
-                bitmap.BeginInit();
-                bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                bitmap.UriSource = new Uri(_viewModel.FilePath);
-                bitmap.EndInit();
-                bitmap.Freeze();
-
-                Dispatcher.Invoke(() =>
-                {
-                    _viewModel.FullImageSource = bitmap;
-                });
-            });
+            var bytes = await _decoder.DecodeAsync(_viewModel.FilePath, 4096, _lifetime.Token);
+            using var stream = new MemoryStream(bytes.ToArray());
+            var bitmap = new BitmapImage();
+            bitmap.BeginInit();
+            bitmap.CacheOption = BitmapCacheOption.OnLoad;
+            bitmap.StreamSource = stream;
+            bitmap.EndInit();
+            bitmap.Freeze();
+            _viewModel.FullImageSource = bitmap;
         }
-        catch
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
+        catch (Exception exception)
         {
-            // エラー時はサムネイルを使用
             _viewModel.FullImageSource = _viewModel.Thumbnail;
+            StatusText.Text = $"画像を読み込めません: {exception.Message}";
         }
     }
 
-    private void Rating_Click(object sender, RoutedEventArgs e)
+    private async void Rating_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is System.Windows.Controls.Button button && button.Tag is string tag)
-        {
-            if (int.TryParse(tag, out int rating))
-            {
-                _viewModel.Rating = rating;
-            }
-        }
+        if (sender is System.Windows.Controls.Button { Tag: string tag } && int.TryParse(tag, out var stars))
+            await _ratingEditor.SetStarsAsync(_viewModel, stars);
     }
 
-    private void Window_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    private async void Window_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
-        switch (e.Key)
-        {
-            case Key.Escape:
-            case Key.Q:
-                Close();
-                break;
-            case Key.D1:
-            case Key.NumPad1:
-                _viewModel.Rating = 1;
-                break;
-            case Key.D2:
-            case Key.NumPad2:
-                _viewModel.Rating = 2;
-                break;
-            case Key.D3:
-            case Key.NumPad3:
-                _viewModel.Rating = 3;
-                break;
-            case Key.D4:
-            case Key.NumPad4:
-                _viewModel.Rating = 4;
-                break;
-            case Key.D5:
-            case Key.NumPad5:
-                _viewModel.Rating = 5;
-                break;
-        }
+        if (KeyboardInputPolicy.IsControlInput(e.OriginalSource as DependencyObject)) return;
+        if (e.Key is Key.Escape or Key.Q) { Close(); e.Handled = true; return; }
+        int stars = e.Key >= Key.D0 && e.Key <= Key.D5 ? e.Key - Key.D0
+            : e.Key >= Key.NumPad0 && e.Key <= Key.NumPad5 ? e.Key - Key.NumPad0 : -1;
+        if (stars >= 0) await _ratingEditor.SetStarsAsync(_viewModel, stars);
+        else if (e.Key == Key.F) await _ratingEditor.ToggleFavoriteAsync(_viewModel);
+        else if (e.Key == Key.X) await _ratingEditor.ToggleRejectedAsync(_viewModel);
+        else return;
+        e.Handled = true;
     }
-
     private void PlatformComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (PlatformComboBox.SelectedItem is ComboBoxItem item && item.Tag is string platformTag)
@@ -158,17 +138,15 @@ public partial class PhotoViewerWindow : Window
                 ExportButton.IsEnabled = false;
 
                 var photo = _viewModel.GetModel();
-                await _exporter.ExportAsync(photo, template, saveDialog.FileName);
+                var exportedPath = await _exporter.ExportAsync(photo, template, saveDialog.FileName);
 
-                StatusText.Text = "エクスポート完了!";
+                StatusText.Text = $"完了: {exportedPath}";
                 StatusText.Foreground = new System.Windows.Media.SolidColorBrush(
                     System.Windows.Media.Color.FromRgb(76, 175, 80)); // 緑色
 
                 ExportButton.IsEnabled = true;
 
-                // 3秒後にステータスをクリア
-                await Task.Delay(3000);
-                StatusText.Text = "";
+                // Keep the actual collision-free destination visible so users can find the output.
             }
         }
         catch (Exception ex)

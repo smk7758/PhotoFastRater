@@ -82,7 +82,8 @@ public sealed class AsyncVirtualizingCollection<T> : ObservableCollection<T>, IA
     /// <inheritdoc />
     public void Dispose()
     {
-        _loadGate.Dispose();
+        // No wait handle is allocated. In-flight async loads may still release this managed gate
+        // after the window closes; disposing it here would turn cancellation into an unhandled error.
         GC.SuppressFinalize(this);
     }
 }

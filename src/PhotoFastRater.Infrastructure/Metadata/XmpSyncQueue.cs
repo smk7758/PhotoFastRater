@@ -43,8 +43,9 @@ public sealed class XmpSyncQueue : IDisposable
     /// <summary>Restores the in-memory queue from durable pending rows after startup.</summary>
     public async Task RestorePendingAsync(CancellationToken cancellationToken = default)
     {
-        foreach (var photoId in await _photoRepository.GetPendingSyncIdsAsync(cancellationToken))
-            await EnqueueAsync(photoId, cancellationToken);
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _shutdown.Token);
+        foreach (var photoId in await _photoRepository.GetPendingSyncIdsAsync(linked.Token))
+            await EnqueueAsync(photoId, linked.Token);
     }
 
     /// <summary>Schedules a photo once; repeated changes are coalesced and the worker reads the latest DB value.</summary>

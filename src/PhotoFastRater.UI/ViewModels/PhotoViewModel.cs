@@ -46,6 +46,11 @@ public partial class PhotoViewModel : ViewModelBase
 
     public bool IsMissing => _photo.IsMissing;
 
+    public string FavoriteStatus => IsFavorite ? "お気に入り登録済み" : "お気に入り未登録";
+    public string RejectedStatus => IsRejected ? "リジェクト" : "採用候補";
+    partial void OnIsFavoriteChanged(bool value) => OnPropertyChanged(nameof(FavoriteStatus));
+    partial void OnIsRejectedChanged(bool value) => OnPropertyChanged(nameof(RejectedStatus));
+
     public PhotoViewModel(Photo photo)
     {
         _photo = photo;

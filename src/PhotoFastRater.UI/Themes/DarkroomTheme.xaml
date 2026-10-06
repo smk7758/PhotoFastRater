@@ -4,11 +4,52 @@
     <SolidColorBrush x:Key="DarkroomInkBrush" Color="#101214"/>
     <SolidColorBrush x:Key="DarkroomSlateBrush" Color="#1C2024"/>
     <SolidColorBrush x:Key="DarkroomRaisedBrush" Color="#272C31"/>
-    <SolidColorBrush x:Key="DarkroomDividerBrush" Color="#3A4148"/>
+    <SolidColorBrush x:Key="DarkroomDividerBrush" Color="#687582"/>
     <SolidColorBrush x:Key="DarkroomPaperBrush" Color="#E7EAED"/>
     <SolidColorBrush x:Key="DarkroomMutedBrush" Color="#A7AFB7"/>
     <SolidColorBrush x:Key="RatingAmberBrush" Color="#F5B642"/>
     <SolidColorBrush x:Key="RejectRedBrush" Color="#E45B5B"/>
+
+    <!-- Explicit text colors prevent third-party light defaults from rendering black text on the darkroom surface. -->
+    <Style TargetType="TextBlock">
+        <Setter Property="Foreground" Value="{StaticResource DarkroomPaperBrush}"/>
+        <Setter Property="FontSize" Value="14"/>
+    </Style>
+    <Style TargetType="TextBox" BasedOn="{StaticResource MaterialDesignTextBox}">
+        <Setter Property="Foreground" Value="{StaticResource DarkroomPaperBrush}"/>
+        <Setter Property="CaretBrush" Value="{StaticResource DarkroomPaperBrush}"/>
+        <Setter Property="FontSize" Value="14"/>
+    </Style>
+    <Style TargetType="Button" BasedOn="{StaticResource MaterialDesignOutlinedButton}">
+        <Setter Property="Foreground" Value="{StaticResource DarkroomPaperBrush}"/>
+        <Setter Property="Background" Value="{StaticResource DarkroomRaisedBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource DarkroomDividerBrush}"/>
+        <Setter Property="MinHeight" Value="32"/>
+        <Setter Property="FontSize" Value="13"/>
+    </Style>
+    <Style TargetType="ToggleButton">
+        <Setter Property="Foreground" Value="{StaticResource DarkroomPaperBrush}"/>
+        <Setter Property="Background" Value="{StaticResource DarkroomRaisedBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource DarkroomDividerBrush}"/>
+        <Setter Property="MinHeight" Value="32"/>
+        <Setter Property="MinWidth" Value="36"/>
+        <Setter Property="Padding" Value="10,5"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+        <Style.Triggers>
+            <Trigger Property="IsChecked" Value="True"><Setter Property="Background" Value="{StaticResource RatingAmberBrush}"/><Setter Property="Foreground" Value="{StaticResource DarkroomInkBrush}"/></Trigger>
+            <Trigger Property="IsKeyboardFocused" Value="True"><Setter Property="BorderBrush" Value="{StaticResource DarkroomPaperBrush}"/></Trigger>
+            <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.55"/></Trigger>
+        </Style.Triggers>
+    </Style>
 
     <Style TargetType="Window">
         <Setter Property="Background" Value="{StaticResource DarkroomInkBrush}"/>

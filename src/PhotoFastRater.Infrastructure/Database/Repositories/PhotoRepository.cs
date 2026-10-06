@@ -178,12 +178,21 @@ public class PhotoRepository : IPhotoCatalog
         {
             var phrase = $"\"{query.Text.Trim().Replace("\"", "\"\"", StringComparison.Ordinal)}\"";
             photos = context.Photos.FromSqlInterpolated(
-                $"SELECT p.* FROM Photos AS p WHERE p.Id IN (SELECT rowid FROM PhotoSearch WHERE PhotoSearch MATCH {phrase}) OR p.Id IN (SELECT pt.PhotoId FROM PhotoTagMappings AS pt INNER JOIN TagSearch ON TagSearch.rowid = pt.TagId WHERE TagSearch MATCH {phrase})")
+                $"SELECT p.* FROM Photos AS p WHERE p.Id IN (SELECT rowid FROM PhotoSearch WHERE PhotoSearch MATCH {phrase} UNION SELECT pt.PhotoId FROM PhotoTagMappings AS pt INNER JOIN TagSearch ON TagSearch.rowid = pt.TagId WHERE TagSearch MATCH {phrase})")
                 .AsNoTracking();
         }
 
         photos = ApplyFilters(photos, query);
         var totalCount = await photos.LongCountAsync(cancellationToken);
+        if (!string.IsNullOrWhiteSpace(query.Text))
+        {
+            var phrase = $"\"{query.Text.Trim().Replace("\"", "\"\"", StringComparison.Ordinal)}\"";
+            // Match IDs are bounded by the catalog; the date index lets the page stop after 256 hits
+            // instead of sorting and materializing every matching photo before applying LIMIT.
+            photos = ApplyFilters(context.Photos.FromSqlInterpolated(
+                $"SELECT p.* FROM Photos AS p INDEXED BY IX_Photos_DateTaken_Id WHERE p.Id IN (SELECT rowid FROM PhotoSearch WHERE PhotoSearch MATCH {phrase} UNION SELECT pt.PhotoId FROM PhotoTagMappings AS pt INNER JOIN TagSearch ON TagSearch.rowid = pt.TagId WHERE TagSearch MATCH {phrase})")
+                .AsNoTracking(), query);
+        }
         if (after is not null)
         {
             photos = photos.Where(photo =>
@@ -254,8 +263,52 @@ public class PhotoRepository : IPhotoCatalog
                 context.Photos.Add(source);
         }
 
+        await LinkRawJpegPairsAsync(context, incoming, cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
+    }
+
+    /// <summary>Transfers an explicitly confirmed session batch without discarding lower ratings or flag-only changes.
+    /// One lookup and one transaction per bounded batch avoid per-photo database round trips.</summary>
+    public async Task<(int Added, int Updated, int Unchanged)> TransferSessionBatchAsync(
+        IReadOnlyCollection<Photo> photos, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(photos);
+        if (photos.Count > 500) throw new ArgumentOutOfRangeException(nameof(photos));
+        var incoming = photos.Select(photo => { PrepareForPersistence(photo); return photo; })
+            .DistinctBy(photo => photo.NormalizedPath, StringComparer.Ordinal).ToArray();
+        var paths = incoming.Select(photo => photo.NormalizedPath!).ToArray();
+        await using var context = await _contextFactory.CreateDbContextAsync(cancellationToken);
+        await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+        var existing = await context.Photos.Where(photo => paths.Contains(photo.NormalizedPath!))
+            .ToDictionaryAsync(photo => photo.NormalizedPath!, cancellationToken);
+        int added = 0, updated = 0, unchanged = 0;
+        foreach (var source in incoming)
+        {
+            if (!existing.TryGetValue(source.NormalizedPath!, out var target))
+            {
+                target = source;
+                context.Photos.Add(target);
+                added++;
+            }
+            else if (target.Rating == source.Rating && target.IsFavorite == source.IsFavorite && target.IsRejected == source.IsRejected)
+            {
+                unchanged++;
+                continue;
+            }
+            else updated++;
+            target.Rating = source.Rating;
+            target.IsFavorite = source.IsFavorite;
+            target.IsRejected = source.IsRejected;
+            target.RatingRevision++;
+            target.RatingModifiedUtc = DateTime.UtcNow;
+            target.RatingSource = "PhotoFastRater";
+            target.MetadataSyncStatus = MetadataSyncStatus.Pending;
+        }
+        await LinkRawJpegPairsAsync(context, incoming, cancellationToken);
+        await context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
+        return (added, updated, unchanged);
     }
 
     /// <summary>Commits one rating change and its linked pair in a single transaction.</summary>
@@ -316,6 +369,31 @@ public class PhotoRepository : IPhotoCatalog
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(photo => photo.MetadataSyncStatus, status)
                 .SetProperty(photo => photo.SidecarModifiedUtc, sidecarModifiedUtc), cancellationToken);
+    }
+
+    /// <summary>Links real RAW/JPEG counterparts, including files arriving in different import batches.
+    /// A single indexed path lookup avoids searching the catalog once per photo.</summary>
+    private static async Task LinkRawJpegPairsAsync(PhotoDbContext context, Photo[] incoming, CancellationToken cancellationToken)
+    {
+        string[] extensions = [".jpg", ".jpeg", ".raw", ".cr2", ".cr3", ".nef", ".arw", ".dng", ".orf", ".raf", ".rw2"];
+        var candidates = incoming.Where(photo => extensions.Contains(Path.GetExtension(photo.FilePath), StringComparer.OrdinalIgnoreCase)).ToArray();
+        var counterpartPaths = candidates.SelectMany(photo => extensions.Select(extension =>
+            photo.NormalizedDirectory + "\\" + photo.NormalizedBaseName + extension)).Distinct().ToArray();
+        if (counterpartPaths.Length == 0) return;
+        var counterpartSet = counterpartPaths.ToHashSet(StringComparer.Ordinal);
+        var stored = await context.Photos.Where(photo => counterpartPaths.Contains(photo.NormalizedPath!)).ToListAsync(cancellationToken);
+        var tracked = context.ChangeTracker.Entries<Photo>().Select(entry => entry.Entity)
+            .Concat(stored).DistinctBy(photo => photo.NormalizedPath)
+            .Where(photo => photo.NormalizedPath is { } path && counterpartSet.Contains(path)).ToArray();
+        foreach (var group in tracked.GroupBy(photo => (photo.NormalizedDirectory, photo.NormalizedBaseName)))
+        {
+            var members = group.ToArray();
+            bool IsJpeg(Photo photo) => Path.GetExtension(photo.FilePath).Equals(".jpg", StringComparison.OrdinalIgnoreCase)
+                || Path.GetExtension(photo.FilePath).Equals(".jpeg", StringComparison.OrdinalIgnoreCase);
+            if (!members.Any(IsJpeg) || !members.Any(photo => !IsJpeg(photo))) continue;
+            var pairId = members.Select(photo => photo.PairId).FirstOrDefault(id => id.HasValue) ?? Guid.NewGuid();
+            foreach (var photo in members) photo.PairId = pairId;
+        }
     }
 
     private static void PrepareForPersistence(Photo photo)

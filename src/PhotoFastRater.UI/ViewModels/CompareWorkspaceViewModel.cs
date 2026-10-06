@@ -10,7 +10,7 @@ namespace PhotoFastRater.UI.ViewModels;
 /// <summary>Coordinates two to four decoded comparison panes with optional viewport synchronization.</summary>
 public partial class CompareWorkspaceViewModel(
     IImageDecodeService decoder,
-    IRatingCoordinator ratingCoordinator) : ViewModelBase, IDisposable
+    PhotoFastRater.UI.Services.PhotoRatingEditor ratingEditor) : ViewModelBase, IDisposable
 {
     private const int DecodeDimension = 2048;
     private readonly CancellationTokenSource _lifetime = new();
@@ -127,11 +127,7 @@ public partial class CompareWorkspaceViewModel(
     {
         if (rating is < 0 or > 5)
             throw new ArgumentOutOfRangeException(nameof(rating));
-        pane.Photo.Rating = rating;
-        await ratingCoordinator.SetRatingAsync(
-            pane.Photo.Id,
-            new RatingState(rating, pane.Photo.IsFavorite, pane.Photo.IsRejected),
-            _lifetime.Token);
+        await ratingEditor.SetStarsAsync(pane.Photo, rating);
         if (AutoAdvance)
             await AdvanceAsync();
     }

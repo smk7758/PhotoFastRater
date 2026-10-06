@@ -16,6 +16,59 @@ public sealed class RatingPersistenceTests : IDisposable
         Path.GetTempPath(), "PhotoFastRater.Tests", Guid.NewGuid().ToString("N"));
 
     [Fact]
+    public async Task RawJpegImportedInSeparateBatchesBecomeLinkedWithoutLinkingPng()
+    {
+        Directory.CreateDirectory(_testDirectory);
+        var options = new DbContextOptionsBuilder<PhotoDbContext>()
+            .UseSqlite($"Data Source={Path.Combine(_testDirectory, "pair-import.db")}").Options;
+        var factory = new TestDbContextFactory(options);
+        await using (var context = factory.CreateDbContext())
+            await context.Database.MigrateAsync();
+        var repository = new PhotoRepository(factory);
+        Photo Incoming(string extension) => new() { FilePath = Path.Combine(_testDirectory, "shot" + extension), FileName = "shot" + extension };
+        await repository.UpsertBatchAsync([Incoming(".cr3")]);
+        await repository.UpsertBatchAsync([Incoming(".png"), Incoming(".jpg")]);
+        var rows = await repository.GetAllAsync();
+        var raw = rows.Single(photo => photo.FileName.EndsWith(".cr3", StringComparison.Ordinal));
+        var jpeg = rows.Single(photo => photo.FileName.EndsWith(".jpg", StringComparison.Ordinal));
+        raw.PairId.Should().NotBeNull();
+        jpeg.PairId.Should().Be(raw.PairId);
+        rows.Single(photo => photo.FileName.EndsWith(".png", StringComparison.Ordinal)).PairId.Should().BeNull();
+        await repository.CommitRatingAsync(jpeg.Id, new RatingState(2, true, false));
+        (await repository.GetByIdAsync(raw.Id))!.Rating.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task ConfirmedSessionTransferKeepsLowerRatingsAndFlagOnlyEditsAndIsIdempotent()
+    {
+        Directory.CreateDirectory(_testDirectory);
+        var options = new DbContextOptionsBuilder<PhotoDbContext>()
+            .UseSqlite($"Data Source={Path.Combine(_testDirectory, "transfer.db")}").Options;
+        var factory = new TestDbContextFactory(options);
+        await using (var context = factory.CreateDbContext())
+            await context.Database.MigrateAsync();
+        var repository = new PhotoRepository(factory);
+        var first = CreatePhoto(Path.Combine(_testDirectory, "lower.jpg"), Guid.NewGuid());
+        var second = CreatePhoto(Path.Combine(_testDirectory, "flag.jpg"), Guid.NewGuid());
+        first.Rating = 5;
+        await repository.AddAsync(first);
+        await repository.AddAsync(second);
+        first.Rating = 1;
+        second.IsFavorite = true;
+        second.IsRejected = true;
+        var result = await repository.TransferSessionBatchAsync([first, second]);
+        result.Should().Be((0, 2, 0));
+        (await repository.TransferSessionBatchAsync([first, second])).Should().Be((0, 0, 2));
+        var restored = await repository.GetByIdAsync(first.Id);
+        restored!.Rating.Should().Be(1);
+        restored.RatingRevision.Should().Be(1);
+        restored.MetadataSyncStatus.Should().Be(MetadataSyncStatus.Pending);
+        var flags = await repository.GetByIdAsync(second.Id);
+        flags!.IsFavorite.Should().BeTrue();
+        flags.IsRejected.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task MigrationAndLinkedRatingCommitPreserveOneTransactionalState()
     {
         Directory.CreateDirectory(_testDirectory);

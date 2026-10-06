@@ -52,7 +52,7 @@ public sealed class DatabaseInitializer
 
         if (sourceConnection.State != ConnectionState.Open)
             await sourceConnection.OpenAsync(cancellationToken);
-        await using var backupConnection = new SqliteConnection($"Data Source={backupPath};Mode=ReadWriteCreate");
+        await using var backupConnection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = backupPath, Mode = SqliteOpenMode.ReadWriteCreate }.ToString());
         await backupConnection.OpenAsync(cancellationToken);
         sourceConnection.BackupDatabase(backupConnection);
     }

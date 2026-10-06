@@ -10,6 +10,8 @@ namespace PhotoFastRater.UI.ViewModels;
 public partial class SettingsViewModel : ViewModelBase
 {
     private readonly CacheConfiguration _cacheConfig;
+    private readonly PhotoFastRater.UI.Services.ApplicationPaths _paths;
+    public bool IsCachePathReadOnly => _paths.IsIsolated;
     private readonly UIConfiguration _uiConfig;
     private readonly UserSettingsStore _settingsStore;
     private readonly ThumbnailCacheManager _cacheManager;
@@ -37,6 +39,9 @@ public partial class SettingsViewModel : ViewModelBase
     private bool _enableRAWSupport = true;
 
     [ObservableProperty]
+    private bool _enableGPUAcceleration = true;
+
+    [ObservableProperty]
     private long _currentCacheSize = 0;
 
     [ObservableProperty]
@@ -45,8 +50,15 @@ public partial class SettingsViewModel : ViewModelBase
     [ObservableProperty]
     private string _arrowKeyNavigationMode = "GridFocus";
 
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveSettingsCommand))]
+    private bool _isInputValid = true;
+
+    private bool CanSaveInputs() => IsInputValid;
+
     public SettingsViewModel(
         CacheConfiguration cacheConfig,
+        PhotoFastRater.UI.Services.ApplicationPaths paths,
         UIConfiguration uiConfig,
         ManagedFoldersViewModel managedFoldersViewModel,
         UserSettingsStore settingsStore,
@@ -54,6 +66,7 @@ public partial class SettingsViewModel : ViewModelBase
         IUserInteractionService interaction)
     {
         _cacheConfig = cacheConfig;
+        _paths = paths;
         _uiConfig = uiConfig;
         _settingsStore = settingsStore;
         _cacheManager = cacheManager;
@@ -80,9 +93,11 @@ public partial class SettingsViewModel : ViewModelBase
         MaxParallelGenerations = _cacheConfig.MaxParallelGenerations;
         EnableRAWSupport = _cacheConfig.EnableRAWSupport;
         ArrowKeyNavigationMode = _uiConfig.ArrowKeyNavigationMode;
+        EnableGPUAcceleration = _uiConfig.EnableGPUAcceleration;
     }
 
-    [RelayCommand]
+    private bool CanSelectCachePath() => !_paths.IsIsolated;
+    [RelayCommand(CanExecute = nameof(CanSelectCachePath))]
     private async Task SelectCachePathAsync()
     {
         var selected = await _interaction.SelectFolderAsync("キャッシュフォルダ（SSD推奨）を選択してください");
@@ -90,20 +105,37 @@ public partial class SettingsViewModel : ViewModelBase
             CachePath = selected;
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanSaveInputs))]
     private async Task SaveSettingsAsync()
     {
-        _cacheConfig.CachePath = CachePath;
-        _cacheConfig.MaxMemoryCacheSizeMB = MaxMemoryCacheSizeMB;
-        _cacheConfig.ThumbnailSize = ThumbnailSize;
-        _cacheConfig.JpegQuality = JpegQuality;
-        _cacheConfig.MaxParallelGenerations = MaxParallelGenerations;
-        _cacheConfig.EnableRAWSupport = EnableRAWSupport;
-        _uiConfig.ArrowKeyNavigationMode = ArrowKeyNavigationMode;
-
+        var candidateCache = new CacheConfiguration
+        {
+            CachePath = _paths.IsIsolated ? _paths.Cache : CachePath,
+            MaxMemoryCacheSizeMB = MaxMemoryCacheSizeMB,
+            MaxDiskCacheSizeGB = _cacheConfig.MaxDiskCacheSizeGB,
+            ThumbnailSize = ThumbnailSize,
+            JpegQuality = JpegQuality,
+            MaxParallelGenerations = MaxParallelGenerations,
+            EnableRAWSupport = EnableRAWSupport
+        };
+        var candidateUi = new UIConfiguration
+        {
+            GridThumbnailSize = _uiConfig.GridThumbnailSize,
+            EnableGPUAcceleration = EnableGPUAcceleration,
+            ArrowKeyNavigationMode = ArrowKeyNavigationMode
+        };
         try
         {
-            await _settingsStore.SaveAsync(_cacheConfig, _uiConfig);
+            await _settingsStore.SaveAsync(candidateCache, candidateUi);
+            // Validate and persist first: a failed save must not poison live cache configuration.
+            _cacheConfig.CachePath = candidateCache.CachePath;
+            _cacheConfig.MaxMemoryCacheSizeMB = candidateCache.MaxMemoryCacheSizeMB;
+            _cacheConfig.ThumbnailSize = candidateCache.ThumbnailSize;
+            _cacheConfig.JpegQuality = candidateCache.JpegQuality;
+            _cacheConfig.MaxParallelGenerations = candidateCache.MaxParallelGenerations;
+            _cacheConfig.EnableRAWSupport = candidateCache.EnableRAWSupport;
+            _uiConfig.ArrowKeyNavigationMode = candidateUi.ArrowKeyNavigationMode;
+            _uiConfig.EnableGPUAcceleration = candidateUi.EnableGPUAcceleration;
             SaveStatus = "設定を保存しました。キャッシュ構成の変更は再起動後に反映されます。";
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or ArgumentException)

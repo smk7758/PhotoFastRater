@@ -229,3 +229,9 @@ MIT License
 - [ ] モバイルアプリ連携
 
 詳細は[ユーザーガイド](docs/ja/USER_GUIDE.md)、[データ保護](docs/ja/DATA_SAFETY.md)、[性能計測](docs/ja/PERFORMANCE.md)、[ロードマップ](docs/ja/ROADMAP.md)、[変更履歴](CHANGELOG.md)を参照してください。
+
+## UI操作と検証
+
+全画面の目的・操作・保存先・失敗時の対処は[ユーザーガイド](docs/ja/USER_GUIDE.md)を参照してください。[UI検証計画](docs/ja/UI_TEST_PLAN.md)と[検証結果・未検証事項](docs/ja/UI_TEST_REPORT.md)で、棚卸し・実検証・本人受入を別々に管理します。
+
+通常利用と分けて確認する場合は `PhotoFastRater.UI.exe --data-dir "C:\PfrTest\profile"` を使用します。`--folder "C:\PfrTest\photos"` と併用できます。コピー素材だけを操作してください。

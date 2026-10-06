@@ -20,8 +20,14 @@ public class SocialMediaExporter : IImageExporter
 
     public async Task<string> ExportAsync(Photo photo, ExportTemplate template, string outputPath)
     {
+        ArgumentNullException.ThrowIfNull(photo);
+        ArgumentNullException.ThrowIfNull(template);
+        outputPath = Path.GetFullPath(outputPath);
+        if (string.Equals(Path.GetFullPath(photo.FilePath), outputPath, StringComparison.OrdinalIgnoreCase))
+            throw new ArgumentException("元画像と異なる出力先を選択してください。", nameof(outputPath));
         // 元画像読み込み（フルサイズ）
         using var sourceImage = await Image.LoadAsync<Rgba32>(photo.FilePath);
+        sourceImage.Mutate(context => context.AutoOrient());
 
         // 元画像のメタデータを保持
         var exifProfile = sourceImage.Metadata.ExifProfile?.DeepClone();
@@ -30,7 +36,7 @@ public class SocialMediaExporter : IImageExporter
         var iccProfile = sourceImage.Metadata.IccProfile?.DeepClone();
 
         // リサイズ
-        var resized = ResizeForPlatform(sourceImage, template);
+        using var resized = ResizeForPlatform(sourceImage, template);
 
         // 枠追加
         using var withFrame = _frameRenderer.AddFrame(resized, template);
@@ -49,9 +55,28 @@ public class SocialMediaExporter : IImageExporter
             withFrame.Metadata.IccProfile = iccProfile;
 
         // 保存
-        await withFrame.SaveAsJpegAsync(outputPath, new JpegEncoder { Quality = 95 });
-
-        return outputPath;
+        Directory.CreateDirectory(Path.GetDirectoryName(outputPath)!);
+        var temporary = outputPath + $".{Guid.NewGuid():N}.tmp";
+        try
+        {
+            await using (var stream = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, true))
+                await withFrame.SaveAsJpegAsync(stream, new JpegEncoder { Quality = 95 });
+            for (var suffix = 0; ; suffix++)
+            {
+                var destination = suffix == 0 ? outputPath : Path.Combine(Path.GetDirectoryName(outputPath)!,
+                    $"{Path.GetFileNameWithoutExtension(outputPath)}-{suffix}{Path.GetExtension(outputPath)}");
+                try { File.Move(temporary, destination); return destination; }
+                catch (IOException) when (File.Exists(destination)) { }
+            }
+        }
+        finally
+        {
+            if (File.Exists(temporary))
+            {
+                var garbage = Path.Combine(Path.GetDirectoryName(outputPath)!, "_GARBAGE"); Directory.CreateDirectory(garbage);
+                File.Move(temporary, Path.Combine(garbage, Path.GetFileName(temporary)));
+            }
+        }
     }
 
     private static Image<Rgba32> ResizeForPlatform(Image<Rgba32> source, ExportTemplate template)

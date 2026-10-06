@@ -19,157 +19,71 @@ public class RawThumbnailGenerator : IThumbnailGenerator
         _jpegQuality = jpegQuality;
     }
 
-    public async Task<byte[]> GenerateAsync(string filePath, int targetSize)
+    /// <summary>Produces a bounded preview from the largest decodable embedded JPEG, never from RAW sensor data.</summary>
+    public Task<byte[]> GenerateAsync(string filePath, int targetSize) => Task.Run(() =>
     {
-        return await Task.Run(() =>
-        {
-            try
-            {
-                // RAWファイルからメタデータを読み取る
-                var directories = ImageMetadataReader.ReadMetadata(filePath);
+        if (targetSize <= 0) throw new ArgumentOutOfRangeException(nameof(targetSize));
+        var bytes = FindDecodableEmbeddedJpeg(filePath);
+        return bytes.Length == 0 ? bytes : ResizeThumbnail(bytes, targetSize, ReadRawOrientation(filePath));
+    });
 
-                // RAWファイル本体のIFD0 orientation を取得（埋め込みJPEGのfallback用）
-                int rawOrientation = 1;
-                var ifd0 = directories.OfType<ExifIfd0Directory>().FirstOrDefault();
-                ifd0?.TryGetInt32(ExifDirectoryBase.TagOrientation, out rawOrientation);
-
-                // ExifThumbnailDirectoryから埋め込みJPEGサムネイルを取得
-                var thumbnailDirectory = directories.OfType<ExifThumbnailDirectory>().FirstOrDefault();
-
-                if (thumbnailDirectory != null)
-                {
-                    // オフセットとレングスから直接サムネイルを読み取る
-                    if (thumbnailDirectory.TryGetInt32(ExifThumbnailDirectory.TagThumbnailOffset, out var offset) &&
-                        thumbnailDirectory.TryGetInt32(ExifThumbnailDirectory.TagThumbnailLength, out var length) &&
-                        length > 0)
-                    {
-                        // ファイルから直接サムネイル部分を読み取る
-                        using var fileStream = File.OpenRead(filePath);
-                        fileStream.Seek(offset, SeekOrigin.Begin);
-                        var buffer = new byte[length];
-                        var bytesRead = fileStream.Read(buffer, 0, length);
-
-                        if (bytesRead == length)
-                        {
-                            return ResizeThumbnail(buffer, targetSize, rawOrientation);
-                        }
-                    }
-                }
-
-                // ExifThumbnailDirectory で見つからない場合はバイトスキャンで埋め込みJPEGを探す
-                return FindEmbeddedJpeg(filePath, targetSize, rawOrientation);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"RAW thumbnail extraction failed for {filePath}: {ex.Message}");
-                return Array.Empty<byte>();
-            }
-        });
-    }
-
-    /// <summary>
-    /// RAW ファイルから最大の埋込み JPEG をリサイズなしで抽出する（原画像モード用）
-    /// </summary>
-    public async Task<byte[]> ExtractEmbeddedJpegBytesAsync(string filePath)
+    /// <summary>Returns a display JPEG, accepting small valid previews when a larger JPEG is absent or unsupported.</summary>
+    public Task<byte[]> ExtractEmbeddedJpegBytesAsync(string filePath) => Task.Run(() =>
     {
-        return await Task.Run(() =>
-        {
-            try
-            {
-                // RAWファイル本体のIFD0 orientation を取得
-                int rawOrientation = 1;
-                try
-                {
-                    var dirs = ImageMetadataReader.ReadMetadata(filePath);
-                    var ifd0 = dirs.OfType<ExifIfd0Directory>().FirstOrDefault();
-                    ifd0?.TryGetInt32(ExifDirectoryBase.TagOrientation, out rawOrientation);
-                }
-                catch { }
+        var bytes = FindDecodableEmbeddedJpeg(filePath);
+        if (bytes.Length == 0) return bytes;
+        using var image = Image.Load(bytes);
+        ApplyOrientation(image, bytes, ReadRawOrientation(filePath));
+        using var output = new MemoryStream();
+        image.SaveAsJpeg(output, new JpegEncoder { Quality = _jpegQuality });
+        return output.ToArray();
+    });
 
-                const int maxScanBytes = 20 * 1024 * 1024;
-                using var fs = File.OpenRead(filePath);
-                int readLen = (int)Math.Min(fs.Length, maxScanBytes);
-                var buf = new byte[readLen];
-                readLen = fs.Read(buf, 0, readLen);
-
-                byte[]? best = null;
-                int i = 0;
-                while (i < readLen - 3)
-                {
-                    if (buf[i] == 0xFF && buf[i + 1] == 0xD8 && buf[i + 2] == 0xFF)
-                    {
-                        int end = FindJpegEnd(buf, i, readLen);
-                        int length = end - i;
-                        // 50KB 以上の JPEG のみ対象（小さい EXIF サムネイルを除外）
-                        if (length > 50_000 && (best == null || length > best.Length))
-                            best = buf[i..end];
-                        i = end > i + 1 ? end : i + 1;
-                    }
-                    else i++;
-                }
-
-                if (best != null)
-                {
-                    try
-                    {
-                        using var ms = new MemoryStream(best);
-                        using var image = Image.Load(ms);
-                        ApplyOrientation(image, best, rawOrientation);
-                        using var outMs = new MemoryStream();
-                        image.SaveAsJpeg(outMs, new JpegEncoder { Quality = 92 });
-                        return outMs.ToArray();
-                    }
-                    catch { return best; }
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"RAW full JPEG extract failed: {filePath}: {ex.Message}");
-            }
-            return Array.Empty<byte>();
-        });
-    }
-
-    private byte[] FindEmbeddedJpeg(string filePath, int targetSize, int rawOrientation = 1)
+    private static int ReadRawOrientation(string filePath)
     {
         try
         {
-            const int maxScanBytes = 20 * 1024 * 1024; // 20MB 上限
-            using var fs = File.OpenRead(filePath);
-            int readLen = (int)Math.Min(fs.Length, maxScanBytes);
-            var buf = new byte[readLen];
-            int bytesRead = fs.Read(buf, 0, readLen);
-            readLen = bytesRead;
-
-            byte[]? best = null;
-            int i = 0;
-            while (i < readLen - 3)
-            {
-                if (buf[i] == 0xFF && buf[i + 1] == 0xD8 && buf[i + 2] == 0xFF)
-                {
-                    int end = FindJpegEnd(buf, i, readLen);
-                    int length = end - i;
-                    // 2KB 以上の JPEG のみ対象（小さい EXIF サムネイルは除外）
-                    if (length > 2048 && (best == null || length > best.Length))
-                        best = buf[i..end];
-                    i = end > i + 1 ? end : i + 1;
-                }
-                else
-                {
-                    i++;
-                }
-            }
-
-            if (best != null)
-                return ResizeThumbnail(best, targetSize, rawOrientation);
+            var directory = ImageMetadataReader.ReadMetadata(filePath).OfType<ExifIfd0Directory>().FirstOrDefault();
+            return directory?.TryGetInt32(ExifDirectoryBase.TagOrientation, out var orientation) == true ? orientation : 1;
         }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"RAW embedded JPEG scan failed for {filePath}: {ex.Message}");
-        }
-        return Array.Empty<byte>();
+        catch (Exception exception) when (exception is IOException or MetadataExtractor.ImageProcessingException) { return 1; }
     }
 
+    private static byte[] FindDecodableEmbeddedJpeg(string filePath)
+    {
+        const int maximumScanBytes = 20 * 1024 * 1024;
+        const long maximumPreviewPixels = 100_000_000;
+        try
+        {
+            using var stream = File.OpenRead(filePath);
+            var buffer = new byte[(int)Math.Min(stream.Length, maximumScanBytes)];
+            stream.ReadExactly(buffer);
+            byte[] best = [];
+            long bestPixels = 0;
+            for (var index = 0; index < buffer.Length - 3; index++)
+            {
+                if (buffer[index] != 0xFF || buffer[index + 1] != 0xD8 || buffer[index + 2] != 0xFF) continue;
+                var end = FindJpegEnd(buffer, index, buffer.Length);
+                if (end <= index + 4) continue;
+                var candidate = buffer[index..end];
+                try
+                {
+                    var info = Image.Identify(candidate);
+                    long pixels = (long)info.Width * info.Height;
+                    if (pixels <= bestPixels || pixels > maximumPreviewPixels) continue;
+                    // RAW sensor payloads may also have JPEG markers (e.g. lossless JPEG).
+                    // A successful decode, rather than byte length, determines display support.
+                    using var decoded = Image.Load(candidate);
+                    best = candidate;
+                    bestPixels = pixels;
+                }
+                catch (Exception exception) when (exception is UnknownImageFormatException or InvalidImageContentException or NotSupportedException) { }
+            }
+            return best;
+        }
+        catch (IOException) { return []; }
+        catch (UnauthorizedAccessException) { return []; }
+    }
     private static int FindJpegEnd(byte[] buf, int start, int limit)
     {
         for (int i = start + 2; i < limit - 1; i++)

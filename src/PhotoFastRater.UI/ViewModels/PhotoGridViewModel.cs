@@ -21,13 +21,21 @@ public partial class PhotoGridViewModel : ViewModelBase, IDisposable
     private readonly UIConfiguration _uiConfig;
     private readonly IUserInteractionService _interaction;
     private readonly IPlatformShell _platformShell;
-    private readonly IRatingCoordinator _ratingCoordinator;
+    private readonly PhotoRatingEditor _ratingEditor;
+    private readonly IImageDecodeService _decoder;
     private readonly IPhotoCatalog _photoCatalog;
     private PhotoSearchQuery _currentQuery = new();
 
     public AsyncVirtualizingCollection<PhotoViewModel> Photos { get; }
 
     public long TotalPhotoCount => Photos.TotalCount;
+
+    partial void OnSelectedPhotoChanged(PhotoViewModel? oldValue, PhotoViewModel? newValue)
+    {
+        if (oldValue is not null) oldValue.IsSelected = false;
+        if (newValue is not null) newValue.IsSelected = true;
+        SelectedPhotoId = newValue?.Id;
+    }
 
     [ObservableProperty]
     private ObservableCollection<PhotoTreeNode> _photoTree = new();
@@ -88,7 +96,8 @@ public partial class PhotoGridViewModel : ViewModelBase, IDisposable
         UIConfiguration uiConfig,
         IUserInteractionService interaction,
         IPlatformShell platformShell,
-        IRatingCoordinator ratingCoordinator,
+        PhotoRatingEditor ratingEditor,
+        IImageDecodeService decoder,
         IPhotoCatalog photoCatalog)
     {
         _photoRepository = photoRepository;
@@ -97,7 +106,8 @@ public partial class PhotoGridViewModel : ViewModelBase, IDisposable
         _uiConfig = uiConfig;
         _interaction = interaction;
         _platformShell = platformShell;
-        _ratingCoordinator = ratingCoordinator;
+        _ratingEditor = ratingEditor;
+        _decoder = decoder;
         _photoCatalog = photoCatalog;
         Photos = new AsyncVirtualizingCollection<PhotoViewModel>(LoadPageAsync);
         ((System.ComponentModel.INotifyPropertyChanged)Photos).PropertyChanged += (_, eventArgs) =>
@@ -163,6 +173,11 @@ public partial class PhotoGridViewModel : ViewModelBase, IDisposable
         int count,
         CancellationToken cancellationToken = default)
     {
+        // Catalog pages hold metadata, not an ever-growing set of native WPF image surfaces.
+        var retainedStart = Math.Max(0, startIndex - count);
+        var retainedEnd = startIndex + count * 2;
+        for (var index = 0; index < Photos.Count; index++)
+            if (index < retainedStart || index >= retainedEnd) Photos[index].Thumbnail = null;
         // 表示範囲の画像を並列読み込み
         var visiblePhotos = Photos.Skip(startIndex).Take(count).ToList();
         var loadTasks = visiblePhotos
@@ -210,27 +225,13 @@ public partial class PhotoGridViewModel : ViewModelBase, IDisposable
     }
 
     [RelayCommand]
-    private async Task SetRatingAsync(int rating)
-    {
-        if (SelectedPhoto == null) return;
-
-        SelectedPhoto.Rating = rating;
-        await _ratingCoordinator.SetRatingAsync(
-            SelectedPhoto.Id,
-            new RatingState(rating, SelectedPhoto.IsFavorite, SelectedPhoto.IsRejected));
-    }
+    private Task SetRatingAsync(int rating) => SelectedPhoto is { } photo ? SetRatingAsync(photo, rating) : Task.CompletedTask;
 
     [RelayCommand]
-    private async Task ToggleFavoriteAsync()
-    {
-        if (SelectedPhoto == null) return;
+    private Task ToggleFavoriteAsync() => SelectedPhoto is { } photo ? ToggleFavoriteAsync(photo) : Task.CompletedTask;
 
-        SelectedPhoto.IsFavorite = !SelectedPhoto.IsFavorite;
-        await _ratingCoordinator.SetRatingAsync(
-            SelectedPhoto.Id,
-            new RatingState(SelectedPhoto.Rating, SelectedPhoto.IsFavorite, SelectedPhoto.IsRejected));
-    }
-
+    [RelayCommand]
+    private Task ToggleRejectAsync() => SelectedPhoto is { } photo ? ToggleRejectAsync(photo) : Task.CompletedTask;
     [RelayCommand]
     private async Task FilterByCameraAsync(string? cameraModel)
     {
@@ -266,7 +267,7 @@ public partial class PhotoGridViewModel : ViewModelBase, IDisposable
     [RelayCommand]
     private void OpenPhoto(PhotoViewModel photo)
     {
-        var viewer = new PhotoViewerWindow(photo);
+        var viewer = new PhotoViewerWindow(photo, _ratingEditor, _decoder);
         viewer.ShowDialog();
     }
 
@@ -340,31 +341,10 @@ public partial class PhotoGridViewModel : ViewModelBase, IDisposable
         return SelectedPhoto != null;
     }
 
-    // Context menu public methods
-    public async Task SetRatingAsync(PhotoViewModel photo, int rating)
-    {
-        photo.Rating = rating;
-        await _ratingCoordinator.SetRatingAsync(
-            photo.Id,
-            new RatingState(rating, photo.IsFavorite, photo.IsRejected));
-    }
-
-    public async Task ToggleFavoriteAsync(PhotoViewModel photo)
-    {
-        photo.IsFavorite = !photo.IsFavorite;
-        await _ratingCoordinator.SetRatingAsync(
-            photo.Id,
-            new RatingState(photo.Rating, photo.IsFavorite, photo.IsRejected));
-    }
-
-    public async Task ToggleRejectAsync(PhotoViewModel photo)
-    {
-        photo.IsRejected = !photo.IsRejected;
-        await _ratingCoordinator.SetRatingAsync(
-            photo.Id,
-            new RatingState(photo.Rating, photo.IsFavorite, photo.IsRejected));
-    }
-
+    /// <summary>Uses the same durable editing boundary for card, keyboard, and viewer operations.</summary>
+    public Task SetRatingAsync(PhotoViewModel photo, int rating) => _ratingEditor.SetStarsAsync(photo, rating);
+    public Task ToggleFavoriteAsync(PhotoViewModel photo) => _ratingEditor.ToggleFavoriteAsync(photo);
+    public Task ToggleRejectAsync(PhotoViewModel photo) => _ratingEditor.ToggleRejectedAsync(photo);
     public async Task ExportToSocialMediaAsync(PhotoViewModel photo)
     {
         try
@@ -383,15 +363,11 @@ public partial class PhotoGridViewModel : ViewModelBase, IDisposable
                 FrameColor = "#FFFFFF"
             };
 
-            var outputDir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
-                "PhotoFastRater_Export");
-
-            Directory.CreateDirectory(outputDir);
-
+            var outputDir = await _interaction.SelectFolderAsync("SNS画像の書き出し先を選択してください");
+            if (string.IsNullOrWhiteSpace(outputDir)) return;
             var outputPath = Path.Combine(outputDir, $"export_{Path.GetFileNameWithoutExtension(photo.FileName)}.jpg");
 
-            await _socialMediaExporter.ExportAsync(model, template, outputPath);
+            outputPath = await _socialMediaExporter.ExportAsync(model, template, outputPath);
 
             await _interaction.NotifyAsync("完了", $"エクスポートしました:\n{outputPath}", UserNotificationKind.Information);
         }

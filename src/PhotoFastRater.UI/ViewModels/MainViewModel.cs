@@ -43,6 +43,19 @@ public partial class MainViewModel : ViewModelBase, IDisposable
     [ObservableProperty]
     private int _importErrorCount;
 
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ExportBatchSelectionCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ExportSelectedPhotoCommand))]
+    private bool _hasInputErrors;
+
+    partial void OnHasInputErrorsChanged(bool value)
+    {
+        Settings.IsInputValid = !value;
+        if (value) StatusText = "入力エラーがあります。赤い枠の値を修正してから保存・書き出ししてください。";
+    }
+
+    private bool CanSubmitInputs() => !HasInputErrors;
+
     partial void OnSearchTextChanged(string value)
     {
         _searchCancellation?.Cancel();
@@ -191,7 +204,7 @@ public partial class MainViewModel : ViewModelBase, IDisposable
         await Events.CreateEventAsync([photoId]);
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanSubmitInputs))]
     private async Task ExportSelectedPhotoAsync()
     {
         if (PhotoGrid.SelectedPhoto is not { } selected)
@@ -215,7 +228,7 @@ public partial class MainViewModel : ViewModelBase, IDisposable
         }
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(CanSubmitInputs))]
     private async Task ExportBatchSelectionAsync()
     {
         var ids = GetBatchPhotoIds();
@@ -256,8 +269,7 @@ public partial class MainViewModel : ViewModelBase, IDisposable
         _searchCancellation?.Dispose();
         _importCancellation?.Cancel();
         _importCancellation?.Dispose();
-        PhotoGrid.Dispose();
-        Export.Dispose();
+        // Injected view models are owned and disposed exactly once by the window DI scope.
         GC.SuppressFinalize(this);
     }
 }

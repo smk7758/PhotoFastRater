@@ -9,13 +9,23 @@ namespace PhotoFastRater.UI.Views;
 public partial class MainWindow : Window
 {
     private readonly WindowManager _windowManager;
+    private ScrollViewer? PhotoGridScrollViewer;
     private bool _isLoadingNextPage;
+    private bool _isClosed;
+    private CancellationTokenSource? _visibleLoadCancellation;
+    private readonly HashSet<object> _invalidInputs = [];
 
     public MainWindow(MainViewModel viewModel, WindowManager windowManager)
     {
         InitializeComponent();
         DataContext = viewModel;
         _windowManager = windowManager;
+        AddHandler(System.Windows.Controls.Validation.ErrorEvent, new EventHandler<ValidationErrorEventArgs>((_, args) =>
+        {
+            if (args.Action == ValidationErrorEventAction.Added) _invalidInputs.Add(args.OriginalSource);
+            else _invalidInputs.Remove(args.OriginalSource);
+            viewModel.HasInputErrors = _invalidInputs.Count > 0;
+        }));
 
         PreviewMouseWheel += (_, e) =>
         {
@@ -27,15 +37,48 @@ public partial class MainWindow : Window
             }
         };
 
-        Loaded += (_, _) =>
+        Loaded += async (_, _) =>
         {
+            PhotoGridScrollViewer = FindScrollViewer(PhotoGridList);
             if (PhotoGridScrollViewer != null)
             {
+                PhotoGridScrollViewer.Name = "PhotoGridScrollViewer";
+                PhotoGridScrollViewer.ScrollChanged += PhotoGridScrollViewer_ScrollChanged;
                 PhotoGridScrollViewer.SizeChanged += (s, e) =>
                     viewModel.PhotoGrid.NotifyGridWidth(e.NewSize.Width);
                 viewModel.PhotoGrid.NotifyGridWidth(PhotoGridScrollViewer.ActualWidth);
             }
+            await viewModel.LoadPhotosCommand.ExecuteAsync(null);
         };
+        KeyDown += HandlePhotoKeys;
+        Closed += (_, _) => { _isClosed = true; _visibleLoadCancellation?.Cancel(); _visibleLoadCancellation?.Dispose(); };
+    }
+
+    private static ScrollViewer? FindScrollViewer(DependencyObject root)
+    {
+        if (root is ScrollViewer viewer) return viewer;
+        for (var index = 0; index < System.Windows.Media.VisualTreeHelper.GetChildrenCount(root); index++)
+            if (FindScrollViewer(System.Windows.Media.VisualTreeHelper.GetChild(root, index)) is { } match) return match;
+        return null;
+    }
+    private async void HandlePhotoKeys(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (Keyboard.Modifiers != ModifierKeys.None || WorkspaceTabs.SelectedIndex != 0 ||
+            KeyboardInputPolicy.IsControlInput(e.OriginalSource as DependencyObject) || DataContext is not MainViewModel vm)
+            return;
+        var grid = vm.PhotoGrid;
+        int stars = e.Key >= Key.D0 && e.Key <= Key.D5 ? e.Key - Key.D0
+            : e.Key >= Key.NumPad0 && e.Key <= Key.NumPad5 ? e.Key - Key.NumPad0 : -1;
+        if (stars >= 0) await grid.SetRatingCommand.ExecuteAsync(stars);
+        else if (e.Key == Key.F) await grid.ToggleFavoriteCommand.ExecuteAsync(null);
+        else if (e.Key == Key.X) await grid.ToggleRejectCommand.ExecuteAsync(null);
+        else if (e.Key == Key.Up) grid.NavigateUpCommand.Execute(null);
+        else if (e.Key == Key.Down) grid.NavigateDownCommand.Execute(null);
+        else if (e.Key == Key.Left) grid.NavigateLeftCommand.Execute(null);
+        else if (e.Key == Key.Right) grid.NavigateRightCommand.Execute(null);
+        else if (e.Key == Key.Enter && grid.SelectedPhoto is { } photo) grid.OpenPhotoCommand.Execute(photo);
+        else return;
+        e.Handled = true;
     }
 
     private void OpenFolderMode_Click(object sender, System.Windows.RoutedEventArgs e)
@@ -64,6 +107,18 @@ public partial class MainWindow : Window
 
     private async void PhotoGridScrollViewer_ScrollChanged(object sender, ScrollChangedEventArgs e)
     {
+        if (_isClosed) return;
+        if (DataContext is MainViewModel visibleModel && e.VerticalChange != 0)
+        {
+            _visibleLoadCancellation?.Cancel();
+            _visibleLoadCancellation?.Dispose();
+            _visibleLoadCancellation = new CancellationTokenSource();
+            var cell = visibleModel.PhotoGrid.ThumbnailSize + 8;
+            var columns = visibleModel.PhotoGrid.GridColumns;
+            var start = Math.Max(0, (int)(e.VerticalOffset / cell) * columns);
+            var count = ((int)(e.ViewportHeight / cell) + 2) * columns;
+            await visibleModel.PhotoGrid.LoadVisiblePhotosAsync(start, count, _visibleLoadCancellation.Token);
+        }
         if (_isLoadingNextPage || DataContext is not MainViewModel viewModel || !viewModel.PhotoGrid.Photos.HasMore)
             return;
         if (e.VerticalOffset < e.ExtentHeight - e.ViewportHeight * 3)
@@ -180,6 +235,7 @@ public partial class MainWindow : Window
 
     private PhotoViewModel? GetPhotoFromContextMenu(System.Windows.Controls.MenuItem menuItem)
     {
+        if (menuItem.DataContext is PhotoViewModel directPhoto) return directPhoto;
         // Navigate up the visual tree to find the ContextMenu
         var contextMenu = FindParent<System.Windows.Controls.ContextMenu>(menuItem);
         if (contextMenu?.DataContext is PhotoViewModel photo)

@@ -2,12 +2,19 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using PhotoFastRater.UI.ViewModels;
+using Point = System.Windows.Point;
+using MouseEventArgs = System.Windows.Input.MouseEventArgs;
+using Image = System.Windows.Controls.Image;
 
 namespace PhotoFastRater.UI.Views;
 
+/// <summary>Routes comparison input while leaving durable rating and image work in the workspace services.</summary>
 public partial class CompareWindow : Window
 {
     private bool _synchronizingScroll;
+    private ScrollViewer? _dragViewer;
+    private Point _dragStart;
+    private Point _dragOffset;
 
     public CompareWindow(CompareWorkspaceViewModel viewModel)
     {
@@ -69,7 +76,37 @@ public partial class CompareWindow : Window
         {
             return;
         }
-        await workspace.SetRatingAsync(pane, rating);
+        try { await workspace.SetRatingAsync(pane, rating); }
+        catch (Exception exception)
+        {
+            // An async UI event must report a failed commit without advancing or terminating the application.
+            pane.ErrorMessage = $"評価を保存できませんでした。再試行してください: {exception.Message}";
+        }
+    }
+
+    private void PaneScrollViewer_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not ScrollViewer viewer || e.OriginalSource is not Image) return;
+        _dragViewer = viewer;
+        _dragStart = e.GetPosition(viewer);
+        _dragOffset = new Point(viewer.HorizontalOffset, viewer.VerticalOffset);
+        viewer.CaptureMouse();
+        e.Handled = true;
+    }
+
+    private void PaneScrollViewer_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (_dragViewer is not { } viewer || e.LeftButton != MouseButtonState.Pressed) return;
+        var position = e.GetPosition(viewer);
+        viewer.ScrollToHorizontalOffset(_dragOffset.X + _dragStart.X - position.X);
+        viewer.ScrollToVerticalOffset(_dragOffset.Y + _dragStart.Y - position.Y);
+        e.Handled = true;
+    }
+
+    private void PaneScrollViewer_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        _dragViewer?.ReleaseMouseCapture();
+        _dragViewer = null;
     }
 
     private static IEnumerable<T> FindVisualChildren<T>(DependencyObject root) where T : DependencyObject
