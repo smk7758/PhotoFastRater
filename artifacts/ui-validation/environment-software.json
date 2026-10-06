@@ -1,0 +1,11 @@
+{
+  "Os": "Microsoft Windows NT 10.0.26200.0",
+  "Runtime": "10.0.12",
+  "CpuCount": 24,
+  "RamBytes": 34104283136,
+  "RenderTier": 2,
+  "RenderMode": "SoftwareOnly",
+  "UiAssemblySha256": "CD070FA26DE49A9B53B0037590DBDE5070E29DC393789D24DAC83A2EEB377A46",
+  "Profile": "C:\\Programming\\PhotoFastRater\\artifacts\\ui-validation\\profiles\\wpf-20261006-162654959-d2487304f6ea4ea082cf5814cb524c75",
+  "EvidenceKind": "Production WPF windows/control peers; native decisions scripted; RenderTargetBitmap is not a physical-monitor screenshot"
+}

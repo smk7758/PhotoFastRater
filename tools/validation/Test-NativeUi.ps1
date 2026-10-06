@@ -52,10 +52,18 @@ try {
     $saved=Get-Content $sessions[0].FullName -Raw | ConvertFrom-Json
     $records.Add([pscustomobject]@{Id='Native.Folder.Rating5'; Passed=(@($saved.Photos | Where-Object Rating -eq 5).Count -eq 1); Evidence='Actual UI InvokePattern and persisted session JSON'})
     Invoke-Element $root 'FolderModeWindow.OpenKeyboardShortcutsCommand'
-    $windows=[Windows.Automation.AutomationElement]::RootElement.FindAll([Windows.Automation.TreeScope]::Children,[Windows.Automation.Condition]::TrueCondition)
-    $dialog=$windows | Where-Object {$_.Current.ProcessId -eq $app.Id -and $_.Current.Name -eq 'キーボードショートカット設定'} | Select-Object -First 1
+    $dialogCondition=[Windows.Automation.AndCondition]::new(
+        [Windows.Automation.PropertyCondition]::new([Windows.Automation.AutomationElement]::ProcessIdProperty,$app.Id),
+        [Windows.Automation.PropertyCondition]::new([Windows.Automation.AutomationElement]::NameProperty,'キーボードショートカット設定'))
+    $dialogWatch=[Diagnostics.Stopwatch]::StartNew()
+    do {
+        $dialog=[Windows.Automation.AutomationElement]::RootElement.FindFirst([Windows.Automation.TreeScope]::Descendants,$dialogCondition)
+        if (!$dialog) { Start-Sleep -Milliseconds 100 }
+    } while (!$dialog -and $dialogWatch.Elapsed.TotalSeconds -lt 10)
     if (!$dialog) { throw 'Shortcut modal did not open' }
     Invoke-Element $dialog 'KeyboardShortcutsWindow.Cancel_Click'
+    $cancelWatch=[Diagnostics.Stopwatch]::StartNew()
+    while (!$root.Current.IsEnabled -and $cancelWatch.Elapsed.TotalSeconds -lt 5) { Start-Sleep -Milliseconds 100 }
     $records.Add([pscustomobject]@{Id='Native.Shortcuts.Cancel'; Passed=!(Test-Path (Join-Path $profile 'folder-shortcuts.json')); Evidence='Actual native modal cancellation'})
     $app.CloseMainWindow() | Out-Null
     $exited=$app.WaitForExit(5000)

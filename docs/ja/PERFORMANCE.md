@@ -69,3 +69,5 @@ Windows 11、ローカルSSD、JPEG/RAW混在を基準とし、CPU、RAM、ス�
 `DispatcherP95Ms` はディスパッチャへの要求待ち時間であり、OS入力から画面表示までのp95を代替しません。`AverageRenderCallbackFps` はRenderingイベント頻度であり、物理ディスプレイのFPSではありません。全目標と実機不足は[UI検証結果](UI_TEST_REPORT.md)に記録します。
 
 評価ボタン100試行（AutomationPeer→永続化後のモデル更新）のソフトウェア描画p95は約5ms。合成10万件では可視状態から初回Rendering callbackまで約241msでした。これらは物理入力・物理モニターの計測とは区別します。長時間メモリ増加の解消は継続検証中です。
+
+凍結ピクセル保持後の30分: 作業セット最大860.98MB、終了時845.64MB、Dispatcher要求待ちp95 13.16ms、軽量保持最大1,280。容量上限は達成しましたが、平均増加傾向は残り、長時間安定性の合格を保留します。生結果は artifacts/ui-validation/scroll-result.json です。

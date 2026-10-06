@@ -1,0 +1,177 @@
+[
+  {
+    "Id": "Main.Import.Control",
+    "Passed": true,
+    "Evidence": "Production services / WPF control path"
+  },
+  {
+    "Id": "Main.Import.Idempotent",
+    "Passed": true,
+    "Evidence": "Production services / WPF control path"
+  },
+  {
+    "Id": "Main.Import.Cancel.RetainsCatalog",
+    "Passed": true,
+    "Evidence": "Production services / WPF control path"
+  },
+  {
+    "Id": "Main.Selection.Rating.Persistence",
+    "Passed": true,
+    "Evidence": "Production services / WPF control path"
+  },
+  {
+    "Id": "Main.Rating.Buttons.100Trials",
+    "Passed": true,
+    "Evidence": "Production services / WPF control path"
+  },
+  {
+    "Id": "Main.Navigation.Tree",
+    "Passed": true,
+    "Evidence": "Production services / WPF control path"
+  },
+  {
+    "Id": "Main.Paging.Bounded",
+    "Passed": true,
+    "Evidence": "Production services / WPF control path"
+  },
+  {
+    "Id": "Main.Virtualization.ViewportBounded",
+    "Passed": true,
+    "Evidence": "Production services / WPF control path"
+  },
+  {
+    "Id": "Organization.Tag.Collection",
+    "Passed": true,
+    "Evidence": "Production services / WPF control path"
+  },
+  {
+    "Id": "Events.Manual.Auto.Idempotent",
+    "Passed": true,
+    "Evidence": "Production services / WPF control path"
+  },
+  {
+    "Id": "Events.Delete.Cancel.KeepsPhotos",
+    "Passed": true,
+    "Evidence": "Production services / WPF control path"
+  },
+  {
+    "Id": "Export.Formats.Crops.Rotations",
+    "Passed": true,
+    "Evidence": "Production services / WPF control path"
+  },
+  {
+    "Id": "Settings.Save.Reload.CancelClear",
+    "Passed": true,
+    "Evidence": "Production services / WPF control path"
+  },
+  {
+    "Id": "Export.Single.Button.AllPlatforms",
+    "Passed": true,
+    "Evidence": "Production services / WPF control path"
+  },
+  {
+    "Id": "Export.PartialFailure.Retry.Cancel",
+    "Passed": true,
+    "Evidence": "Production services / WPF control path"
+  },
+  {
+    "Id": "Catalog.Unregister.KeepsOriginal.RecycleFailure.KeepsRecord",
+    "Passed": true,
+    "Evidence": "Production services / WPF control path"
+  },
+  {
+    "Id": "Native.Recycle.CopyOnly",
+    "Passed": true,
+    "Evidence": "Production services / WPF control path"
+  },
+  {
+    "Id": "ManagedFolders.Save.Reload.Scan",
+    "Passed": true,
+    "Evidence": "Production services / WPF control path"
+  },
+  {
+    "Id": "Compare.AllPaneCounts",
+    "Passed": true,
+    "Evidence": "Production services / WPF control path"
+  },
+  {
+    "Id": "Viewer.DurableRating.Rendering",
+    "Passed": true,
+    "Evidence": "Production services / WPF control path"
+  },
+  {
+    "Id": "Raw..ARW",
+    "Passed": true,
+    "Evidence": "Production services / WPF control path"
+  },
+  {
+    "Id": "Raw..CR2",
+    "Passed": true,
+    "Evidence": "Production services / WPF control path"
+  },
+  {
+    "Id": "Raw..CR3",
+    "Passed": true,
+    "Evidence": "Production services / WPF control path"
+  },
+  {
+    "Id": "Raw..DNG",
+    "Passed": true,
+    "Evidence": "Production services / WPF control path"
+  },
+  {
+    "Id": "Raw..NEF",
+    "Passed": true,
+    "Evidence": "Production services / WPF control path"
+  },
+  {
+    "Id": "Raw..ORF",
+    "Passed": true,
+    "Evidence": "Production services / WPF control path"
+  },
+  {
+    "Id": "Raw..RAF",
+    "Passed": true,
+    "Evidence": "Production services / WPF control path"
+  },
+  {
+    "Id": "Raw..RAW",
+    "Passed": true,
+    "Evidence": "Production services / WPF control path"
+  },
+  {
+    "Id": "Raw..RW2",
+    "Passed": true,
+    "Evidence": "Production services / WPF control path"
+  },
+  {
+    "Id": "Raw.AllDownloadedFormats.Decode",
+    "Passed": true,
+    "Evidence": "Production services / WPF control path"
+  },
+  {
+    "Id": "Folder.Filter.Save.Preview",
+    "Passed": true,
+    "Evidence": "Production services / WPF control path"
+  },
+  {
+    "Id": "SettingsDialogs.Render",
+    "Passed": true,
+    "Evidence": "Production services / WPF control path"
+  },
+  {
+    "Id": "Main.Input.ValidationGate",
+    "Passed": true,
+    "Evidence": "Production services / WPF control path"
+  },
+  {
+    "Id": "Main.Input.KeysDoNotRateWhileTyping",
+    "Passed": true,
+    "Evidence": "Production services / WPF control path"
+  },
+  {
+    "Id": "Dialogs.Save.Cancel.ShortcutConflict",
+    "Passed": true,
+    "Evidence": "Production services / WPF control path"
+  }
+]

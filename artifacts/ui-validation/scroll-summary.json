@@ -1,0 +1,10 @@
+{
+  "DurationSeconds": 1800.0569912,
+  "PeakWorkingSetMB": 860.984375,
+  "FirstWorkingSetMB": 759.25,
+  "LastWorkingSetMB": 845.640625,
+  "DispatcherP95Ms": 13.1574,
+  "RetainedMaximum": 1280.0,
+  "Stability": "Increasing trend remains; not accepted as long-term stability",
+  "Limitations": "Dispatcher probes are not OS input-to-present latency. Rendering callbacks are not physical monitor FPS."
+}

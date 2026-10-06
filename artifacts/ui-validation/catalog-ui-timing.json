@@ -1,0 +1,7 @@
+{
+  "FirstCollectionRowMilliseconds": 0,
+  "FirstRenderingCallbackMilliseconds": 241.1614,
+  "FirstLayoutMilliseconds": 295.9844,
+  "Count": 100000,
+  "Limitations": "Starts at WPF IsVisible=true; synthetic metadata, missing originals, warm catalog; layout is not physical monitor presentation."
+}
