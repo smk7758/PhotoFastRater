@@ -62,3 +62,9 @@ Desktop.ini
 
 # Mac
 .DS_Store
+
+# Local validation profiles and downloaded original samples; evidence summaries are committed separately.
+artifacts/ui-validation/data/
+artifacts/ui-validation/profiles/
+artifacts/ui-validation/screenshots/
+_GARBAGE/

@@ -31,7 +31,7 @@ public partial class FolderModeViewModel : ViewModelBase
     public event Action<bool>? BoundaryReached;
 
     // フォルダモード設定
-    private FolderModeSettingsViewModel _settings = new();
+    private FolderModeSettingsViewModel _settings;
 
     private static readonly string[] RawExtensions = { ".raw", ".cr2", ".cr3", ".nef", ".arw", ".dng", ".orf", ".raf", ".rw2" };
     private static readonly string[] JpegExtensions = { ".jpg", ".jpeg" };
@@ -118,7 +118,8 @@ public partial class FolderModeViewModel : ViewModelBase
         UIConfiguration uiConfig,
         ExifService exifService,
         RawThumbnailGenerator rawGenerator,
-        IEmbeddedMetadataWriter embeddedMetadataWriter)
+        IEmbeddedMetadataWriter embeddedMetadataWriter,
+        FolderModeSettingsViewModel settings)
     {
         _sessionService = sessionService;
         _windowManager = windowManager;
@@ -130,6 +131,7 @@ public partial class FolderModeViewModel : ViewModelBase
         _exifService = exifService;
         _rawGenerator = rawGenerator;
         _embeddedMetadataWriter = embeddedMetadataWriter;
+        _settings = settings;
 
         _settings.Load();
         ApplySettingsToViewModel();
@@ -606,7 +608,7 @@ public partial class FolderModeViewModel : ViewModelBase
     [RelayCommand]
     private void OpenSettings()
     {
-        var settingsVm = new FolderModeSettingsViewModel();
+        var settingsVm = new FolderModeSettingsViewModel(new ApplicationPaths(Path.GetDirectoryName(_settings.SettingsPath)!));
         settingsVm.DefaultThumbnailSize = ThumbnailSize;
         settingsVm.ShowExifInItem = ShowExifInItem;
         settingsVm.ExifShowLens = ExifItemShowLens;
@@ -616,6 +618,9 @@ public partial class FolderModeViewModel : ViewModelBase
         settingsVm.GroupRawJpeg = _settings.GroupRawJpeg;
         settingsVm.ShowMemoryWarning = _settings.ShowMemoryWarning;
         settingsVm.MaxFullImageMemoryMB = _settings.MaxFullImageMemoryMB;
+        settingsVm.NameLabelBelow = NameLabelBelow;
+        settingsVm.UniformPhotoSize = UniformPhotoSize;
+        settingsVm.ShowOriginalImages = ShowOriginalImages;
 
         var accepted = _windowManager.ShowFolderSettingsDialog(settingsVm);
         if (accepted)

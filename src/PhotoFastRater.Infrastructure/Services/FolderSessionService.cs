@@ -13,6 +13,7 @@ public class FolderSessionService
     private static readonly JsonSerializerOptions SessionJsonOptions = new() { WriteIndented = true };
     private readonly ExifService _exifService;
     private readonly string _sessionRoot;
+    private readonly string _legacySessionRoot;
     private readonly string[] _supportedExtensions = new[]
     {
         ".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff",
@@ -25,12 +26,13 @@ public class FolderSessionService
     };
 
     /// <summary>Creates the legacy session adapter. A custom root is intended for isolated tests and migrations.</summary>
-    public FolderSessionService(ExifService exifService, string? sessionRoot = null)
+    public FolderSessionService(ExifService exifService, string? sessionRoot = null, string? legacySessionRoot = null)
     {
         _exifService = exifService;
         _sessionRoot = sessionRoot ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "PhotoFastRater", "Sessions");
+        _legacySessionRoot = legacySessionRoot ?? Path.Combine(Path.GetTempPath(), "PhotoFastRater", "Sessions");
     }
 
     /// <summary>
@@ -259,13 +261,13 @@ public class FolderSessionService
         return Convert.ToHexStringLower(hash)[..24];
     }
 
-    private static string GetLegacySessionPath(string folderPath)
+    private string GetLegacySessionPath(string folderPath)
     {
 #pragma warning disable CA5351 // MD5 is required only to locate files written by previous releases.
         var hash = MD5.HashData(Encoding.UTF8.GetBytes(folderPath.ToLowerInvariant()));
 #pragma warning restore CA5351
         var folderHash = Convert.ToHexStringLower(hash)[..16];
-        return Path.Combine(Path.GetTempPath(), "PhotoFastRater", "Sessions", folderHash, "session.json");
+        return Path.Combine(_legacySessionRoot, folderHash, "session.json");
     }
 
     /// <summary>

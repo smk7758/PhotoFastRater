@@ -1,0 +1,101 @@
+[
+  {
+    "Format": "CR2",
+    "Status": "Downloaded",
+    "File": "data/raw/sample.CR2",
+    "Url": "https://raw.pixls.us/getfile.php/2102/nice/Canon - EOS 40D - sRAW2 (sRAW) (3:2).CR2",
+    "License": "CC0-1.0",
+    "Camera": "Canon EOS 40D",
+    "Mode": "sRAW2 (sRAW) (3:2)",
+    "SizeBytes": 5805950,
+    "Sha256": "ba644e7dd2abe74eca260e67f0206ff113bf0f62e710f8130611e964d6be5bf1"
+  },
+  {
+    "Format": "CR3",
+    "Status": "Downloaded",
+    "File": "data/raw/sample.CR3",
+    "Url": "https://raw.pixls.us/getfile.php/4659/nice/Canon - EOS R6 - 3:2.CR3",
+    "License": "CC0-1.0",
+    "Camera": "Canon EOS R6",
+    "Mode": "3:2",
+    "SizeBytes": 5273174,
+    "Sha256": "74abb0a113d075ad9887a058082f40dd2a938c4813a08474d82356f11a027778"
+  },
+  {
+    "Format": "NEF",
+    "Status": "Downloaded",
+    "File": "data/raw/sample.NEF",
+    "Url": "https://raw.pixls.us/getfile.php/4282/nice/Nikon - Nikon COOLSCAN IV ED - uncompressed (4:3).nef",
+    "License": "CC0-1.0",
+    "Camera": "Nikon Nikon COOLSCAN IV ED",
+    "Mode": "uncompressed (4:3)",
+    "SizeBytes": 2201849,
+    "Sha256": "268d9a98920a9f3ea3ebf6a2b9ff68b956df74ac0e46b980bee69e7ef3ebc172"
+  },
+  {
+    "Format": "ARW",
+    "Status": "Downloaded",
+    "File": "data/raw/sample.ARW",
+    "Url": "https://raw.pixls.us/getfile.php/1582/nice/Sony - ILCE-7S - 14bit 14bit compressed (3:2).ARW",
+    "License": "CC0-1.0",
+    "Camera": "Sony ILCE-7S",
+    "Mode": "14bit 14bit compressed (3:2)",
+    "SizeBytes": 6160384,
+    "Sha256": "a35ebb2fbec929daa5beb20d1ce5c15a8aac7b1a7a231455387f3df8a7442e07"
+  },
+  {
+    "Format": "DNG",
+    "Status": "Downloaded",
+    "File": "data/raw/sample.DNG",
+    "Url": "https://raw.pixls.us/getfile.php/7317/nice/Blackmagic - Micro Cinema Camera - 12bit (16:9).dng",
+    "License": "CC0-1.0",
+    "Camera": "Blackmagic Micro Cinema Camera",
+    "Mode": "12bit (16:9)",
+    "SizeBytes": 1228096,
+    "Sha256": "4c65b8cda205087cfb94d8931811e53e15eb4df538ad67c1b4a3e76c1185b277"
+  },
+  {
+    "Format": "ORF",
+    "Status": "Downloaded",
+    "File": "data/raw/sample.ORF",
+    "Url": "https://raw.pixls.us/getfile.php/5424/nice/Olympus - E-10 - 16bit (4:3).ORF",
+    "License": "CC0-1.0",
+    "Camera": "Olympus E-10",
+    "Mode": "16bit (4:3)",
+    "SizeBytes": 7614592,
+    "Sha256": "2bfdade72439017a60a47aad1e5bbcb1aca36f2be7a21e94a4257a678fb6f4da"
+  },
+  {
+    "Format": "RAF",
+    "Status": "Downloaded",
+    "File": "data/raw/sample.RAF",
+    "Url": "https://raw.pixls.us/getfile.php/2726/nice/Fujifilm - FinePix S5000 - 4:3.RAF",
+    "License": "CC0-1.0",
+    "Camera": "Fujifilm FinePix S5000",
+    "Mode": "4:3",
+    "SizeBytes": 6851240,
+    "Sha256": "dabd5e74521a6980156be9fd4b88d0c37b0fe4d0e0e6f5c12db8cffff1b76297"
+  },
+  {
+    "Format": "RW2",
+    "Status": "Downloaded",
+    "File": "data/raw/sample.RW2",
+    "Url": "https://raw.pixls.us/getfile.php/7008/nice/Panasonic - DMC-LX7 - 1:1.RW2",
+    "License": "CC0-1.0",
+    "Camera": "Panasonic DMC-LX7",
+    "Mode": "1:1",
+    "SizeBytes": 3249664,
+    "Sha256": "d142a23aca836053ed53e9ce3cb3ed2d434541d734d71a94a6eefadcd08bd31b"
+  },
+  {
+    "Format": "RAW",
+    "Status": "Downloaded",
+    "File": "data/raw/sample.RAW",
+    "Url": "https://raw.pixls.us/getfile.php/4199/nice/RaspberryPi - RP_ov5647 - 3:2.raw",
+    "License": "CC0-1.0",
+    "Camera": "RaspberryPi RP_ov5647",
+    "Mode": "3:2",
+    "SizeBytes": 6575416,
+    "Sha256": "12b4ff3a7f61abc5dd023235f9ea434270a8b111bc16b786696e063e64dd376d"
+  }
+]

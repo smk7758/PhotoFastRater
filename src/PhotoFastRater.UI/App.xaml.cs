@@ -25,65 +25,63 @@ public partial class App : System.Windows.Application
         LoggerMessage.Define(LogLevel.Critical, new EventId(1000, "UnhandledUiException"), "Unhandled UI exception");
     private ServiceProvider? _serviceProvider;
 
-    protected override void OnStartup(StartupEventArgs e)
+    /// <summary>Initializes the selected profile without blocking dispatcher continuations.</summary>
+    protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
-
-        var services = new ServiceCollection();
-        ConfigureServices(services);
-        _serviceProvider = services.BuildServiceProvider(new ServiceProviderOptions
+        try
         {
-            ValidateOnBuild = true,
-            ValidateScopes = true
-        });
-        _serviceProvider.GetRequiredService<DatabaseInitializer>()
-            .InitializeAsync()
-            .GetAwaiter()
-            .GetResult();
-        _serviceProvider.GetRequiredService<XmpSyncQueue>()
-            .RestorePendingAsync()
-            .GetAwaiter()
-            .GetResult();
-
-        var args = e.Args;
-        var windowManager = _serviceProvider.GetRequiredService<WindowManager>();
-
-        if (args.Length >= 1 && args[0] == "--folder")
-        {
-            // フォルダモードで起動
-            var folderPath = args.Length >= 2 ? args[1] : null;
-            windowManager.ShowFolderWindow(folderPath, openDialogWhenEmpty: true);
+            var options = StartupOptions.Parse(e.Args);
+            var services = new ServiceCollection();
+            ConfigureServices(services, options.Paths);
+            _serviceProvider = services.BuildServiceProvider(new ServiceProviderOptions
+            {
+                ValidateOnBuild = true,
+                ValidateScopes = true
+            });
+            var ui = _serviceProvider.GetRequiredService<UIConfiguration>();
+            System.Windows.Media.RenderOptions.ProcessRenderMode = ui.EnableGPUAcceleration
+                ? System.Windows.Interop.RenderMode.Default
+                : System.Windows.Interop.RenderMode.SoftwareOnly;
+            await _serviceProvider.GetRequiredService<DatabaseInitializer>().InitializeAsync();
+            await _serviceProvider.GetRequiredService<XmpSyncQueue>().RestorePendingAsync();
+            var windows = _serviceProvider.GetRequiredService<WindowManager>();
+            if (options.FolderMode)
+                windows.ShowFolderWindow(options.FolderPath, openDialogWhenEmpty: true);
+            else
+                windows.ShowMainWindow();
         }
-        else
+        catch (Exception exception)
         {
-            // DBモードで起動（通常）
-            windowManager.ShowMainWindow();
+            if (_serviceProvider?.GetService<ILogger<App>>() is { } logger)
+                LogUnhandledException(logger, exception);
+            System.Windows.MessageBox.Show(exception.Message, "起動できませんでした", MessageBoxButton.OK, MessageBoxImage.Error);
+            Shutdown(1);
         }
     }
-
-    private void ConfigureServices(IServiceCollection services)
+    private void ConfigureServices(IServiceCollection services, ApplicationPaths paths)
     {
         // Load configuration from appsettings.json
-        var (cacheConfig, uiConfig) = LoadConfiguration();
-        var settingsStore = new UserSettingsStore();
+        var (cacheConfig, uiConfig) = LoadConfiguration(paths);
+        var settingsStore = new UserSettingsStore(paths.Settings);
         settingsStore.TryLoad(cacheConfig, uiConfig);
+        // Isolated profiles may contain copied settings, but never inherit an external cache.
+        if (paths.IsIsolated)
+            cacheConfig.CachePath = paths.Cache;
+        services.AddSingleton(paths);
         services.AddSingleton(cacheConfig);
         services.AddSingleton(uiConfig);
         services.AddSingleton(settingsStore);
 
         // Database
-        var dbPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "PhotoFastRater", "photos.db");
+        var dbPath = paths.Database;
 
         Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
 
         services.AddPooledDbContextFactory<PhotoDbContext>(options =>
-            options.UseSqlite($"Data Source={dbPath};Cache=Shared;Default Timeout=5"));
+            options.UseSqlite(new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder { DataSource = dbPath, Cache = Microsoft.Data.Sqlite.SqliteCacheMode.Shared, DefaultTimeout = 5 }.ToString()));
         services.AddSingleton<DatabaseInitializer>();
-        var logPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "PhotoFastRater", "Logs", $"PhotoFastRater-{DateTime.UtcNow:yyyyMMdd}.log");
+        var logPath = Path.Combine(paths.Logs, $"PhotoFastRater-{DateTime.UtcNow:yyyyMMdd}.log");
         services.AddLogging(builder => builder.AddDebug().AddProvider(new LocalFileLoggerProvider(logPath)));
 
         // Repositories
@@ -106,7 +104,7 @@ public partial class App : System.Windows.Application
         services.AddScoped<ImportService>();
         services.AddScoped<EventManagementService>();
         services.AddScoped<ManagedFolderService>();
-        services.AddScoped<FolderSessionService>();
+        services.AddScoped(sp => new FolderSessionService(sp.GetRequiredService<ExifService>(), paths.Sessions, paths.LegacySessionRoot));
         services.AddScoped<DataMigrationService>();
 
         // Image Processing
@@ -146,7 +144,7 @@ public partial class App : System.Windows.Application
         services.AddSingleton<IEmbeddedMetadataWriter, EmbeddedMetadataWriter>();
 
         // Keyboard Shortcuts
-        services.AddSingleton<ShortcutService>();
+        services.AddSingleton(new ShortcutService(paths));
         services.AddTransient<KeyboardShortcutsViewModel>();
         services.AddTransient<KeyboardShortcutsWindow>();
         services.AddSingleton<WindowManager>();
@@ -159,16 +157,14 @@ public partial class App : System.Windows.Application
         services.AddTransient<CompareWindow>();
     }
 
-    private (CacheConfiguration, UIConfiguration) LoadConfiguration()
+    private (CacheConfiguration, UIConfiguration) LoadConfiguration(ApplicationPaths paths)
     {
         var appSettingsPath = "appsettings.json";
 
         // デフォルト設定
         var cacheConfig = new CacheConfiguration
         {
-            CachePath = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "PhotoFastRater", "Cache"),
+            CachePath = paths.Cache,
             MaxMemoryCacheSizeMB = 500,
             MaxDiskCacheSizeGB = 10,
             ThumbnailSize = 512,
@@ -185,7 +181,7 @@ public partial class App : System.Windows.Application
         };
 
         // appsettings.jsonから設定を読み込む
-        if (File.Exists(appSettingsPath))
+        if (!paths.IsIsolated && File.Exists(appSettingsPath))
         {
             try
             {

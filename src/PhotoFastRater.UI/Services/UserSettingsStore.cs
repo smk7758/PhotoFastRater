@@ -79,6 +79,8 @@ public sealed class UserSettingsStore
             if (snapshot is null)
                 return false;
 
+            if (snapshot.Cache is null || snapshot.UI is null)
+                return false;
             Validate(snapshot.Cache, snapshot.UI);
             Copy(snapshot.Cache, cache);
             Copy(snapshot.UI, ui);
@@ -88,7 +90,7 @@ public sealed class UserSettingsStore
         {
             return false;
         }
-        catch (ArgumentOutOfRangeException)
+        catch (Exception exception) when (exception is ArgumentException or IOException or UnauthorizedAccessException)
         {
             return false;
         }

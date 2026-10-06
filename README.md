@@ -175,6 +175,9 @@ dotnet run --project src/PhotoFastRater.UI
 dotnet run --project src/PhotoFastRater.UI --folder
 dotnet run --project src/PhotoFastRater.UI --folder "C:\path\to\photos"
 
+# ユーザーデータに触れない検証用プロファイル（絶対パス）
+dotnet run --project src/PhotoFastRater.UI -- --data-dir "C:\PFR-Test\Profile" --folder "C:\PFR-Test\Photos"
+
 # リリースビルド
 dotnet publish src/PhotoFastRater.UI -c Release -r win-x64 --self-contained
 ```

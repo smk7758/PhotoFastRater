@@ -6,9 +6,13 @@ namespace PhotoFastRater.UI.Services;
 
 public class ShortcutService
 {
-    private static readonly string FilePath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "PhotoFastRater", "folder-shortcuts.json");
+    private readonly string _filePath;
+
+    /// <summary>Uses the existing installed location for callers without an explicit profile.</summary>
+    public ShortcutService() : this(new ApplicationPaths()) { }
+
+    /// <summary>Separates shortcut preferences from other profiles.</summary>
+    public ShortcutService(ApplicationPaths paths) => _filePath = paths.Shortcuts;
 
     public static readonly IReadOnlyList<ShortcutEntry> Defaults = new List<ShortcutEntry>
     {
@@ -34,12 +38,12 @@ public class ShortcutService
 
     public List<ShortcutEntry> Load()
     {
-        if (!File.Exists(FilePath))
+        if (!File.Exists(_filePath))
             return Defaults.Select(Clone).ToList();
 
         try
         {
-            var json = File.ReadAllText(FilePath);
+            var json = File.ReadAllText(_filePath);
             var dtos = JsonSerializer.Deserialize<List<ShortcutEntryDto>>(json);
             if (dtos == null) return Defaults.Select(Clone).ToList();
 
@@ -59,7 +63,7 @@ public class ShortcutService
 
     public void Save(List<ShortcutEntry> entries)
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
+        Directory.CreateDirectory(Path.GetDirectoryName(_filePath)!);
         var dtos = entries.Select(e => new ShortcutEntryDto
         {
             CommandName = e.CommandName,
@@ -67,8 +71,7 @@ public class ShortcutService
             Key = e.Key.ToString(),
             Modifiers = e.Modifiers.ToString()
         }).ToList();
-        var json = JsonSerializer.Serialize(dtos, new JsonSerializerOptions { WriteIndented = true });
-        File.WriteAllText(FilePath, json);
+        AtomicPreferences.Write(_filePath, dtos);
     }
 
     private static ShortcutEntry Clone(ShortcutEntry e) => new()
